@@ -1,2 +1,2 @@
-# DataAnalysis
-Data analysis and plots
+# shabanipy
+Data analysis and plots for Shabani Lab
