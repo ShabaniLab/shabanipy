@@ -1,6 +1,11 @@
 Shabanipy Changelog
 ===================
 
+0.1.1 - 2018-10-05
+------------------
+- add a script to plot histogram of the shapiro steps
+- always tighten the layout of the plots
+
 0.1.0 - 2018-10-05
 ------------------
 - add all the tools required to treat the Shapiro data

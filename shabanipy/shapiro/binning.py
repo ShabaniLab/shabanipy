@@ -51,7 +51,6 @@ def bin_shapiro_steps(voltage, frequency=None, step_fraction=0.1, bins=None):
         # Compute the shapiro step voltage
         step = shapiro_step(frequency)*step_fraction
 
-        print(voltage)
         min_v, max_v = np.min(voltage), np.max(voltage)
         neg_bins, pos_bins = abs(floor(min_v/step)), abs(ceil(max_v/step))
         total_bins = neg_bins + pos_bins

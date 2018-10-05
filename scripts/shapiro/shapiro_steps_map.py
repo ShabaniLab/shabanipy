@@ -13,7 +13,7 @@ The plot use the folling axes:
 # =============================================================================
 
 #: Path towards the hdf5 file holding the data
-PATH = r'/Users/mdartiailh/Labber/Data/2018/09/Data_0914/JS124L_CD004_010.hdf5'
+PATH = r'/Users/mdartiailh/Labber/Data/2018/09/Data_0913/JS124L_CD004_009.hdf5'
 
 #: Name or index of the column containing the frequency data if applicable.
 #: Leave blanck if the datafile does not contain a frequency sweep.
@@ -102,7 +102,6 @@ for frequency in FREQUENCIES:
 
         power = data.get_data(POWER_NAME, filters=filters)
         volt = data.get_data(VOLTAGE_NAME, filters=filters)
-        print(volt)
         curr = data.get_data(CURRENT_NAME, filters=filters)
 
         # Handle interruptions in the last scan.
@@ -151,5 +150,6 @@ for frequency in FREQUENCIES:
         plt.xlim(X_LIMITS)
     if Y_LIMITS:
         plt.ylim(Y_LIMITS)
+    plt.tight_layout()
 
 plt.show()
