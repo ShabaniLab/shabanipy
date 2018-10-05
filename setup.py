@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import os
 import sys
 
 try:
@@ -10,7 +10,7 @@ except ImportError:
     sys.exit(1)
 
 sys.path.insert(0, os.path.abspath('.'))
-from shabanypy.version import __version__
+from shabanipy.version import __version__
 
 
 def read(filename):
@@ -30,7 +30,7 @@ setup(name='shabanipy',
       license='MIT License',
       python_requires='>=3.6',
       install_requires=requirements,
-      packages=[find_packages()],
+      packages=find_packages(),
       platforms="Linux, Windows,Mac",
       use_2to3=False,
       zip_safe=False)
