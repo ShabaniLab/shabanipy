@@ -1,0 +1,7 @@
+Shabanipy Changelog
+===================
+
+0.1.0 - 2018-10-05
+------------------
+- add all the tools required to treat the Shapiro data
+- add the Labber io layer (handle nested datasets)
