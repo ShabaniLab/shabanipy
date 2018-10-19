@@ -1,6 +1,11 @@
 Shabanipy Changelog
 ===================
 
+0.1.2 - 2018-10-19
+------------------
+- add a script to plot the weight of the Shapiro as a function of power and 
+  frequency
+
 0.1.1 - 2018-10-05
 ------------------
 - add a script to plot histogram of the shapiro steps

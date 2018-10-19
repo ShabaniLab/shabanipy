@@ -98,7 +98,8 @@ def bin_power_shapiro_steps(power, current, voltage, frequency,
         Linear array of the power used in the experiment.
 
     voltage : np.ndarray
-        Linear array of the center of the voltage bins.
+        Linear array of the center of the voltage bins, normalized by the 
+        Shapiro step size.
 
     histo : np.ndarray
         2D array of the voltage counts (expressed in current, ie multiplied by
@@ -126,3 +127,32 @@ def bin_power_shapiro_steps(power, current, voltage, frequency,
         results = results[::-1]
 
     return power, center_bin(bins)/shapiro_step(frequency), results
+
+
+def extract_step_weight(voltage, histo, index):
+    """Extract the line of an histogram matching a given step.
+
+    Parameters
+    ----------
+    voltage : np.ndarray
+        1D array of the voltage matching histo. Voltages are expected to be
+        normalized to the height of a Shapiro step.
+
+    histo : np.ndarray
+        2D histogram of the counts as a function of power (first index), and
+        voltage (second index).
+
+    index : int
+        Index of the Shapiro step for which data should be retrieved.
+
+    Returns
+    -------
+    counts : np.ndarray
+        1D array of the counts as a unction of power for the specified step.
+
+    """
+    step_index = np.argmin(np.abs(voltage - index))
+    if abs(voltage[step_index] - index) > 0.5:
+        raise ValueError(f'Step {index} does not exist in the data.')
+    return histo[:, step_index]
+    

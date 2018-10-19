@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Generate a set linear plot (V-I) for different to powers
+"""Generate a histogram of the voltage for a given frequency and power.
 
 """
 
