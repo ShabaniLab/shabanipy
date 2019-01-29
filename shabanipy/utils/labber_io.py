@@ -171,6 +171,16 @@ class LabberData:
         else:
             return name_or_index
 
+    def list_channels(self):
+        """Identify the channel availables in the Labber file.
+
+        """
+        if self._channel_names is None:
+            _ch_names = self._file['Data']['Channel names']
+            self._channel_names = [n for (n, _) in list(_ch_names)]
+        ch_names = self._channel_names
+        return self._channel_names
+
     def __enter__(self):
         """ Open the underlying HDF5 file when used as a context manager.
 
