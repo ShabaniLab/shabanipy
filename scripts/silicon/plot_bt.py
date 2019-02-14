@@ -24,17 +24,17 @@ FIELD_NAME = 0
 #: Name or index of the column containing the current data
 #: This should be a stepped channel ! use the applied voltage not the
 #: measured current
-CONDUCTANCE_NAME = 2
+RESISTANCE_NAME = 2
 
 #: Label of the x axis, if left blanck the power column name will be used
 #: If an index was passed the name found in the labber file is used.
-X_AXIS_LABEL = 'Power (dBm)'
+X_AXIS_LABEL = 'Magnetic Field (B)'
 
 #: Label of the y axis.
-Y_AXIS_LABEL = 'Junction voltage (hf/2e)'
+Y_AXIS_LABEL = 'Temperature (K)'
 
 #: Label of the colorbar.
-C_AXIS_LABEL = 'Counts (µA)'
+C_AXIS_LABEL = r'Resistance ($\Omega$)'
 
 #: Scaling factor for the c axis (used to convert between units)
 C_SCALING = 1e6
@@ -43,7 +43,7 @@ C_SCALING = 1e6
 X_LIMITS = [None, None]
 
 #: Limits to use for the y axis (after scaling)
-Y_LIMITS = [1.5, 8]
+Y_LIMITS = [1.4, 8]
 
 #: Limits to use on the colorscale (after scaling). Use None for autoscaling.
 C_LIMITS = [None, None]
@@ -65,7 +65,7 @@ with LabberData(PATH) as data:
 
     field = data.get_data(FIELD_NAME)
     temp = data.get_data(TEMPERATURE_NAME)
-    cond = np.abs(data.get_data(CONDUCTANCE_NAME))
+    cond = np.abs(data.get_data(RESISTANCE_NAME))
 
     # Handle interruptions in the last scan.
     while len(field) < shape[0]*shape[1]:
