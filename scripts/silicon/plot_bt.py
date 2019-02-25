@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Generate a color plot of a shapiro step experiment through binning.
+"""Generate a color plot for superconductor's 2D B and T scans through binning.
 
 The plot use the folling axes:
-- x axis: Power
-- y axis: Normalized voltage
-- color axis: bin count in current
+- x axis: Magnetic field
+- y axis: Temperature
+- color axis: Resistance
 
 """
 
