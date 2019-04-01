@@ -178,7 +178,6 @@ class LabberData:
         if self._channel_names is None:
             _ch_names = self._file['Data']['Channel names']
             self._channel_names = [n for (n, _) in list(_ch_names)]
-        ch_names = self._channel_names
         return self._channel_names
 
     def __enter__(self):
