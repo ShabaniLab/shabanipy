@@ -16,10 +16,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 #: Directory in which the data are located.
-DIRECTORY = '/Users/mdartiailh/Documents/PostDocNYU/Fridge/EcosorbRFFilters'
+DIRECTORY = '/Users/mdartiailh/Documents/PostDocNYU/Fridge/14TFridge'
 
 #: Touchstone file to plot
-FILENAME = 'ECOSORB_8.S2P'
+FILENAME = 'RFLINE2.S2P'
 
 #: Should the plot be saved (same directory and name)
 SAVE_PLOT = True

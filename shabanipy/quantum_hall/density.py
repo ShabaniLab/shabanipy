@@ -65,7 +65,7 @@ def extract_density(field, rxy, field_cutoffs, plot_fit=False):
         rxy = np.array((rxy,))
         field_cutoffs = np.array((field_cutoffs,))
 
-    results = np.empty((trace_number, 2))
+    results = np.empty((2, trace_number))
     model = LinearModel()
 
     # Perform a linear fit in the specified field range and extract the slope
@@ -76,8 +76,8 @@ def extract_density(field, rxy, field_cutoffs, plot_fit=False):
         f = field[i][start_ind:stop_ind]
         r = rxy[i][start_ind: stop_ind]
         res = model.fit(r,x=f)
-        results[i][0] = res.best_values['slope']/cs.e/1e4  # value in cm^-2
-        results[i][1] = res.params['slope'].stderr/cs.e/1e4  # value in cm^-2
+        results[i, 0] = res.best_values['slope']/cs.e/1e4  # value in cm^-2
+        results[i, 1] = res.params['slope'].stderr/cs.e/1e4  # value in cm^-2
 
         # If requested interrupt execution to plot the result.
         if plot_fit:
@@ -88,4 +88,4 @@ def extract_density(field, rxy, field_cutoffs, plot_fit=False):
     if results.shape[0] == 1:
         return results[0]
     else:
-        return results.T.reshape((2, ) + original_shape)
+        return results.reshape((2, ) + original_shape)
