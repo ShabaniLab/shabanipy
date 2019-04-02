@@ -9,6 +9,7 @@
 """Carriers density analysis.
 
 """
+import numpy as np
 import scipy.constants as cs
 import matplotlib.pyplot as plt
 from lmfit.models import LinearModel
@@ -73,17 +74,23 @@ def extract_density(field, rxy, field_cutoffs, plot_fit=False):
         start_field, stop_field = field_cutoffs[i]
         start_ind = np.argmin(np.abs(field[i] - start_field))
         stop_ind = np.argmin(np.abs(field[i] - stop_field))
+        start_ind, stop_ind =\
+            min(start_ind, stop_ind), max(start_ind, stop_ind)
         f = field[i][start_ind:stop_ind]
-        r = rxy[i][start_ind: stop_ind]
-        res = model.fit(r,x=f)
-        results[i, 0] = res.best_values['slope']/cs.e/1e4  # value in cm^-2
-        results[i, 1] = res.params['slope'].stderr/cs.e/1e4  # value in cm^-2
+        r = rxy[i][start_ind:stop_ind]
+        res = model.fit(r, x=f)
+        results[0, i] = 1/res.best_values['slope']/cs.e/1e4  # value in cm^-2
+        results[1, i] = results[0, i] * (res.params['slope'].stderr /
+                                         res.best_values['slope'])
 
-        # If requested interrupt execution to plot the result.
+        # If requested plot the result in a dedicated window.
         if plot_fit:
+            plt.figure()
             plt.plot(f, r, '+')
             plt.plot(f, res.best_fit)
-            plt.show()
+            plt.xlabel('Field')
+            plt.ylabel('Rxy')
+            plt.tight_layout()
 
     if results.shape[0] == 1:
         return results[0]

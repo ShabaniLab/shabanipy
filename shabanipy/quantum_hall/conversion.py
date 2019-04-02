@@ -11,6 +11,7 @@
 """
 from math import pi, log
 
+import numpy as np
 import scipy.constants as cs
 
 GEOMETRIC_FACTORS = {
@@ -115,7 +116,7 @@ def diffusion_constant_from_mobility_density(mobility, density,
     """
     vf = fermi_velocity_from_density(density, effective_mass)
     mft = mean_free_time_from_mobility(mobility, effective_mass)
-    return vf^2*mft/2
+    return vf**2*mft/2
 
 
 def htr_from_mobility_density(mobility, density, effective_mass):

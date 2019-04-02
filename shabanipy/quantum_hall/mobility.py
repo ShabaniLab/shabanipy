@@ -9,10 +9,11 @@
 """Carriers mobility analysis.
 
 """
+import numpy as np
 import scipy.constants as cs
 
 
-def compute_mobility(field, rxx, ryy, density, geometric_factor):
+def extract_mobility(field, rxx, ryy, density, geometric_factor):
     """Compute the mobilities from transverse resistance measurements.
 
     Parameters
@@ -34,8 +35,33 @@ def compute_mobility(field, rxx, ryy, density, geometric_factor):
         Carriers density. If field is more than 1D the shape of this array
         should match the field.shape[:-1]
 
+    Returns
+    -------
+    mobility : np.ndarray
+        Array (2, ...) containing the xx and yy mobility
+
     """
-    min_field_ind = np.argmin(np.abs(field), axis=-1)
-    r0 = np.array((rxx[..., min_field_ind], ryy[..., min_field_ind]))
-    cr0 = r0*geometric_factor
-    return 1/cs.e/density/cr0
+    # Identify the shape of the data and make them suitable for the following
+    # treatment.
+    if len(field.shape) >= 2:
+        original_shape = field.shape[:-1]
+        trace_number = np.prod(original_shape)
+        field = field.reshape((trace_number, -1))
+        rxx = rxx.reshape((trace_number, -1))
+        ryy = ryy.reshape((trace_number, -1))
+    else:
+        trace_number = 1
+        field = np.array((field,))
+        rxx = np.array((rxx,))
+        ryy = np.array((ryy,))
+
+    r0 = np.empty((2, trace_number))
+
+    for i in range(trace_number):
+        min_field_ind = np.argmin(np.abs(field[i]))
+        r0[0, i] = rxx[i, min_field_ind]
+        r0[1, i] = ryy[i, min_field_ind]
+
+    r0.reshape((2, ) + original_shape)
+    r0 *= geometric_factor
+    return 1/cs.e/density/r0
