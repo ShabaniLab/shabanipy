@@ -33,7 +33,7 @@ def kf_from_density(density):
     Parameters
     ----------
     density : float | np.ndarray
-        Carriers density of the sample expected to be in cm^-2
+        Carriers density of the sample expected to be in m^-2
 
     Returns
     -------
@@ -41,7 +41,7 @@ def kf_from_density(density):
         Fermi wavevector in m^-1.
 
     """
-    return np.sqrt(2*np.pi*density) * 1e-2  # Conversion to m^-1
+    return np.sqrt(2*np.pi*density)
 
 
 def mean_free_time_from_mobility(mobility, effective_mass):
@@ -50,14 +50,14 @@ def mean_free_time_from_mobility(mobility, effective_mass):
     Parameters
     ----------
     mobility : float | np.ndarray
-        Carriers mobility of the sample.
+        Carriers mobility of the sample in m^2s^-sV^-1.
     effective_mass : float
         Effective mass of the carriers in kg.
 
     Returns
     -------
     mean_free_time : float | np.ndarray
-        Fermi wavevector in s.
+        Mean free time in s.
 
     """
     return mobility*effective_mass/cs.e
@@ -86,7 +86,7 @@ def fermi_velocity_from_density(density, effective_mass):
     Parameters
     ----------
     density :  : float | np.ndarray
-        Carriers density of the sample expected to be in cm^-2
+        Carriers density of the sample expected to be in m^-2
 
     Returns
     -------
@@ -104,14 +104,14 @@ def diffusion_constant_from_mobility_density(mobility, density,
     Parameters
     ----------
     mobility : float | np.ndarray
-        Carriers mobility of the sample.
+        Carriers mobility of the sample m^2s^-sV^-1.
     density :  : float | np.ndarray
-        Carriers density of the sample expected to be in cm^-2
+        Carriers density of the sample expected to be in m^-2
 
     Returns
     -------
     diffusion_constant : float | np.ndarray
-        Diffusion constant of the carriers.
+        Diffusion constant of the carriers m^2s^-1.
 
     """
     vf = fermi_velocity_from_density(density, effective_mass)

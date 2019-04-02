@@ -64,4 +64,4 @@ def extract_mobility(field, rxx, ryy, density, geometric_factor):
 
     r0.reshape((2, ) + original_shape)
     r0 *= geometric_factor
-    return 1/cs.e/density/r0
+    return 1/cs.e/density/r0  # Conversion to m^2.s^-1.V^-1

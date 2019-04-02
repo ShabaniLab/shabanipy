@@ -79,7 +79,7 @@ def extract_density(field, rxy, field_cutoffs, plot_fit=False):
         f = field[i][start_ind:stop_ind]
         r = rxy[i][start_ind:stop_ind]
         res = model.fit(r, x=f)
-        results[0, i] = 1/res.best_values['slope']/cs.e/1e4  # value in cm^-2
+        results[0, i] = 1/res.best_values['slope']/cs.e  # value in m^-2
         results[1, i] = results[0, i] * (res.params['slope'].stderr /
                                          res.best_values['slope'])
 

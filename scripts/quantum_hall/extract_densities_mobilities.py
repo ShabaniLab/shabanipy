@@ -37,7 +37,7 @@ XY_VOLTAGE_COLUMN = 4
 LOCK_IN_QUANTITY = 'real'
 
 #: Value of the excitation current used by the lock-in amplifier in A.
-PROBE_CURRENT = 1e-6
+PROBE_CURRENT = 50e-9
 
 #: Sample geometry used to compute the mobility.
 #: Accepted values are 'Van der Pauw', 'Standard Hall bar'
@@ -54,7 +54,8 @@ EFFECTIVE_MASS = 0.03
 
 #: File in which to store the results of the analysis as a function of gate
 #: voltage.
-RESULT_PATH = ''
+RESULT_PATH = ('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/WAL/JS124/'
+               'JS138_JS124HB_JY001_008_density_mobility.csv')
 
 # =============================================================================
 # --- Execution ---------------------------------------------------------------
@@ -64,6 +65,7 @@ import os
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import scipy.constants as cs
 
 from shabanipy.quantum_hall.conversion\
     import (convert_lock_in_meas_to_diff_res, GEOMETRIC_FACTORS,
@@ -102,34 +104,38 @@ if PLOT_DENSITY_FIT:
 
 mobility = extract_mobility(field, res['xx'], res['yy'], density,
                             GEOMETRIC_FACTORS[GEOMETRY])
-vf = fermi_velocity_from_density(density, EFFECTIVE_MASS)
-mft = mean_free_time_from_mobility(mobility, EFFECTIVE_MASS)
+
+mass = EFFECTIVE_MASS*cs.electron_mass
+vf = fermi_velocity_from_density(density, mass)
+mft = mean_free_time_from_mobility(mobility, mass)
 diff = diffusion_constant_from_mobility_density(mobility, density,
-                                                EFFECTIVE_MASS)
+                                                mass)
 
 if RESULT_PATH:
     df = pd.DataFrame({'Gate voltage (V)': gate,
-                       'Density (cm^-2)': density,
-                       'Stderr density (cm^-2)': std_density,
-                       'Mobility xx': mobility[0],
-                       'Mobility yy': mobility[1],
-                       'Mean free time (s)': mft,
-                       'Diffusion (m^2/s)': diff})
-    with open(RESULT_PATH, 'wb') as f:
+                       'Density (m^-2)': density,
+                       'Stderr density (m^-2)': std_density,
+                       'Mobility xx (m^2V^-1s^-1)': mobility[0],
+                       'Mobility yy (m^2V^-1s^-1)': mobility[1],
+                       'Mean free time xx (s)': mft[0],
+                       'Mean free time yy (s)': mft[1],
+                       'Diffusion xx (m^2/s)': diff[0],
+                       'Diffusion yy (m^2/s)': diff[1]})
+    with open(RESULT_PATH, 'w') as f:
         f.write(f'# Probe-current: {PROBE_CURRENT}\n'
                 f'# Effective mass: {EFFECTIVE_MASS}\n'
                 f'# Geometry: {GEOMETRY}\n'
-                f'# Lock-in qunatity: {LOCK_IN_QUANTITY}\n')
-        df.to_csv(f)
+                f'# Lock-in quantity: {LOCK_IN_QUANTITY}\n')
+        df.to_csv(f, index=False)
 
 fig, axes = plt.subplots(1, 2)
-axes[0].errorbar(gate, density, std_density)
+axes[0].errorbar(gate, density/1e4, std_density/1e4, fmt='*')
 axes[0].set_xlabel('Gate voltage (V)')
 axes[0].set_ylabel('Density (cm$^2$)')
-axes[1].plot(density, mobility[0], '+', label='xx')
-axes[1].plot(density, mobility[1], 'x', label='yy')
+axes[1].plot(density/1e4, mobility[0]*1e4, '+', label='xx')
+axes[1].plot(density/1e4, mobility[1]*1e4, 'x', label='yy')
 axes[1].set_xlabel('Density (cm$^2$)')
-axes[1].set_ylabel('Mobility ')
+axes[1].set_ylabel('Mobility (cm$^2$V$^-1$s$^-1$)')
 plt.legend()
 plt.tight_layout()
 plt.show()
