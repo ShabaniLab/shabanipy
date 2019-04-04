@@ -12,6 +12,7 @@ The routines is this module assume that no linear Dresselhaus is present.
 
 """
 import numpy as np
+from numba import njit
 from scipy.special import digamma
 
 
@@ -56,25 +57,27 @@ def compute_wal_conductance_difference(field, dephasing_field, linear_soi,
 
     """
     # Field dependant fitting parameters
-    dephasing_r = np.abs(dephasing_field/B)  # H_phi / B
-    linear_soi_r = np.abs(linear_soi/B)  # H_SO^2/B assuming Dresselhaus = 0
-    cubic_soi_r  = np.abs(cubic_soi/B)  # Cubic term in H_S0 proportional to τ3
+    dephasing_r = np.abs(dephasing_field/field)  # H_phi / B
+    linear_soi_r = np.abs(linear_soi/field)  # H_SO^2/B assuming Dresselhaus = 0
+    cubic_soi_r  = np.abs(cubic_soi/field)  # Cubic term in H_S0 proportional to τ3
 
     # Lower field cutoff for calculation
     dephasing_ref = abs(dephasing_field / low_field_reference)
     linear_soi_ref = abs(linear_soi / low_field_reference)
     cubic_soi_ref  = abs(cubic_soi / low_field_reference)
 
-    sigma_b   = compute_wal_conductance(dephasing_r, linear_soi_r, cubic_soi_r,
+    sigma_b   = compute_wal_conductance(field, dephasing_r, linear_soi_r,
+                                        cubic_soi_r,
                                         series_truncation)
-    sigma_ref = compute_wal_conductance(dephasing_ref, linear_soi_ref,
+    sigma_ref = compute_wal_conductance(low_field_reference, dephasing_ref,
+                                        linear_soi_ref,
                                         cubic_soi_ref, series_truncation)
 
     return sigma_b - sigma_ref
 
 
-def compute_wal_conductance(dephasing_ratio, linear_soi_ratio, cubic_soi_ratio,
-                            series_truncation: int):
+def compute_wal_conductance(field, dephasing_ratio, linear_soi_ratio,
+                            cubic_soi_ratio, series_truncation: int):
     """Compute the conductance in the presence of SOI.
 
     This formula is meant to be used in the computation of variation of
@@ -102,16 +105,21 @@ def compute_wal_conductance(dephasing_ratio, linear_soi_ratio, cubic_soi_ratio,
 
     """
     soi = linear_soi_ratio + cubic_soi_ratio
-    a0  = dephasing_field_ratio + soi + 0.5
-    s   = truncate_wal_series(series_truncation, dephasing_field_ratio,
-                              linear_soi_ratio, cubic_soi_ratio)
+    a0  = dephasing_ratio + soi + 0.5
+    try:
+        size = len(dephasing_ratio)
+    except TypeError:
+        size = 1
+    s   = truncate_wal_series(series_truncation, dephasing_ratio,
+                              linear_soi_ratio, cubic_soi_ratio, size)
     return -(1/a0 +
              (2*a0 + 1 + soi)/((1 + a0)*(a0 + soi) - 2*linear_soi_ratio) -
-             s + 2*np.log(1/B) + digamma(1/2 + dephasing))
+             s + 2*np.log(1/np.abs(field)) + digamma(1/2 + dephasing_ratio))
 
 
+@njit(cache=True)
 def truncate_wal_series(series_truncation, dephasing_field_ratio,
-                        linear_soi_ratio, cubic_soi_ratio):
+                        linear_soi_ratio, cubic_soi_ratio, size):
     """Compute the truncate series used in wal conductance calculation.
 
     Parameters
@@ -134,18 +142,18 @@ def truncate_wal_series(series_truncation, dephasing_field_ratio,
         Truncated series.
 
     """
-    try:
-        size = len(dephasing_field_ratio)
-    except TypeError:
-        size = 1
-    index = np.array([range(1, series_truncation + 1)] * size)
+    #index = np.tile(np.arange(1, series_truncation + 1), (size, 1)).T
+    line = np.arange(1, series_truncation + 1)
+    index = np.empty((len(line), size))
+    for i in range(size):
+        index[:, i] = line
     soi = linear_soi_ratio + cubic_soi_ratio
     a0 = dephasing_field_ratio + soi + 0.5
     an = index + a0
 
     s = np.sum(3/index -
-               (3*an**2 + 2*an*soi - 1 - 2*linear_soi_ratio.*(2*index + 1)) /
+               (an*(3*an + 2*soi) - 1 - 2*linear_soi_ratio*(2*index + 1)) /
                ((an + soi)*(an - 1)*(an + 1)
-               - 2*linear_soi_ratio.*((2*index + 1)*an - 1)), axis=-1)
+               - 2*linear_soi_ratio*((2*index + 1)*an - 1)), axis=0)
 
     return s

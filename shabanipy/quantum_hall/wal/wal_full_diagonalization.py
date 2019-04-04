@@ -53,17 +53,17 @@ def compute_wal_conductance_difference(field, dephasing_field,
 
     """
     # Add the reference field to the values that should be computed
-    field = np.concatenate((np.array(low_field_reference), np.array(field)))
+    field = np.concatenate((np.array([low_field_reference]), np.array(field)))
 
     # Compute the j=0 term of the sum in eq 27
-    j0_sum = np.sum(1/(np.array([range(matrix_truncation)]*len(field)) + 0.5 +
-                       dephasing_field/field),
-                    axis=-1)
+    index = np.tile(np.arange(1, matrix_truncation + 1), (len(field), 1)).T
+    j0_sum = np.sum(1/(index + 0.5 + dephasing_field/field),
+                    axis=0)
 
     # Compute the j=1 term of the sum in eq 27
-    fill_hamiltonian(field, dephasing_field,
-                     linear_soi_rashba, linear_soi_dressel,
-                     cubic_soi, matrix_truncation)
+    h = fill_hamiltonian(field, dephasing_field,
+                         linear_soi_rashba, linear_soi_dressel,
+                         cubic_soi, matrix_truncation)
     eigs = np.linalg.eigvalsh(h)
     j1_sum = np.sum(eigs, axis=1)
 
@@ -73,7 +73,7 @@ def compute_wal_conductance_difference(field, dephasing_field,
             np.log(field[1:]/field[0]))
 
 
-@njit
+@njit(cache=True, fastmath=True)
 def fill_hamiltonian(field, dephasing_field,
                      linear_soi_rashba, linear_soi_dressel,
                      cubic_soi, matrix_truncation=1000):
@@ -128,23 +128,25 @@ def fill_hamiltonian(field, dephasing_field,
 
     for i, b in enumerate(field):
         for j in range(matrix_truncation):
-            h[j, j]     = j + 0.5 + dephasing_field + z_term
-            h[j, j+2]   = j2_term
-            h[j+1, j+1] = j + 0.5 + dephasing_field + 2*z_term
-            h[j+2, j+2] = j + 0.5 + dephasing_field + z_term
-            h[j+2, j]   = -j2_term
+            h[i, j, j]     = j + 0.5 + dephasing_field + z_term
+            h[i, j, j+2]   = j2_term
+            h[i, j+1, j+1] = j + 0.5 + dephasing_field + 2*z_term
+            h[i, j+2, j+2] = j + 0.5 + dephasing_field + z_term
+            h[i, j+2, j]   = -j2_term
         for j in range(matrix_truncation-1):
             sqrtn = np.sqrt(j+1)
             r_off_n = r_off_term * sqrtn
             d_off_n = d_off_term * sqrtn
             # Upper diagonal going from j+1 to j, ie terms in a
-            h[j, j+4]   = r_off_n
-            h[j+1, j+3] = - d_off_n
-            h[j+1, j+5] = r_off_n
-            h[j+2, j+4] = -d_off_n
+            h[i, j, j+4]   = r_off_n
+            h[i, j+1, j+3] = - d_off_n
+            h[i, j+1, j+5] = r_off_n
+            h[i, j+2, j+4] = -d_off_n
 
             # Upper diagonal going from j to j+1, ie terms in a^{dag}
-            h[j+3, j+1]   = d_off_n
-            h[j+4, j] = r_off_n
-            h[j+4, j+2] = d_off_n
-            h[j+5, j+1] = r_off_n
+            h[i, j+3, j+1]   = d_off_n
+            h[i, j+4, j] = r_off_n
+            h[i, j+4, j+2] = d_off_n
+            h[i, j+5, j+1] = r_off_n
+
+    return h

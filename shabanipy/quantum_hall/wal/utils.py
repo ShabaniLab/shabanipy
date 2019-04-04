@@ -9,16 +9,17 @@
 """Weak anti-localisation analysis utility function.
 
 """
-from scipy.scipy import argrelmin
-import scipy.constants as cs
 import matplotlib.pyplot as plt
+import numpy as np
+import scipy.constants as cs
+from scipy.signal import argrelmin, savgol_filter
 
 from ..conversion import (diffusion_constant_from_mobility_density,
                           mean_free_time_from_mobility)
-from .wal_no_dresselhaus \
-    import compute_wal_conductance_difference as simple_wal
-from .wal_full_diagonalization \
-    import compute_wal_conductance_difference as full_wal
+from .wal_full_diagonalization import \
+    compute_wal_conductance_difference as full_wal
+from .wal_no_dresselhaus import \
+    compute_wal_conductance_difference as simple_wal
 
 
 def compute_dephasing_time(dephasing_field, diffusion):
@@ -40,7 +41,7 @@ def compute_dephasing_time(dephasing_field, diffusion):
     return cs.hbar/(dephasing_field*4*cs.e*diffusion)*1e12
 
 
-def compute_linear_soi(soi_field, mobility, density):
+def compute_linear_soi(soi_field, mobility, density, effective_mass):
     """Compute the linear SOI term associated with a given effective field.
 
     Parameters
@@ -51,20 +52,41 @@ def compute_linear_soi(soi_field, mobility, density):
         Sample mobility.
     density : float | np.ndarray
         Sample density.
+    effective_mass : float
+        Effective mass of the carriers.
 
     Returns
     -------
     soi : float | np.ndarray
-        Spin-orbit coupling in meV.
+        Spin-orbit coupling in meV.A
 
     """
-    t_free = mean_free_time_from_mobility(mobilities)
-    diff = diffusion_constant_from_mobility_density(mobilities, densities)
+    t_free = mean_free_time_from_mobility(mobility, effective_mass)
+    diff = diffusion_constant_from_mobility_density(mobility, density,
+                                                    effective_mass)
     return np.sqrt(soi_field*cs.e*diff*cs.hbar /
                    (np.pi*density*t_free) )*1e13/cs.e
 
 
-def recenter_wal_data(field, resistance, fraction=0.4):
+def flip_field_axis(field, *quantities):
+    """Ensure that the field is always in increasing order.
+
+    """
+    if len(field.shape) == 1:
+        if field[0] > field[1]:
+            field = field[::-1]
+            for q in quantities:
+                q[:] = q[::-1]
+        return
+
+    for i, f in enumerate(field):
+        if f[0] > f[1]:
+            field[i] = f[::-1]
+            for q in quantities:
+                q[i] = q[i][::-1]
+
+
+def recenter_wal_data(field, resistance, fraction=0.2, minrel_order=10):
     """Recenter WAL data around zero field where we expect an extremum.
 
     We look for the local minima of the resistance around zero field (between
@@ -81,12 +103,14 @@ def recenter_wal_data(field, resistance, fraction=0.4):
         This can be a multidimensional array in which case the last
         dimension will be considered as the swept dimension.
     resistance : np.ndarray
-        Resistance values in Ω which were measured.
+        Resistance (xx or yy) values in Ω which were measured.
         This can be a multidimensional array in which case the last dimension
         will be considered as the swept dimension.
-    fraction : float
+    fraction : float, optional
         Fraction of the total field excursion in which to look for the WAL
         resistance minimum.
+    minrel_order : int, optional
+        Number or points to consider when looking for a minimum value.
 
     Returns
     -------
@@ -98,21 +122,21 @@ def recenter_wal_data(field, resistance, fraction=0.4):
     """
     if len(field.shape) >= 2:
         original_shape = field.shape
-        trace_number = np.prod(original_shape)
+        trace_number = np.prod(original_shape[:-1])
         field = field.reshape((trace_number, -1))
         resistance = resistance.reshape((trace_number, -1))
     else:
         trace_number = 1
         field = np.array((field,))
-        rxy = np.array((rxy,))
+        resistance = np.array((resistance,))
 
     for i, (f, r) in enumerate(zip(field, resistance)):
         max_field = np.max(f)*fraction
         mask = np.where(np.less(np.abs(f), max_field))
         masked_r = r[mask]
-        mins, = argrelmin(resistance[mask])  # We need to unpack the tuple
+        mins, = argrelmin(masked_r, order=minrel_order)  # We need to unpack
         # No local minima were found, look for a maximum
-        if not mins:
+        if not len(mins):
             center_index = np.argmax(masked_r)
         else:
             if len(mins) == 1:
@@ -120,15 +144,19 @@ def recenter_wal_data(field, resistance, fraction=0.4):
             else:
                 center_index = mins[np.argmin([masked_r[i] for i in mins])]
 
-        fields[i] -= f[center_index]
+        offset_field = f[mask][center_index]
+        field[i] -= offset_field
 
+    if trace_number == 1:
+        return field[0], resistance[0]
     return field.reshape(original_shape), resistance.reshape(original_shape)
 
 
 def symmetrize_wal_data(field, resistance, mode='average'):
     """Symmetrize WAL data with respect to 0 field.
 
-    This method assumes that the data have been properly recentered around 0.
+    This method assumes that the data have been properly recentered around 0
+    and that the field is always increasing.
     Points that cannot be symmetrized are left untouched.
 
     Parameters
@@ -138,7 +166,7 @@ def symmetrize_wal_data(field, resistance, mode='average'):
         This can be a multidimensional array in which case the last
         dimension will be considered as the swept dimension.
     resistance : np.ndarray
-        Resistance values in Ω which were measured.
+        Resistance (xx or yy) values in Ω which were measured.
         This can be a multidimensional array in which case the last dimension
         will be considered as the swept dimension.
     mode : {'average', 'positive', 'negative'}, optional
@@ -155,13 +183,13 @@ def symmetrize_wal_data(field, resistance, mode='average'):
     """
     if len(field.shape) >= 2:
         original_shape = field.shape
-        trace_number = np.prod(original_shape)
+        trace_number = np.prod(original_shape[:-1])
         field = field.reshape((trace_number, -1))
         resistance = resistance.reshape((trace_number, -1))
     else:
         trace_number = 1
         field = np.array((field,))
-        rxy = np.array((rxy,))
+        resistance = np.array((resistance,))
 
     for i, (f, r) in enumerate(zip(field, resistance)):
         center = np.argmin(np.abs(f))
@@ -169,34 +197,64 @@ def symmetrize_wal_data(field, resistance, mode='average'):
         pos_len = len(r[center+1:])
         if pos_len == neg_len:
             if mode == 'average':
-                field[i] = (f + f[::-1])/2
+                resistance[i] = (r + r[::-1])/2
             elif mode == 'positive':
-                field[i][:center] = reversed(r[center+1:])
+                resistance[i][:center] = r[center+1:][::-1]
             else:
-                field[i][center+1:] = reversed(r[:center])
-        elif len(pos_len) > len(neg_len):
-            neg_r = r[:center].copy()
-            pos_r = r[center+1:center+1+neg_len].copy()
+                resistance[i][center+1:] = r[:center][::-1]
+        elif pos_len > neg_len:
+            neg_r = r[:center].copy()[::-1]
+            pos_r = r[center+1:center+1+neg_len].copy()[::-1]
             if mode == 'average':
-                field[:center] += pos_r
-                field[:center] /= 2
-                field[center+1:center+1+neg_len] += neg_r
-                field[center+1:center+1+neg_len] /= 2
+                resistance[i][:center] += pos_r
+                resistance[i][:center] /= 2
+                resistance[i][center+1:center+1+neg_len] += neg_r
+                resistance[i][center+1:center+1+neg_len] /= 2
             elif mode == 'positive':
-                field[:center] = pos_r
+                resistance[i][:center] = pos_r
             else:
-                field[center+1:center+1+neg_len] = neg_r
+                resistance[i][center+1:center+1+neg_len] = neg_r
         else:
-            neg_r = r[abs(pos_len-center):center].copy()
-            pos_r = r[center+1:].copy()
+            neg_r = r[abs(pos_len-center):center].copy()[::-1]
+            pos_r = r[center+1:].copy()[::-1]
             if mode == 'average':
-                field[abs(pos_len-center):center] += pos_r
-                field[abs(pos_len-center):center] /= 2
-                field[center+1:] += neg_r
-                field[center+1:] /= 2
+                resistance[i][abs(pos_len-center):center] += pos_r
+                resistance[i][abs(pos_len-center):center] /= 2
+                resistance[i][center+1:] += neg_r
+                resistance[i][center+1:] /= 2
             elif mode == 'positive':
-                field[abs(pos_len-center):center] = pos_r
+                resistance[i][abs(pos_len-center):center] = pos_r
             else:
-                field[center+1:] = neg_r
+                resistance[i][center+1:] = neg_r
 
+    if trace_number == 1:
+        return field[0], resistance[0]
     return field.reshape(original_shape), resistance.reshape(original_shape)
+
+
+def weight_wal_data(field, dsigma, mask='gauss', stiffness=0.4):
+    """Generate weigth to use when fitting WAL data.
+
+    First we identify the minimum in the conductance. If it not localized at
+    zero field we use this value to determine on what scale to have the weight
+    decays.
+
+    Parameters
+    ----------
+    field : [type]
+        [description]
+    dsigma : [type]
+        [description]
+    stiffness : [type]
+        [description]
+
+    """
+    filtered_dsigma = savgol_filter(dsigma, 31, 3)
+    index = np.argmin(filtered_dsigma)
+    if mask == 'exp':
+        return np.exp(-np.abs(field/field[index])*stiffness)
+    elif mask == 'gauss':
+        return np.exp(-np.abs(field/field[index])**2*stiffness)
+    elif mask == 'lorentz':
+        return 1/(1 + np.abs(field/field[index])**2*stiffness)
+

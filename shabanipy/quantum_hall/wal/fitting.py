@@ -9,23 +9,31 @@
 """Weak anti-localisation analysis main fitting routine.
 
 """
+import numpy as np
 import scipy.constants as cs
 import matplotlib.pyplot as plt
 from lmfit.model import Model
 
 from ..conversion import (diffusion_constant_from_mobility_density,
                           mean_free_time_from_mobility)
-from .wal_no_dresselhaus \
+from .wal_no_dresselhaus\
     import compute_wal_conductance_difference as simple_wal
-from .wal_full_diagonalization \
+from .wal_full_diagonalization\
     import compute_wal_conductance_difference as full_wal
+from .utils import weight_wal_data
+
+def estimate_parameters(field, r):
+    """Estimate the parameters to use for the fit.
+
+    """
+    pass
 
 
 # XXX add support for weighting the data
-def extract_soi_from_wal(field, r, reference_field,
+def extract_soi_from_wal(field, r, reference_field, max_field,
                          model='full', truncation=1000,
                          guess_from_previous=True, guesses=None,
-                         plot_fit=False):
+                         plot_fit=False, method='nelder'):
     """Extract the SOI parameters from fitting the wal conductance.
 
     This algorithm assumes that the data are properly centered.
@@ -45,6 +53,9 @@ def extract_soi_from_wal(field, r, reference_field,
         will be considered as the swept dimension.
     reference_field : float
         Field used a reference to eliminate possible experimental offsets.
+    max_field : float
+        Maximum field to consider when fitting the data since we know that the
+        theory breaks down at high field.
     model : {'full', 'simplified'}, optional
         Model used to describe the WAL. 'simplified' corresponds to the
         situation in which either the Rashba term or the linear Dresselhaus
@@ -65,6 +76,9 @@ def extract_soi_from_wal(field, r, reference_field,
         the cubic term field.
     plot_fit : bool, optional
         Should each fit be plotted to allow manual verification.
+    method : str, optional
+        Algorithm to use to perform the fit. See lmfit.minimize documentation
+        for acceptable values.
 
     Returns
     -------
@@ -85,28 +99,26 @@ def extract_soi_from_wal(field, r, reference_field,
         original_shape = field.shape[:-1]
         trace_number = np.prod(original_shape)
         field = field.reshape((trace_number, -1))
-        rxy = rxy.reshape((trace_number, -1))
-        if len(guesses) == 4:
+        r = r.reshape((trace_number, -1))
+        if guesses is not None and len(guesses) == 4:
             g = np.empty(original_shape + (4,))
             for i in range(4):
-                fc[..., i] = guesses[i]
+                g[..., i] = guesses[i]
             guesses = g
-        guesses = guesses.reshape((trace_number, -1))
+        if guesses is not None:
+            guesses = guesses.reshape((trace_number, -1))
+        else:
+            guesses = np.array([None]*trace_number)
     else:
         trace_number = 1
         field = np.array((field,))
-        rxy = np.array((rxy,))
+        r = np.array((r,))
         guesses = np.array((guesses,))
 
     results = np.empty((4, 2, trace_number))
 
     # Express the conductance in term of the quantum of conductance.
     sigma = (1/r) / (2*cs.e**2/cs.Planck)
-
-    # Find the conductance at the reference field and compute Δσ
-    ref_ind = np.argmin(np.abs(field - reference_field))
-    reference_field = field[ref_ind]
-    dsigma = sigma - sigma[ref_ind]
 
     # Create the fitting model
     if model == 'full':
@@ -120,38 +132,62 @@ def extract_soi_from_wal(field, r, reference_field,
                                  value=truncation,
                                  vary=False)
     model_obj.set_param_hint('low_field_reference',
-                             value=low_field_reference,
+                             value=reference_field,
                              vary=False)
 
     names = (('dephasing_field', 'linear_soi_rashba', 'linear_soi_dressel',
-              'cubic_soi') if model == 'full' else:
+              'cubic_soi') if model == 'full' else
              ('dephasing_field', 'linear_soi', '', 'cubic_soi'))
-    params = model.make_params()
+    for name in [n for n in names if n]:
+        model_obj.set_param_hint(name, min=0, value=1e-6)
+    params = model_obj.make_params()
 
     # Perform a fit for each magnetic field sweep
     for i in range(trace_number):
+
+        print(f'Treating WAL trace {i+1}/{trace_number}')
+
+        # Conserve only the data for positive field since we symmetrized the
+        # data
+        mask = np.where(np.logical_and(np.greater(field[i], 0),
+                                       np.less(field[i], max_field)))
+        f, s = field[i][mask], sigma[i][mask]
+
+        # Find the conductance at the reference field and compute Δσ
+        ref_ind = np.argmin(np.abs(f - reference_field))
+        reference_field = f[ref_ind]
+        dsigma = s - s[ref_ind]
+
+        # Build the weights
+        weights = weight_wal_data(f, dsigma)
 
         # Set the initial values for the parameters
         if i != 0  and guess_from_previous:
             params = res.params
         else:
-            for n, v in zip(names, guesses[i]):
-                if n:
-                    params[n].value = v
+            if guesses[i] is not None:
+                for n, v in zip(names, guesses[i]):
+                    if n:
+                        params[n].value = v
+        params['low_field_reference'].value = reference_field
 
         # Perform the fit
-        res = model.fit(dsigma[i], params, field=field[i])
+        res = model_obj.fit(dsigma, params, field=f, method=method,
+                            weights=weights)
         for j, n in enumerate(names):
             if not n:
                 continue
             results[j, 0, i] = res.best_values[n]
-            results[j, 1, 0] = res.params[n].stderr
+            results[j, 1, i] = res.params[n].stderr
 
-        # If requested interrupt execution to plot the result.
+        # If requested plot the result.
         if plot_fit:
-            plt.plot(field[i], dsigma[i], '+')
-            plt.plot(field, res.best_fit)
-            plt.show()
+            fig, ax = plt.subplots()
+            ax.plot(field[i], sigma[i] - s[ref_ind], '+')
+            ax.plot(f, res.best_fit)
+            ax.set_ylim((None, 1.1*np.max(sigma[i] - s[ref_ind])))
+            ax2 = ax.twinx()
+            ax2.plot(f, weights)
 
     if results.shape[0] == 1:
         return results[0]

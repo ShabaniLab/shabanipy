@@ -54,8 +54,8 @@ EFFECTIVE_MASS = 0.03
 
 #: File in which to store the results of the analysis as a function of gate
 #: voltage.
-RESULT_PATH = ('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/WAL/JS124/'
-               'JS138_JS124HB_JY001_008_density_mobility.csv')
+RESULT_PATH = ''#('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/WAL/JS124/'
+              # 'JS138_JS124HB_JY001_008_density_mobility.csv')
 
 # =============================================================================
 # --- Execution ---------------------------------------------------------------
