@@ -19,7 +19,7 @@ from numba import njit
 def compute_wal_conductance_difference(field, dephasing_field,
                                        linear_soi_rashba, linear_soi_dressel,
                                        cubic_soi, low_field_reference,
-                                       matrix_truncation=1000):
+                                       matrix_truncation=500):
     """Difference in conductance due to SOI compared to a reference field value
 
     F. G. Pikus, G. E. Pikus, Conduction-band spin splitting and negative
@@ -61,11 +61,14 @@ def compute_wal_conductance_difference(field, dephasing_field,
                     axis=0)
 
     # Compute the j=1 term of the sum in eq 27
-    h = fill_hamiltonian(field, dephasing_field,
-                         linear_soi_rashba, linear_soi_dressel,
-                         cubic_soi, matrix_truncation)
+    h = fill_hamiltonian(field, abs(dephasing_field),
+                         abs(linear_soi_rashba), abs(linear_soi_dressel),
+                         abs(cubic_soi), matrix_truncation)
+    print('starting eigen values solving')
     eigs = np.linalg.eigvalsh(h)
-    j1_sum = np.sum(eigs, axis=1)
+    print('done computing')
+    j1_sum = np.sum(1/eigs, axis=1)
+
 
     # substract the reference field value and take into account the log term
     # from 27
@@ -108,7 +111,7 @@ def fill_hamiltonian(field, dephasing_field,
     # them. We consider always at least two fields: the point of interest and
     # the reference field.
     shape = (len(field), 3*matrix_truncation, 3*matrix_truncation)
-    h = np.empty(shape, dtype=np.complex128)
+    h = np.zeros(shape, dtype=np.complex128)
 
     # Useful matrix representation to relate eq 26 to the following operation.
     # Jz^2 = [[1, 0, 0], [0, 0, 0], [0, 0, 1]]
@@ -118,35 +121,37 @@ def fill_hamiltonian(field, dephasing_field,
     # J-^2 = [[0, 0, 0], [0, 0, 0], [1, 0, 0]]
 
     # Term appearing on the diagonal of the Hamiltonian
-    z_term = linear_soi_dressel + linear_soi_rashba + cubic_soi
+    z_term = (linear_soi_dressel + linear_soi_rashba + cubic_soi)/field
     # Term proportional to J+^2, J-^2
-    j2_term = 2*np.sqrt(linear_soi_rashba*linear_soi_dressel)
+    j2_term = 1j*2*np.sqrt(linear_soi_rashba*linear_soi_dressel)/field
     # Rashba off-diagonal term
-    r_off_term = - np.sqrt(2*linear_soi_rashba)
+    r_off_term = np.sqrt(2*linear_soi_rashba)/field
     # Dresselhaus off-diagonal term
-    d_off_term = 1j*np.sqrt(2*linear_soi_dressel)
+    d_off_term = 1j*np.sqrt(2*linear_soi_dressel)/field
 
-    for i, b in enumerate(field):
+    for i, (phi, z, j2, r, d) in enumerate(zip(dephasing_field/field,
+                                               z_term, j2_term,
+                                               r_off_term, d_off_term)):
         for j in range(matrix_truncation):
-            h[i, j, j]     = j + 0.5 + dephasing_field + z_term
-            h[i, j, j+2]   = j2_term
-            h[i, j+1, j+1] = j + 0.5 + dephasing_field + 2*z_term
-            h[i, j+2, j+2] = j + 0.5 + dephasing_field + z_term
-            h[i, j+2, j]   = -j2_term
+            h[i, 3*j, 3*j]     = j + 0.5 + phi + z
+            h[i, 3*j, 3*j+2]   = -j2
+            h[i, 3*j+1, 3*j+1] = j + 0.5 + phi + 2*z
+            h[i, 3*j+2, 3*j+2] = j + 0.5 + phi + z
+            h[i, 3*j+2, 3*j]   = j2
         for j in range(matrix_truncation-1):
             sqrtn = np.sqrt(j+1)
-            r_off_n = r_off_term * sqrtn
-            d_off_n = d_off_term * sqrtn
+            r_off_n = r * sqrtn
+            d_off_n = d * sqrtn
             # Upper diagonal going from j+1 to j, ie terms in a
-            h[i, j, j+4]   = r_off_n
-            h[i, j+1, j+3] = - d_off_n
-            h[i, j+1, j+5] = r_off_n
-            h[i, j+2, j+4] = -d_off_n
+            h[i, 3*j, 3*j+4]   = -r_off_n
+            h[i, 3*j+1, 3*j+3] = - d_off_n
+            h[i, 3*j+1, 3*j+5] = -r_off_n
+            h[i, 3*j+2, 3*j+4] = - d_off_n
 
-            # Upper diagonal going from j to j+1, ie terms in a^{dag}
-            h[i, j+3, j+1]   = d_off_n
-            h[i, j+4, j] = r_off_n
-            h[i, j+4, j+2] = d_off_n
-            h[i, j+5, j+1] = r_off_n
+            # Lower diagonal going from j to j+1, ie terms in a^{dag}
+            h[i, 3*j+3, 3*j+1]   = d_off_n
+            h[i, 3*j+4, 3*j] = r_off_n
+            h[i, 3*j+4, 3*j+2] = d_off_n
+            h[i, 3*j+5, 3*j+1] = r_off_n
 
     return h

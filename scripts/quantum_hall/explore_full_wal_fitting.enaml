@@ -18,20 +18,20 @@ import numpy as np
 from numba import njit
 import scipy.constants as cs
 from scipy.signal import savgol_filter
-from atom.api import Atom, Float, Int
+from atom.api import Atom, Float, Value
 from enaml.layout.api import hbox, vbox
 from enaml.widgets.api import (Window, MPLCanvas, Container, FileDialogEx,
                                PushButton, ToolBar, Action, Field, Form,
                                Slider, Label, GroupBox, ObjectCombo)
 from enaml.layout.api import hbox, grid, align, spacer
 from enaml.stdlib.slider_transform import FloatTransform
-from enaml.stdlib.fields import FloatField, IntField
+from enaml.stdlib.fields import FloatField
 
 from shabanipy.quantum_hall.conversion\
     import convert_lock_in_meas_to_diff_res
-from shabanipy.quantum_hall.density import extract_density
-from shabanipy.quantum_hall.mobility import extract_mobility
 from shabanipy.quantum_hall.wal.wal_no_dresselhaus\
+    import compute_wal_conductance_difference
+from shabanipy.quantum_hall.wal.wal_full_diagonalization\
     import compute_wal_conductance_difference
 from shabanipy.quantum_hall.wal.fitting import (extract_soi_from_wal,
                                                 estimate_parameters)
@@ -101,16 +101,16 @@ class SimplifiedWALModel(Atom):
 
     """
     #: Dephasing field in mT
-    dephasing = Float(10)
+    dephasing = Float(.7)
 
     #: Rashba field in mT
     rashba = Float(20)
 
+    #:
+    dres = Float(0)
+
     #: Cubid Dresselhaus field in mT
     cubic = Float(0)
-
-    #: Number of Landau levels to consider in the sum
-    truncation = Int(1000)
 
 
 enamldef SimplifiedWALModelView(GroupBox): wal:
@@ -139,18 +139,18 @@ enamldef SimplifiedWALModelView(GroupBox): wal:
 
     FloatSlider:
         model = wal_model
+        label = 'Dresselhaus'
+        attr_name = 'dres'
+        value_range << (0.1, 50)
+        value_changed ::
+           wal.model_changed = True
+
+    FloatSlider:
+        model = wal_model
         label = 'Cubic'
         attr_name = 'cubic'
         value_range << (0.1, 100)
         value_changed ::
-            wal.model_changed = True
-
-    Label:
-        text = 'Landau levels'
-
-    IntField:
-        value := wal_model.truncation
-        value ::
             wal.model_changed = True
 
 
@@ -179,9 +179,9 @@ enamldef Main(Window): main:
     #: Matplotlib plots of the model
     attr _lines = ()
 
-    attr ref_field = 0.0002
+    attr ref_field = 0.002
 
-    title = 'Explore simple WAL model'
+    title = 'Explore full WAL model'
 
     initialized ::
         if os.path.isfile(FILE):
@@ -211,8 +211,8 @@ enamldef Main(Window): main:
 
         # Filter twice when determining the field offset.
         field, _ = recenter_wal_data(field,
-                                    savgol_filter(res, 31, 3),
-                                    0.1, 10)
+                                     savgol_filter(res, 31, 3),
+                                     0.1, 10)
 
         field, res = symmetrize_wal_data(field, res, 'average')
 
@@ -224,6 +224,9 @@ enamldef Main(Window): main:
         mask = np.where(np.logical_and(np.greater(field, 0),
                                        np.less(field, 0.1)))
         f, s = field[mask], sigma[mask]
+        index = np.argsort(f)
+        f = f[index]
+        s = s[index]
 
         # Find the conductance at the reference field and compute Δσ
         ref_ind = np.argmin(np.abs(f - ref_field))
@@ -237,7 +240,7 @@ enamldef Main(Window): main:
         fig.clf()
         main._lines = ()
         fig.gca().plot(f, dsigma, '+')
-        fig.gca().set_ylim(1.2*np.min(dsigma), 1.2*np.max(dsigma))
+        #fig.gca().set_ylim(1.2*np.min(dsigma), 1.2*np.max(dsigma))
         recompute_model()
 
     func recompute_model():
@@ -247,15 +250,17 @@ enamldef Main(Window): main:
         if _field is None:
             return
         wm = model.wal_model
-        ds = compute_wal_conductance_difference(_field,
+        f = _field[1:50:2]
+        ds = compute_wal_conductance_difference(f,
                                                 wm.dephasing*1e-3,
                                                 wm.rashba*1e-3,
-                                                wm.cubic*1e-3,
-                                                ref_field,
-                                                wm.truncation)
+                                                0.0*wm.dres*1e-3,
+                                                0.0*wm.cubic*1e-3,
+                                                ref_field, 1000)
+        # print(ds)
         for l in _lines:
             l.remove()
-        l1, = _fig.gca().plot(_field, ds)
+        l1, = _fig.gca().plot(f, -ds, 'o')
         main._lines = (l1, )
         mpl.figure = plt.figure(1)
         mpl.figure = _fig
