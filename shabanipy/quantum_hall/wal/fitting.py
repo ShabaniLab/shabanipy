@@ -117,8 +117,11 @@ def extract_soi_from_wal(field, r, reference_field, max_field,
 
     results = np.empty((4, 2, trace_number))
 
-    # Express the conductance in term of the quantum of conductance.
-    sigma = (1/r) / (2*cs.e**2/cs.Planck)
+    # Express the conductance in usual WAL normalization. (e^2/(2πh))
+    # W. Knap et al.,
+    # Weak Antilocalization and Spin Precession in Quantum Wells.
+    # Physical Review B. 53, 3912–3924 (1996).
+    sigma = (1/r) / (cs.e**2/(2*np.pi*cs.Planck))
 
     # Create the fitting model
     if model == 'full':
@@ -149,7 +152,7 @@ def extract_soi_from_wal(field, r, reference_field, max_field,
 
         # Conserve only the data for positive field since we symmetrized the
         # data
-        mask = np.where(np.logical_and(np.greater(field[i], 0),
+        mask = np.where(np.logical_and(np.greater(field[i], 0.0002),
                                        np.less(field[i], max_field)))
         f, s = field[i][mask], sigma[i][mask]
 
