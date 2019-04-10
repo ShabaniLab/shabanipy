@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Bin
+"""Bin the shapiro step data (current vs power) for different parallel fields
 
 The plot is done as a function of power and frequency and the power is
 normalized by the power at which the step 0 disappear.
@@ -15,197 +15,218 @@ The plot use the folling axes:
 # --- Parameters --------------------------------------------------------------
 # =============================================================================
 
-#: Path towards the hdf5 file holding the data
-PATH = r'/Users/mdartiailh/Labber/Data/2019/01/Data_0129/JS124S_BM002_106.hdf5'
+#: Labber directory to walk to find all the data files to analyse
+LABBER_DIRECTORY = '/Users/mdartiailh/Labber/Data/2019'
+
+#: CSV file containing the frequencies, gate, fields etc associated to each
+#: measurement.
+#: The expected column names are:
+#: Frequency, Gate voltage V, Parallel field mT, Critical current,
+#: Normal resistance, Ic file determination, Rn file determination,
+#: Attenuation, Shapiro, Comment
+CSV_SUMMARY_PATH = ('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/'
+                    'Shapiro/2019-01/2019-data-summary.csv')
+
+#: Path of the directory in which to store the results.
+RESULT_PATH = ('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/'
+               'Shapiro/2019-01/StepWidthAnalysis')
 
 #: Index of the setps for which to generate a plot.
 STEP_INDEXES = [0, 1, 2, 3, 4]
 
-#: Frequencies of the applied microwave in Hz. Use an empty list to use all
-#: the frequencies found in the meaurement.
-FREQUENCY = 6e9
+#: Name of the column containing the frequency for scans in which multiple
+#: frequencies exist.
+FREQUENCY_NAME = ('SC_C - Frequency', 'EXG - Frequency')
+
+#: Name of the column containing the gate voltage for scans in which multiple
+#: gate voltages exist.
+GATE_NAME = ('Keithley 1 - Source voltage', )
+
+#: Name of the column containing the parallel field for scans in which multiple
+#: parallel fields exist.
+FIELD_NAME = ('Magnet - By', )
 
 #: Name or index of the column containing the power data
-POWER_NAME = 1
-
-#: Name or index of the column containing the voltage data
-VOLTAGE_NAME = 2
-
-#: Should we correct the offset in voltage.
-CORRECT_VOLTAGE_OFFSET = 10
+POWER_NAME = ('SC_C - Amplitude', 'EXG - Power')
 
 #: Name or index of the column containing the current data
 #: This should be a stepped channel ! use the applied voltage not the
 #: measured current
-CURRENT_NAME = 0
+CURRENT_NAME = 'Yoko 1 - Voltage'
+
+#: Name or index of the column containing the voltage data
+VOLTAGE_NAME = 'DMM 1 - Value'
+
+#: Number of points on which to average to correct the offset in the measured
+#: voltage. Use zero to not correct.
+CORRECT_VOLTAGE_OFFSET = 20
 
 #: Conversion factor to apply to the current data (allow to convert from
 #: applied voltage to current bias).
 CURRENT_CONVERSION = 1e-6
 
 #: Fraction of a shapiro step used for binning
-STEP_FRACTION = 0.05
+STEP_FRACTION = 0.1
 
 #: Threshold as fraction of the low power step used to identify the normalizing
 #: power, defined at the first power for which the count of the step 0 is below
 #: the threshold.
-NORMALIZING_THRESHOLD = 0.1
+NORMALIZING_THRESHOLD = 0.05
 
-#: Label of the x axis, if left blanck the power column name will be used
-#: If an index was passed the name found in the labber file is used.
-X_AXIS_LABEL = 'Normalized power (a.u.)'
-
-#: Label of the y axis.
-Y_AXIS_LABEL = 'Frequency (GHz)'
-
-#: Label of the colorbar.
-C_AXIS_LABEL = 'Counts (µA)'
-
-#: Scaling factor for the x axis (used to convert between units)
-X_SCALING = 1
-
-#: Scaling factor for the y axis (used to convert between units)
-Y_SCALING = 1e-9
-
-#: Scaling factor for the c axis (used to convert between units)
-C_SCALING = 1e6
-
-#: Limits to use for the x axis (after scaling)
-X_LIMITS = []
-
-#: Limits to use for the y axis (after scaling)
-Y_LIMITS = []
-
-#: Limits to use on the colorscale (after scaling). Use None for autoscaling.
-C_LIMITS = [None, 1]
+#: Should the plots allowing to check the normalizing power be displayed.
+PLOT_NORM_POWER_CHECK = False
 
 # =============================================================================
 # --- Execution ---------------------------------------------------------------
 # =============================================================================
 import os
 import warnings
-import math
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 
 from shabanipy.shapiro import normalize_db_power
 from shabanipy.shapiro.binning import (bin_power_shapiro_steps,
                                        extract_step_weight)
 from shabanipy.utils.labber_io import LabberData
+from shabanipy.utils.file_discovery import list_all_files, filter_files
 
-with LabberData(PATH) as data:
+summary = pd.read_csv(CSV_SUMMARY_PATH)
 
-    grid_f = []
-    grid_p = []
-    step_counts = {s_i: [] for s_i in STEP_INDEXES}
+# Match only the files corresponding to actual Shapiro steps data.
+file_ids = [f'{s:03d}' for s in set(summary['Shapiro'])]
+pattern = f"JS124S_BM002_({'|'.join(file_ids)}).hdf5$"
 
-    shape = data.compute_shape((POWER_NAME, CURRENT_NAME))
+# Identify the measurement by their number to allow to easily retrieve the
+# matching parameters.
+paths = {int(os.path.split(path)[1][-8:-5]): path
+         for path in filter_files(list_all_files(LABBER_DIRECTORY), pattern)}
 
-    power = data.get_data(POWER_NAME)
-    volt = data.get_data(VOLTAGE_NAME)
-    curr = data.get_data(CURRENT_NAME)
+# Create the analysis summary that contains additional information compared to
+# to the data summary.
+analysis_summary = {'Meas id': [], 'Frequency': [], 'Gate': [], 'Field': [],
+                    'Rn': [], 'Ic': [], 'Pnorm': []}
 
-    if CORRECT_VOLTAGE_OFFSET:
-        # XXX we should average on first row
-        volt -= volt[np.argmin(np.abs(curr))]
+for _, parameters in summary.iterrows():
 
-    # Handle interruptions in the last scan.
-    while len(power) < shape[0]*shape[1]:
-        shape[1] -= 1
+    mid = parameters['Shapiro']
+    path = paths[mid]
 
-    length = shape[0]*shape[1]
-    power = power[:length].reshape(shape)
-    volt = volt[:length].reshape(shape)
-    curr = curr[:length].reshape(shape)
+    frequency, gate, field = (parameters['Frequency'],
+                              parameters['Gate voltage V'],
+                              parameters['Parallel field mT'])
 
-    # Convert the current data if requested
-    if CURRENT_CONVERSION is not None:
-        curr *= CURRENT_CONVERSION
+    ic, rn, att = (parameters['Critical current'],
+                   parameters['Normal resistance'],
+                   parameters['Attenuation'])
+    print(f'\nTreating data for dataset {mid}\n'
+          f'Frequency {frequency} GHz\n'
+          f'Gate voltage {gate} V\n'
+          f'Magnetic field {field} mt')
 
-    # Bin the data
-    power, voltage, histo = bin_power_shapiro_steps(power, curr, volt,
-                                                    FREQUENCY,
-                                                    STEP_FRACTION)
+    with LabberData(path) as data:
 
-    # Find the normalizing power
-    step_0 = extract_step_weight(voltage, histo, 0)
-    indexes = np.where(np.less(step_0, step_0[0]*NORMALIZING_THRESHOLD))[0]
-    print(f'At f={FREQUENCY/1e9} above threshold power: {power[indexes]}')
-    if len(indexes):
-        norm_p = power[np.min(indexes)]
-    else:
-        msg = ('Power was always lower than threshold for '
-                f'f={FREQUENCY/1e9:.1f} GHz')
-        warnings.warn(msg)
-        norm_p = power[-1]
+        filters = {}
+        channels = data.list_channels()
+        power_name = [p for p in POWER_NAME if p in channels][0]
+        for names, val in zip((FREQUENCY_NAME, GATE_NAME, FIELD_NAME),
+                              (frequency*1e9, gate, field)):
+            for name in names:
+                if name in channels:
+                    filters[name] = val
+        step_counts = {s_i: None for s_i in STEP_INDEXES}
 
-    # Fill the results
-    grid_f.append(FREQUENCY*np.ones(len(power)))
-    grid_p.append(normalize_db_power(power, norm_p))
-    for i, res in step_counts.items():
-        res.append(extract_step_weight(voltage, histo, i))
+        shape = data.compute_shape((power_name, CURRENT_NAME))
 
-# Create the base for the mesh by joining the frequency and power arrays
-tri_f = np.concatenate(grid_f)*Y_SCALING
-tri_p = np.concatenate(grid_p)*X_SCALING
+        power = data.get_data(power_name, filters) + att
+        curr = data.get_data(CURRENT_NAME, filters)
+        volt = data.get_data(VOLTAGE_NAME, filters)
 
-# Plot the data
-for step_index in step_counts:
+        # Handle interruptions in the last scan.
+        while len(power) < shape[0]*shape[1]:
+            shape[1] -= 1
 
-    plt.figure()
-    weights = np.concatenate(step_counts[step_index])
-    plt.tricontourf(tri_p, tri_f,
-                    weights*C_SCALING,
-                    vmin=C_LIMITS[0],
-                    vmax=C_LIMITS[1])
-    m = plt.cm.ScalarMappable()
-    m.set_array(weights*C_SCALING)
-    m.set_clim(*C_LIMITS)
-    cbar = plt.colorbar(m)
-    cbar.ax.set_ylabel(C_AXIS_LABEL)
-    plt.scatter(tri_p, tri_f, marker='1', color='k')
+        length = shape[0]*shape[1]
+        power = power[:length].reshape(shape)
+        volt = volt[:length].reshape(shape)
+        curr = curr[:length].reshape(shape)
 
-    sample = (PATH.rsplit(os.sep, 1)[1]).split('_')[0]
-    plt.title(f'Sample {sample}: Step {step_index}')
-    plt.xlabel(X_AXIS_LABEL)
-    plt.ylabel(Y_AXIS_LABEL)
-    if X_LIMITS:
-        plt.xlim(X_LIMITS)
-    if Y_LIMITS:
-        plt.ylim(Y_LIMITS)
-    plt.tight_layout()
+        # Filter out rows that contain a Nan (skipped values)
+        mask = np.isfinite(volt).all(axis=0)
+        power = power.T[mask].T
+        volt = volt.T[mask].T
+        curr = curr.T[mask].T
 
-    # Get the index of the associated Shapiro step that needs to be used when
-    # plotting Q
-    associated_index = step_index + math.copysign(1, step_index)
-    if (step_index % 2 == 1 and associated_index in step_counts):
-        plt.figure()
-        weights_next = np.concatenate(step_counts[associated_index])
-        # Get the indexes at which the denominator does not vanish
-        indexes = np.nonzero(weights_next)
-        # Compute the ratio
-        ratio = weights[indexes]/weights_next[indexes]
-        plt.tricontourf(tri_p[indexes], tri_f[indexes],
-                        ratio, levels=np.arange(0, 2.0, 0.25),
-                        vmin=0,
-                        vmax=2)
-        m = plt.cm.ScalarMappable()
-        m.set_array(weights[indexes]/weights_next[indexes])
-        m.set_clim(0, 2)
-        cbar = plt.colorbar(m)
-        cbar.ax.set_ylabel('$Q_{%d, %d}$' % (step_index, associated_index))
-        plt.scatter(tri_p[indexes], tri_f[indexes], marker='1', color='k')
+        if CORRECT_VOLTAGE_OFFSET:
+            avg_len = CORRECT_VOLTAGE_OFFSET
+            low_power_ind = np.unravel_index(np.argmin(power), shape)[1]
+            zero_curr_ind = np.unravel_index(np.argmin(np.abs(curr)), shape)[0]
+            volt -= np.mean(volt[zero_curr_ind:zero_curr_ind + avg_len,
+                                 low_power_ind])
 
-        sample = (PATH.rsplit(os.sep, 1)[1]).split('_')[0]
-        plt.title(f'Sample {sample}: $Q_{{%d, %d}}$' %
-                  (step_index, associated_index))
-        plt.xlabel(X_AXIS_LABEL)
-        plt.ylabel(Y_AXIS_LABEL)
-        if X_LIMITS:
-            plt.xlim(X_LIMITS)
-        if Y_LIMITS:
-            plt.ylim(Y_LIMITS)
-        plt.tight_layout()
+        # Convert the current data if requested
+        if CURRENT_CONVERSION is not None:
+            curr *= CURRENT_CONVERSION
 
-plt.show()
+        # Bin the data
+        power, voltage, histo = bin_power_shapiro_steps(power, curr, volt,
+                                                        frequency*1e9,
+                                                        STEP_FRACTION)
+
+        # Find the normalizing power
+        step_0 = extract_step_weight(voltage, histo, 0)
+        indexes = np.where(np.less(step_0, step_0[0]*NORMALIZING_THRESHOLD))[0]
+        if len(indexes):
+            print(f'\tAt f={frequency} threshold power: {power[indexes][0]}')
+            norm_p = power[np.min(indexes)]
+        else:
+            plt.plot(power, step_0)
+            plt.show()
+            msg = ('\tPower was always lower than threshold for '
+                   f'f={frequency} GHz')
+            warnings.warn(msg)
+            norm_p = power[-1]
+
+        if mid == 150:
+            norm_p = -0.4
+
+        if PLOT_NORM_POWER_CHECK:
+            plt.figure()
+            plt.imshow(volt.T,
+                       extent=(curr[0, 0], curr[-1, 0], power[0], power[-1]),
+                       origin='lower',
+                       aspect='auto')
+            cbar = plt.colorbar()
+            plt.axhline(norm_p)
+            plt.show()
+
+        for n, v in zip(('Meas id', 'Frequency', 'Gate', 'Field', 'Rn', 'Ic',
+                         'Pnorm'),
+                        (mid, frequency, gate, field, rn, ic, norm_p)):
+            analysis_summary[n].append(v)
+
+        # Fill the results
+        norm_power = normalize_db_power(power, norm_p)
+        norm_bessel_arg = (2*1.6e-19*rn*ic/(6.626e-34*frequency*1e9) *
+                           np.power(10, norm_power/20))
+        for i in step_counts:
+            step_counts[i] = extract_step_weight(voltage, histo, i)/ic/1e-6
+
+    to_save = {}
+    to_save['Log power'] = norm_power
+    to_save['Scaled ac current'] = norm_bessel_arg
+    for s in STEP_INDEXES:
+        to_save[f'Step{s}'] = step_counts[s]
+    table = pd.DataFrame(to_save)
+    filename = f'{mid}_f={frequency}_g={gate}_b={field}.dat'
+    with open(os.path.join(RESULT_PATH, filename), 'w') as f:
+        f.write(f'# Step fraction {STEP_FRACTION}\n'
+                f'# Normalizing threshold {NORMALIZING_THRESHOLD}\n'
+                f'# Source file: {path}\n')
+        table.to_csv(f, index=False)
+
+table = pd.DataFrame(analysis_summary)
+with open(os.path.join(RESULT_PATH, 'analysis_summary.csv'), 'w') as f:
+        f.write(f'# Normalizing threshold {NORMALIZING_THRESHOLD}\n')
+        table.to_csv(f, index=False)
