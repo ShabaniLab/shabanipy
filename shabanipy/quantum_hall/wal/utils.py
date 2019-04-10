@@ -232,7 +232,7 @@ def symmetrize_wal_data(field, resistance, mode='average'):
     return field.reshape(original_shape), resistance.reshape(original_shape)
 
 
-def weight_wal_data(field, dsigma, mask='gauss', stiffness=0.4):
+def weight_wal_data(field, dsigma, mask='gauss', stiffness=1, htr=None):
     """Generate weigth to use when fitting WAL data.
 
     First we identify the minimum in the conductance. If it not localized at
@@ -251,10 +251,14 @@ def weight_wal_data(field, dsigma, mask='gauss', stiffness=0.4):
     """
     filtered_dsigma = savgol_filter(dsigma, 31, 3)
     index = np.argmin(filtered_dsigma)
+    wf = max(field[index], 2*htr) if htr is not None else field[index]
     if mask == 'exp':
-        return np.exp(-np.abs(field/field[index])*stiffness)
+        return np.exp(-np.abs(field/wf)*stiffness)
+    elif mask == 'peak-gauss':
+        return (1*np.exp(-np.abs(field/wf)**2*stiffness) +
+                2*np.exp(-np.abs(field/wf*2)**2*stiffness))
     elif mask == 'gauss':
-        return np.exp(-np.abs(field/field[index])**2*stiffness)
+        return np.exp(-np.abs(field/wf)**2*stiffness)
     elif mask == 'lorentz':
-        return 1/(1 + np.abs(field/field[index])**2*stiffness)
+        return 1/(1 + np.abs(field/wf)**2*stiffness)
 

@@ -9,6 +9,8 @@
 """Weak anti-localisation analysis main fitting routine.
 
 """
+import os
+import pickle
 import numpy as np
 import scipy.constants as cs
 import matplotlib.pyplot as plt
@@ -33,7 +35,10 @@ def estimate_parameters(field, r):
 def extract_soi_from_wal(field, r, reference_field, max_field,
                          model='full', truncation=1000,
                          guess_from_previous=True, guesses=None,
-                         plot_fit=False, method='nelder'):
+                         plot_fit=False, method='least_squares',
+                         weigth_method='gauss', weight_stiffness=1.0,
+                         htr=None, cubic_soi=None, density=None,
+                         plot_path=None):
     """Extract the SOI parameters from fitting the wal conductance.
 
     This algorithm assumes that the data are properly centered.
@@ -79,6 +84,7 @@ def extract_soi_from_wal(field, r, reference_field, max_field,
     method : str, optional
         Algorithm to use to perform the fit. See lmfit.minimize documentation
         for acceptable values.
+    # XXX
 
     Returns
     -------
@@ -115,7 +121,7 @@ def extract_soi_from_wal(field, r, reference_field, max_field,
         r = np.array((r,))
         guesses = np.array((guesses,))
 
-    results = np.empty((4, 2, trace_number))
+    results = np.zeros((4, 2, trace_number))
 
     # Express the conductance in usual WAL normalization. (e^2/(2πh))
     # W. Knap et al.,
@@ -125,10 +131,8 @@ def extract_soi_from_wal(field, r, reference_field, max_field,
 
     # Create the fitting model
     if model == 'full':
+        raise ValueError('Unsupported model')
         model_obj = Model(full_wal)
-        model_obj.set_param_hint('matrix_truncation',
-                                 value=truncation,
-                                 vary=False)
     else:
         model_obj = Model(simple_wal)
         model_obj.set_param_hint('series_truncation',
@@ -142,7 +146,20 @@ def extract_soi_from_wal(field, r, reference_field, max_field,
               'cubic_soi') if model == 'full' else
              ('dephasing_field', 'linear_soi', '', 'cubic_soi'))
     for name in [n for n in names if n]:
-        model_obj.set_param_hint(name, min=0, value=1e-6)
+        if name == 'cubic_soi' and cubic_soi is not None:
+            model_obj.set_param_hint(name, value=cubic_soi,
+                                     vary=cubic_soi is None)
+        elif name == 'dephasing_field':
+            model_obj.set_param_hint(name, min=0, value=0.0003)
+        else:
+            model_obj.set_param_hint(name, min=0, value=0.01)
+
+    if cubic_soi is None:
+        model_obj.set_param_hint('soi', min=0, value=0.01)
+        model_obj.set_param_hint('rashba_fraction', min=0, max=1, value=1)
+        model_obj.set_param_hint('linear_soi', expr='soi*rashba_fraction')
+        model_obj.set_param_hint('cubic_soi', expr='soi*(1-rashba_fraction)')
+
     params = model_obj.make_params()
 
     # Perform a fit for each magnetic field sweep
@@ -162,7 +179,8 @@ def extract_soi_from_wal(field, r, reference_field, max_field,
         dsigma = s - s[ref_ind]
 
         # Build the weights
-        weights = weight_wal_data(f, dsigma)
+        weights = weight_wal_data(f, dsigma, mask=weigth_method,
+                                  stiffness=weight_stiffness)
 
         # Set the initial values for the parameters
         if i != 0  and guess_from_previous:
@@ -170,12 +188,14 @@ def extract_soi_from_wal(field, r, reference_field, max_field,
         else:
             if guesses[i] is not None:
                 for n, v in zip(names, guesses[i]):
-                    if n:
+                    if n and (n != 'cubic_soi' or cubic_soi is None):
                         params[n].value = v
         params['low_field_reference'].value = reference_field
 
         # Perform the fit
-        res = model_obj.fit(dsigma, params, field=f, method=method,
+        res = model_obj.fit(dsigma, params, field=f, method='nelder',
+                            weights=weights)
+        res = model_obj.fit(dsigma, res.params, field=f, method=method,
                             weights=weights)
         for j, n in enumerate(names):
             if not n:
@@ -185,12 +205,32 @@ def extract_soi_from_wal(field, r, reference_field, max_field,
 
         # If requested plot the result.
         if plot_fit:
-            fig, ax = plt.subplots()
-            ax.plot(field[i], sigma[i] - s[ref_ind], '+')
-            ax.plot(f, res.best_fit)
-            ax.set_ylim((None, 1.1*np.max(sigma[i] - s[ref_ind])))
-            ax2 = ax.twinx()
-            ax2.plot(f, weights)
+            fig, ax = plt.subplots(constrained_layout=True)
+            if density is not None:
+                fig.suptitle(f'Density {density[i]/1e4:.1e} (cm$^2$)')
+            ax.plot(field[i]*1e3, sigma[i] - s[ref_ind], '+')
+            ax.plot(np.concatenate((-f[::-1], f))*1e3,
+                    np.concatenate((res.best_fit[::-1], res.best_fit)))
+            ax.set_xlabel('Magnetic field B (mT)')
+            ax.set_ylabel(r'Δσ(B) - Δσ(0) ($\frac{e^2}{2\,π\,\hbar})$')
+            amp = abs(np.max(s - s[ref_ind]) - np.min(s - s[ref_ind]))
+            ax.set_ylim((None, np.max(s - s[ref_ind]) + 0.1*amp))
+            if htr is None:
+                ax.set_xlim((-max_field*1e3, max_field*1e3))
+            else:
+                # ax.set_xlim((-5*htr[i]*1e3, 5*htr[i]*1e3))
+                ax.set_xlim((-50, 50))
+            if htr is not None:
+                ax.axvline(htr[i]*1e3, color='k', label='H$_{tr}$')
+            ax.legend()
+            # if plot_path:
+            #     path = os.path.join(plot_path,
+            #                         f'fit_{i}_n_{density[i]}.pickle')
+            #     with open(path, 'wb') as fig_pickle:
+            #         pickle.dump(fig, fig_pickle)
+            # ax2 = ax.twinx()
+            # ax2.plot(f*1e3, weights, color='C2')
+            # plt.show()
 
     if results.shape[0] == 1:
         return results[0]

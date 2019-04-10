@@ -101,13 +101,13 @@ class SimplifiedWALModel(Atom):
 
     """
     #: Dephasing field in mT
-    dephasing = Float(10)
+    dephasing = Float(0.3)
 
     #: Rashba field in mT
-    rashba = Float(20)
+    rashba = Float(0.1)
 
     #: Cubid Dresselhaus field in mT
-    cubic = Float(0)
+    cubic = Float(5)
 
     #: Number of Landau levels to consider in the sum
     truncation = Int(1000)

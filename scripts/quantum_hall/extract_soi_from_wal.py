@@ -68,14 +68,28 @@ SYM_METHOD = 'average'
 #: Acceptable values are 'simplified', 'full'
 WAL_MODEL = 'simplified'
 
+#: Fitting method used after a first fit using nelder-meald.
+FIT_METHOD = 'least_squares'
+
 #: Reference field to use in the WAL calculation.
-WAL_REFERENCE_FIELD = 0.01
+WAL_REFERENCE_FIELD = 0.0001
 
 #: Maximal field to consider in WAL fitting procedure
-WAL_MAX_FIELD = 60e-3
+WAL_MAX_FIELD = 90e-3
 
 #: Truncation used in the WAL calculation. Meaning depends on the model used.
-WAL_TRUNCATION = 5000
+WAL_TRUNCATION = 10000
+
+#: Weighting method to use to fir the data.
+#: Acceptable values are : 'exp', 'gauss', 'peak-gauss', 'lorentz'
+WEIGHT_METHOD = 'gauss'
+
+#: Stiffness of the weight function.
+WEIGHT_STIFFNESS = 1.0
+
+#: Fixed Dresselhaus contribution, use None to allow a varying dresselhaus
+#: term.
+CUBIC_DRESSELHAUS = 2.65e-6
 
 #: Should we plot the Htr field that fix a bound on the validity as a function
 #: of the gate.
@@ -89,7 +103,8 @@ EFFECTIVE_MASS = 0.03
 
 #: File in which to store the results of the analysis as a function of gate
 #: voltage.
-RESULT_PATH = ''
+RESULT_PATH = ('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/WAL/JS124/'
+               'average_rashba_only/JS138_124HB_BM003_004_wal_analysis_avg.csv')
 
 # =============================================================================
 # --- Execution ---------------------------------------------------------------
@@ -116,6 +131,9 @@ from shabanipy.quantum_hall.wal.utils import (flip_field_axis,
                                               compute_linear_soi,
                                               compute_dephasing_time)
 from shabanipy.utils.labber_io import LabberData
+
+plt.rcParams.update({'font.size': 14})
+plt.rcParams.update({'pdf.fonttype': 42})
 
 
 with LabberData(PATH) as data:
@@ -172,12 +190,13 @@ if PLOT_SMOOTHED:
     plt.show()
 
 # Extract the density and mobility and compute useful quantities.
-density, std_density = extract_density(field, res['xy'], FIELD_BOUNDS,
-                                       PLOT_DENSITY_FIT)
+density = extract_density(field, res['xy'], FIELD_BOUNDS, PLOT_DENSITY_FIT)
 if PLOT_DENSITY_FIT:
     plt.show()
-mobility, _ = extract_mobility(field, res['xx'], res['yy'], density,
-                               GEOMETRIC_FACTORS[GEOMETRY])
+
+mobility, std_mob = extract_mobility(field, res['xx'], res['yy'], density,
+                                     GEOMETRIC_FACTORS[GEOMETRY])
+density, std_density = density
 
 mass = EFFECTIVE_MASS*cs.electron_mass
 htr = htr_from_mobility_density(mobility, density, mass)
@@ -209,7 +228,12 @@ deph, lin_soi, cu_soi = extract_soi_from_wal(field[:], res['xx'][:],
                                              WAL_MAX_FIELD,
                                              WAL_MODEL, WAL_TRUNCATION,
                                              guesses=(0.01, 0.02, 0.0, 0.0),
-                                             plot_fit=PLOT_WAL)
+                                             plot_fit=PLOT_WAL,
+                                             method=FIT_METHOD,
+                                             htr=htr,
+                                             cubic_soi=CUBIC_DRESSELHAUS,
+                                             density=density,
+                                             plot_path=os.path.dirname(RESULT_PATH))
 
 # If requested plot all the fits to validate them
 if PLOT_WAL:
@@ -255,3 +279,46 @@ for ax, x, y, x_lab, y_lab in zip(axes, [density/1e4]*size, ys,
     ax.set_ylabel(y_lab)
 plt.show()
 
+# Plot the Rashba component and the mobility
+f, axes = plt.subplots(2, 1, constrained_layout=True)
+ys = [mobility*1e4, lin_soi_str[0][0]]
+y_labels = ['Mobility (cm$^{-2}$V${^-1}$s$^{-1}$)', 'Rashba SOI (meV.A)']
+for ax, x, y, y_err, x_lab, y_lab in zip(axes, [density/1e4]*2, ys,
+                                         [std_mob*1e4, lin_soi_str[0][1]],
+                                         ['Density (cm$^{-2}$)']*2,
+                                          y_labels):
+    ax.plot(x, y, '+')
+    ax.set_xlabel(x_lab)
+    ax.set_ylabel(y_lab)
+plt.show()
+
+if RESULT_PATH:
+
+    df = pd.DataFrame({'Gate voltage (V)': gate,
+                       'Density (m^-2)': density,
+                       'Stderr density (m^-2)': std_density,
+                       'Mobility (m^2V^-1s^-1)': mobility,
+                       'Stderr mobility (m^2V^-1s^-1)': std_mob,
+                       'Diffusion (m^2/s)': diff,
+                       'Htr (T)': htr,
+                       'Dephasing time (ps)': deph_time[0],
+                       'Stderr dephasing time (ps)': deph_time[1],
+                       'Rashba SOI (meV.A)': lin_soi_str[0][0],
+                       'Stderr Rashba SOI (meV.A)': lin_soi_str[0][1],
+                       'Dresselhaus SOI (meV.A)': lin_soi_str[1][0],
+                       'Stderr dresselhaus SOI (meV.A)': lin_soi_str[1][1],
+                       'Stderr cubic Dresselhaus (T)': cu_soi[1]})
+    with open(RESULT_PATH, 'w') as f:
+        f.write(f'# Probe-current: {PROBE_CURRENT}\n'
+                f'# Effective mass: {EFFECTIVE_MASS}\n'
+                f'# Geometry: {GEOMETRY}\n'
+                f'# Lock-in quantity: {LOCK_IN_QUANTITY}\n'
+                f'# Filter params: {FILTER_PARAMS}\n'
+                f'# Sym method: {SYM_METHOD}\n'
+                f'# WAL model: {WAL_MODEL}\n'
+                f'# WAL reference field: {WAL_REFERENCE_FIELD}\n'
+                f'# WAL max field: {WAL_MAX_FIELD}\n'
+                f'# Weight method: {WEIGHT_METHOD}\n'
+                f'# Weight stiffness: {WEIGHT_STIFFNESS}\n'
+                f'# Cubic Dresselhaus: {CUBIC_DRESSELHAUS}\n')
+        df.to_csv(f, index=False)
