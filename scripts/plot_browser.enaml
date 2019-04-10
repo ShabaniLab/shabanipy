@@ -1,0 +1,80 @@
+# -*- coding: utf-8 -*-
+# -----------------------------------------------------------------------------
+# Copyright 2019 by Shabanipy Authors, see AUTHORS for more details.
+#
+# Distributed under the terms of the MIT license.
+#
+# The full license is in the file LICENCE, distributed with this software.
+# -----------------------------------------------------------------------------
+"""Utility window to browse saved matplotlib figures easily.
+
+"""
+import os
+import pickle
+from enaml.layout.api import hbox, vbox
+from enaml.widgets.api import (Window, MPLCanvas, Container, FileDialogEx,
+                               PushButton, ToolBar, Action, Field)
+
+
+enamldef Main(Window): main:
+    """Main window.
+
+    """
+    #: Folder in which to look for pickled figure
+    attr folder : str = ''
+
+    #: Pickled files found in the specified folder
+    attr files : list = ''
+
+    #: Previously loaded figure cached in order to allow fast swapping between
+    #: two figures
+    attr cached_fig  : tuple = ()
+
+    title = 'Fit browser'
+
+    func load_and_set_figure(filename):
+        """Load a pickled figure and set the canvas figure.
+
+        """
+        if filename in cached_fig:
+            fig = cached_fig[1]
+        else:
+            with open(os.path.join(folder, filename), 'rb') as f:
+                fig = pickle.load(f)
+        main.cached_fig = (filename, mpl.figure)
+        fld.text = filename
+        mpl.figure = fig
+
+    Container:
+
+        constraints = [vbox(mpl, hbox(sel, fld, tlb))]
+
+        MPLCanvas: mpl:
+            toolbar_visible = True
+
+        PushButton: sel:
+            text = 'Select folder'
+            clicked::
+                path = FileDialogEx.get_existing_directory(main)
+                if path:
+                    main.folder = path
+                    main.files = [f for f in os.listdir(path)
+                                  if f.endswith('.pickle')]
+                    load_and_set_figure(main.files[0])
+
+        Field: fld:
+            pass
+
+        ToolBar: tlb:
+            Action:
+                text='Previous\tLeft'
+                triggered::
+                    index = files.index(fld.text)
+                    load_and_set_figure(files[index - 1])
+
+            Action:
+                text='Next\tRight'
+                triggered::
+                    index = files.index(fld.text)
+                    load_and_set_figure(files[(index + 1) % len(files)])
+
