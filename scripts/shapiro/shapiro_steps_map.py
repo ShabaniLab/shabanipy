@@ -13,7 +13,7 @@ The plot use the folling axes:
 # =============================================================================
 
 #: Path towards the hdf5 file holding the data
-PATH = r'/Users/mdartiailh/Labber/Data/2018/09/Data_0913/JS124L_CD004_009.hdf5'
+PATH = '/Users/mdartiailh/Labber/Data/2019/02/Data_0205/JS124S_BM002_171.hdf5'
 
 #: Name or index of the column containing the frequency data if applicable.
 #: Leave blanck if the datafile does not contain a frequency sweep.
@@ -22,13 +22,13 @@ FREQUENCY_NAME = 2
 #: Frequencies of the applied microwave in Hz (one graph will be generated for
 #: each frequecy).
 #: If a FREQUENCY_NAME is supplied data are filtered.
-FREQUENCIES = [3e9, 4e9, 5e9]
+FREQUENCIES = [15e9]
 
 #: Name or index of the column containing the power data
 POWER_NAME = 1
 
 #: Name or index of the column containing the voltage data
-VOLTAGE_NAME = 3
+VOLTAGE_NAME = -1
 
 #: Name or index of the column containing the current data
 #: This should be a stepped channel ! use the applied voltage not the
@@ -42,15 +42,18 @@ CURRENT_CONVERSION = 1e-6
 #: Fraction of a shapiro step used for binning
 STEP_FRACTION = 0.1
 
+#: Critical power at which we close the gap.
+CRITICAL_POWER = 15.8
+
 #: Label of the x axis, if left blanck the power column name will be used
 #: If an index was passed the name found in the labber file is used.
-X_AXIS_LABEL = 'Power (dBm)'
+X_AXIS_LABEL = 'Power (dB)'
 
 #: Label of the y axis.
 Y_AXIS_LABEL = 'Junction voltage (hf/2e)'
 
 #: Label of the colorbar.
-C_AXIS_LABEL = 'Counts (µA)'
+C_AXIS_LABEL = 'Counts (Ic)'
 
 #: Scaling factor for the x axis (used to convert between units)
 X_SCALING = 1
@@ -58,33 +61,35 @@ X_SCALING = 1
 #: Scaling factor for the y axis (used to convert between units)
 Y_SCALING = 1
 
-#: Offset for the Y axis.
-Y_OFFSET = 0.2
+#: Number of points of the lowest available power to use to correct the
+#: voltage offset.
+Y_OFFSET_CORRECTION = 50
 
 #: Scaling factor for the c axis (used to convert between units)
-C_SCALING = 1e6
+C_SCALING = 1e6/4.3
 
 #: Limits to use for the x axis (after scaling)
-X_LIMITS = []
+X_LIMITS = [None, None]
 
 #: Limits to use for the y axis (after scaling)
-Y_LIMITS = [-6, 6]
+Y_LIMITS = [0, 6]
 
 #: Limits to use on the colorscale (after scaling). Use None for autoscaling.
-C_LIMITS = [None, 1]
+C_LIMITS = [0, 0.05]
 
 #: Plot dashed lines for the specified Shapiro steps
-SHOW_SHAPIRO_STEP = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5]
+SHOW_SHAPIRO_STEP = [1, 2, 3, 4, 5]
 
 #: Power range in which to plot the dashed lines for shapiro steps. Use None
 #: to indicate that the line should start/stop at the edge.
-SHAPIRO_STEPS_POWERS = [None, -8]
+SHAPIRO_STEPS_POWERS = [0, 0.1]
 
 # =============================================================================
 # --- Execution ---------------------------------------------------------------
 # =============================================================================
 import os
 
+import numpy as np
 import matplotlib.pyplot as plt
 
 from shabanipy.shapiro.binning import bin_power_shapiro_steps
@@ -117,10 +122,15 @@ for frequency in FREQUENCIES:
     if CURRENT_CONVERSION is not None:
         curr *= CURRENT_CONVERSION
 
+    if Y_OFFSET_CORRECTION:
+        offset = np.average(volt[0, :Y_OFFSET_CORRECTION])
+        volt -= offset
+
     # Bin the data
     power, voltage, histo = bin_power_shapiro_steps(power, curr, volt,
                                                     frequency, STEP_FRACTION)
-    voltage += Y_OFFSET
+
+    power -= CRITICAL_POWER
 
     # Plot the data
     plt.figure()
@@ -143,7 +153,7 @@ for frequency in FREQUENCIES:
         plt.hlines(steps, *lims, linestyles='dashed')
 
     sample = (PATH.rsplit(os.sep, 1)[1]).split('_')[0]
-    plt.title(f'Sample {sample}: Frequency {frequency/1e9} GHz')
+    plt.title(f'Frequency {frequency/1e9} GHz')
     plt.xlabel(X_AXIS_LABEL or POWER_NAME)
     plt.ylabel(Y_AXIS_LABEL)
     if X_LIMITS:
