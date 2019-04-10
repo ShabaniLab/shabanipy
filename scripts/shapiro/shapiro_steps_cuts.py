@@ -8,11 +8,14 @@
 # =============================================================================
 
 #: Path towards the hdf5 file holding the data
-PATH = r'/Users/mdartiailh/Labber/Data/2018/09/Data_0916/JS124L_CD004_018.hdf5'
+PATH = '/Users/mdartiailh/Labber/Data/2019/02/Data_0202/JS124S_BM002_150.hdf5'
+
+#: Directory in which to save the figure.
+FIG_DIRECTORY = '/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/Shapiro/2019-01/FrequencyDependence'
 
 #: Name or index of the column containing the frequency data if applicable.
 #: Set to None if the datafile does not contain a frequency sweep.
-FREQUENCY_NAME = 2
+FREQUENCY_NAME = None
 
 #: Frequency of the applied microwave in Hz.
 #: If a FREQUENCY_NAME is supplied data are filtered.
@@ -22,7 +25,10 @@ FREQUENCIES = [6e9]
 POWER_NAME = 1
 
 #: Powers in dBm at which to plot the V-I characteristic
-POWERS = [-3.75, 0, 4, 6, 8]
+POWERS = [-8, -3, 1, 4, 5.6, 7.6]
+
+#: Power at which we observe the gap closing
+CRITICAL_POWER = 5.6
 
 #: Name or index of the column containing the voltage data
 VOLTAGE_NAME = -1
@@ -34,8 +40,12 @@ CURRENT_NAME = 0
 #: applied voltage to current bias).
 CURRENT_CONVERSION = 1e-6
 
+#: Number of points to use to correct for the offset of the voltage using the
+#: lowest power scan.
+CORRECT_Y_OFFSET = 50
+
 #: Should the Y axis be normalised in unit of the Shapiro step size hf/2e
-NORMALIZE_Y = False
+NORMALIZE_Y = True
 
 #: Label of the x axis, if left blanck the current column name will be used
 #: If an index was passed the name found in the labber file is used.
@@ -43,28 +53,29 @@ X_AXIS_LABEL = 'Bias Current (µA)'
 
 #: Label of the y axis, if left blanck the voltage column name will be used
 #: If an index was passed the name found in the labber file is used.
-Y_AXIS_LABEL = 'Junction voltage (mV)'
+Y_AXIS_LABEL = 'Voltage drop (hf/2e)'
 
 #: Scaling factor for the x axis (used to convert between units)
 X_SCALING = 1e6
 
 #: Scaling factor for the y axis (used to convert between units)
-Y_SCALING = 1e3
+Y_SCALING = 1
 
 #: Limits to use for the x axis (after scaling)
-X_LIMITS = [-6, 6]
+X_LIMITS = [0, 5]
 
 #: Limits to use for the y axis (after scaling)
-Y_LIMITS = [-0.1, 0.1]
+Y_LIMITS = [-0.1, 8]
 
 #: Plot dashed lines for the specified Shapiro steps
-SHOW_SHAPIRO_STEP = [-3, -2, -1, 0, 1, 2, 3]
+SHOW_SHAPIRO_STEP = [1, 2, 3]
 
 # =============================================================================
 # --- Execution ---------------------------------------------------------------
 # =============================================================================
 import os
 
+import numpy as np
 import matplotlib.pyplot as plt
 
 from shabanipy.shapiro import shapiro_step
@@ -79,6 +90,13 @@ for frequency in FREQUENCIES:
         if FREQUENCY_NAME is not None:
             filters[FREQUENCY_NAME] = frequency
 
+        # Get the offset on the voltage axis
+        if CORRECT_Y_OFFSET:
+            min_p = min(POWERS)
+            filters[POWER_NAME] = min_p
+            offset = np.average(data.get_data(VOLTAGE_NAME,
+                                        filters=filters)[:CORRECT_Y_OFFSET])
+
         for p in POWERS:
             filters[POWER_NAME] = p
             volt = data.get_data(VOLTAGE_NAME,
@@ -90,6 +108,9 @@ for frequency in FREQUENCIES:
             if CURRENT_CONVERSION is not None:
                 curr *= CURRENT_CONVERSION
 
+            if CORRECT_Y_OFFSET:
+                volt -= offset
+
             if NORMALIZE_Y:
                 volt /= shapiro_step(frequency)
 
@@ -98,16 +119,19 @@ for frequency in FREQUENCIES:
             curr *= X_SCALING
 
             # Plot the data
-            plt.plot(curr, volt, label='Power %s dBm' % p)
+            plt.plot(curr, volt, label='Power %g dB' % (p - CRITICAL_POWER))
 
     if SHOW_SHAPIRO_STEP:
-        steps = [n * shapiro_step(frequency) * Y_SCALING
-                 for n in SHOW_SHAPIRO_STEP]
+        if NORMALIZE_Y:
+            steps = SHOW_SHAPIRO_STEP
+        else:
+            steps = [n * shapiro_step(frequency) * Y_SCALING
+                    for n in SHOW_SHAPIRO_STEP]
         lims = X_LIMITS or (curr[0], curr[-1])
         plt.hlines(steps, *lims, linestyles='dashed')
 
     sample = (PATH.rsplit(os.sep, 1)[1]).split('_')[0]
-    plt.title(f'Sample {sample}: Frequency {frequency/1e9} GHz')
+    plt.title(f'Frequency {frequency/1e9} GHz')
     plt.xlabel(X_AXIS_LABEL or CURRENT_NAME)
     plt.ylabel(Y_AXIS_LABEL or VOLTAGE_NAME)
     if X_LIMITS:
@@ -116,5 +140,11 @@ for frequency in FREQUENCIES:
         plt.ylim(Y_LIMITS)
     plt.legend()
     plt.tight_layout()
+
+    if FIG_DIRECTORY:
+        plt.savefig(os.path.join(FIG_DIRECTORY,
+                                f'{frequency/1e9}GHz_' +
+                                os.path.split(PATH)[1].split('.')[0] +
+                                '.pdf'))
 
 plt.show()
