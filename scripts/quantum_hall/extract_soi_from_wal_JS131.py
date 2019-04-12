@@ -10,7 +10,7 @@ The density and mobility are extracted at the same time.
 # =============================================================================
 
 #: Path towards the hdf5 file holding the data
-PATH = r'/Users/mdartiailh/Labber/Data/2019/03/Data_0330/JS138_124HB_BM003_004.hdf5'
+PATH = r'/Users/mdartiailh/Labber/Data/2018/12/Data_1218/JS131HB_207_BM001_019.hdf5'
 
 #: Index or name of the column containing the gate voltage values.
 GATE_COLUMN = 1
@@ -24,7 +24,7 @@ FIELD_COLUMN = 0
 
 #: Index or name of the column contaning the longitudinal voltage drop
 #: measurement along x.
-XX_VOLTAGE_COLUMN = 2
+XX_VOLTAGE_COLUMN = 4
 
 #: Index or name of the column contaning the longitudinal voltage drop
 #: measurement along y. This data will only be used its XX counterpart is not
@@ -33,7 +33,7 @@ YY_VOLTAGE_COLUMN = None
 
 #: Index or name of the column contaning the transverse voltage drop
 #: measurement.
-XY_VOLTAGE_COLUMN = 4
+XY_VOLTAGE_COLUMN = 2
 
 #: Component of the measured voltage to use for analysis.
 #: Recognized values are 'real', 'imag', 'magnitude'
@@ -47,7 +47,7 @@ PROBE_CURRENT = 1e-6
 GEOMETRY = 'Standard Hall bar'
 
 #: Magnetic field bounds to use when extracting the density.
-FIELD_BOUNDS = (40e-3, 2)
+FIELD_BOUNDS = (-2, -40e-3)
 
 #: Should we plot the fit used to extract the density at each gate.
 PLOT_DENSITY_FIT = False
@@ -55,7 +55,7 @@ PLOT_DENSITY_FIT = False
 #: Parameters to use to filter the xx and yy data. The first number if the
 #: number of points to consider IT MUST BE ODD, the second the order of the
 #: polynomial used to smooth the data
-FILTER_PARAMS = (31, 3)
+FILTER_PARAMS = (11, 3)
 
 #: Should we plot the smoothed data to validate the filter parameters.
 PLOT_SMOOTHED = False
@@ -85,7 +85,7 @@ WAL_TRUNCATION = 10000
 WEIGHT_METHOD = 'gauss'
 
 #: Stiffness of the weight function.
-WEIGHT_STIFFNESS = 1.0
+WEIGHT_STIFFNESS = 0.5
 
 #: Fixed Dresselhaus contribution, use None to allow a varying dresselhaus
 #: term.
@@ -103,8 +103,8 @@ EFFECTIVE_MASS = 0.03
 
 #: File in which to store the results of the analysis as a function of gate
 #: voltage.
-RESULT_PATH = ('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/WAL/JS124/'
-               'average_rashba_only/JS138_124HB_BM003_004_wal_analysis_avg.csv')
+RESULT_PATH = ('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/WAL/JS131/'
+               'average_rashba_only/JS131HB_207_BM001_019_wal_analysis_avg.csv')
 
 # =============================================================================
 # --- Execution ---------------------------------------------------------------
@@ -141,8 +141,16 @@ with LabberData(PATH) as data:
     names = data.list_channels()
     shape = data.compute_shape((GATE_COLUMN, FIELD_COLUMN))
 
-    gate = data.get_data(GATE_COLUMN).reshape(shape).T
-    field = data.get_data(FIELD_COLUMN).reshape(shape).T
+    gate = data.get_data(GATE_COLUMN)
+
+    # Handle interruptions in the last scan.
+    while len(gate) < shape[0]*shape[1]:
+        shape[1] -= 1
+
+    length = shape[0]*shape[1]
+
+    gate = gate.reshape(shape).T[:-1]
+    field = data.get_data(FIELD_COLUMN).reshape(shape).T[:-1]
     res = dict.fromkeys(('xx', 'yy', 'xy'))
     for k in list(res):
         name = globals()[f'{k.upper()}_VOLTAGE_COLUMN']
@@ -155,7 +163,7 @@ with LabberData(PATH) as data:
             val = data.get_data(index+1)
         else:
             val = data.get_data(index)**2 + data.get_data(index+1)**2
-        val = val.reshape(shape).T
+        val = val[:length].reshape(shape).T[:-1]
         res[k] = convert_lock_in_meas_to_diff_res(val, PROBE_CURRENT)
 
     if res['xx'] is None:
@@ -167,10 +175,17 @@ with LabberData(PATH) as data:
 # in field.
 # In all the following, we ignore the 'yy' axis.
 gate = gate[:, 0]
+flip = bool(gate[0] < gate[-1])
 flip_field_axis(field, res['xx'], res['xy'])
 res['original'] = res['xx'].copy()
 if FILTER_PARAMS:
     res['xx'] = savgol_filter(res['xx'], *FILTER_PARAMS)
+
+if flip:
+    gate = gate[::-1]
+    field = field[::-1]
+    for k in res:
+        res[k] = res[k][::-1]
 
 # Filter twice when determining the field offset.
 field, _ = recenter_wal_data(field,
