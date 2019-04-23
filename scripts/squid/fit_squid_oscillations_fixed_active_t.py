@@ -20,13 +20,13 @@ DATA_ROOT_FOLDER = '/Users/mdartiailh/Labber/Data/2019/04'
 
 #: Dictionary of parallel field, file path.
 DATA_PATHS = {400: 'Data_0405/JS124S_BM002_465.hdf5',
-            #   350: 'Data_0406/JS124S_BM002_466.hdf5',
-            #   300: 'Data_0406/JS124S_BM002_467.hdf5',
-            #   250: 'Data_0406/JS124S_BM002_468.hdf5',
-            #   200: 'Data_0407/JS124S_BM002_470.hdf5',
-            #   150: 'Data_0407/JS124S_BM002_471.hdf5',
-            #   100: 'Data_0409/JS124S_BM002_474.hdf5',
-              50:  'Data_0409/JS124S_BM002_476.hdf5'}
+              350: 'Data_0406/JS124S_BM002_466.hdf5',
+              300: 'Data_0406/JS124S_BM002_467.hdf5',
+              250: 'Data_0406/JS124S_BM002_468.hdf5',
+              200: 'Data_0407/JS124S_BM002_470.hdf5',
+              150: 'Data_0407/JS124S_BM002_471.hdf5',
+              100: 'Data_0409/JS124S_BM002_474.hdf5',}
+            #   50:  'Data_0409/JS124S_BM002_476.hdf5'}
 
 #: Perpendicular field range to fit for each parallel field
 FIELD_RANGES = {400: (),
@@ -74,7 +74,8 @@ PLOT_INITIAL_GUESS = False
 PLOT_FITS = True
 
 #: Path to which save the graphs and fitted parameters.
-ANALYSIS_PATH = '/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/SQUID/By'
+ANALYSIS_PATH = ('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/'
+                 'SQUID/By/active_t_fixed')
 
 # =============================================================================
 # --- Execution ---------------------------------------------------------------
@@ -175,10 +176,11 @@ for i, f in enumerate(datasets):
     params.add(f'fraun_offset_{i}', value=0.0)
     if not FIX_IDLER_TRANSPARENCY:
         params.add(f't_idler_{i}', min=0.0, max=1.0, value=0.5)
+
+    params.add(f't_active_{i}', min=0.0, max=1.0, value=0.5)
     for j, gate in enumerate(datasets[f]):
         params.add(f'I_active_{i}_{j}')
         params.add(f'phi_active_{i}_{j}', value=0.0, min=0, max=2*np.pi)
-        params.add(f't_active_{i}_{j}', min=0.0, max=1.0, value=0.5)
 
 
 def eval_squid_current(pfield, i, j, params):
@@ -192,7 +194,7 @@ def eval_squid_current(pfield, i, j, params):
                     t_id)
     active_params = (params[f'phi_active_{i}_{j}'],
                      params[f'I_active_{i}_{j}'],
-                     params[f't_active_{i}_{j}'])
+                     params[f't_active_{i}'])
     fe = fraunhofer_envelope(pfield*params[f'fraun_scale'] +
                              params[f'fraun_offset_{i}'])
     sq = compute_squid_current(pfield*params['phase_conversion'] *
@@ -304,18 +306,18 @@ if PLOT_FITS:
 # Build result arrays from the fitted parameters
 results = {}
 results['field'] = np.array(list(datasets))
-for name in ('I_idler', 't_idler'):
+for name in ('I_idler', 't_idler', 't_active'):
     results[name] = np.array([params[name + f'_{i}'].value
                               for i, _ in enumerate(datasets)])
 
 results['gate'] = np.unique([list(datasets[f]) for f in datasets])
-for name in ('I_active', 't_active', 'phi_active'):
+for name in ('I_active', 'phi_active'):
     results[name] = np.array([[params[name + f'_{i}_{j}'].value
                                for j, _ in enumerate(datasets[f])]
                               for i, f in enumerate(datasets)])
 
 # Substract the phase at the lowest gate to define the phase  difference.
-results['dphi'] = (results['phi_active'].T - results['phi_active'][:, 0]).T
+results['dphi'] = - (results['phi_active'].T - results['phi_active'][:, 0]).T
 results['dphi'] %= 2*np.pi
 
 # Save the data if a file was provided.
@@ -341,25 +343,17 @@ if ANALYSIS_PATH:
     fig.savefig(os.path.join(ANALYSIS_PATH, 'idler_jj.pdf'))
 
 # Active parameters vs gate
-fig, axes = plt.subplots(2, 2, sharex=True, figsize=(9, 9),
+fig, axes = plt.subplots(1, 2, sharex=True, figsize=(10, 5),
                          constrained_layout=True)
 fig.suptitle('Active junction parameters vs gate')
-gs = axes[1, 0].get_gridspec()
-# remove the underlying axes
-for ax in axes[1]:
-    ax.remove()
-axes = [axes[0, 0], axes[0, 1], fig.add_subplot(gs[1, :])]
 for i, f in enumerate(results['field']):
     axes[0].plot(results['gate'], results['I_active'][i],
                  label=f'By={f} mT')
     axes[0].set_ylabel('Active JJ current (µA)')
-    axes[1].plot(results['gate'], results['t_active'][i],
+    axes[1].plot(results['gate'], results['phi_active'][i],
                  label=f'By={f} mT')
-    axes[1].set_ylabel('Active JJ transparency')
-    axes[2].plot(results['gate'], results['phi_active'][i],
-                 label=f'By={f} mT')
-    axes[2].set_ylabel('Active JJ phase (rad)')
-for i in range(3):
+    axes[1].set_ylabel('Active JJ phase (rad)')
+for i in range(2):
     axes[i].legend()
     axes[i].set_xlabel('Gate voltage (V)')
 if ANALYSIS_PATH:
@@ -374,18 +368,19 @@ gs = axes[1, 0].get_gridspec()
 for ax in axes[1]:
     ax.remove()
 axes = [axes[0, 0], axes[0, 1], fig.add_subplot(gs[1, :])]
+axes[1].plot(results['field'], results['t_active'],
+             label=f'Vg={g} V')
+axes[1].set_ylabel('Active JJ transparency')
 for i, g in enumerate(results['gate']):
     axes[0].plot(results['field'], results['I_active'][:, i],
                  label=f'Vg={g} V')
     axes[0].set_ylabel('Active JJ current (µA)')
-    axes[1].plot(results['field'], results['t_active'][:, i],
-                 label=f'Vg={g} V')
-    axes[1].set_ylabel('Active JJ transparency')
     axes[2].plot(results['field'], results['phi_active'][:, i],
                  label=f'Vg={g} V')
     axes[2].set_ylabel('Active JJ phase (rad)')
 for i in range(3):
-    axes[i].legend()
+    if i != 1:
+        axes[i].legend()
     axes[i].set_xlabel('Parallel field (V)')
 if ANALYSIS_PATH:
     fig.savefig(os.path.join(ANALYSIS_PATH, 'active_jj_vs_field.pdf'))
