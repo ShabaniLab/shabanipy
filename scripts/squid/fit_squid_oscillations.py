@@ -20,13 +20,13 @@ DATA_ROOT_FOLDER = '/Users/mdartiailh/Labber/Data/2019/04'
 
 #: Dictionary of parallel field, file path.
 DATA_PATHS = {400: 'Data_0405/JS124S_BM002_465.hdf5',
-            #   350: 'Data_0406/JS124S_BM002_466.hdf5',
-            #   300: 'Data_0406/JS124S_BM002_467.hdf5',
-            #   250: 'Data_0406/JS124S_BM002_468.hdf5',
-            #   200: 'Data_0407/JS124S_BM002_470.hdf5',
-            #   150: 'Data_0407/JS124S_BM002_471.hdf5',
-            #   100: 'Data_0409/JS124S_BM002_474.hdf5',
-              50:  'Data_0409/JS124S_BM002_476.hdf5'}
+              350: 'Data_0406/JS124S_BM002_466.hdf5',
+              300: 'Data_0406/JS124S_BM002_467.hdf5',
+              250: 'Data_0406/JS124S_BM002_468.hdf5',
+              200: 'Data_0407/JS124S_BM002_470.hdf5',
+              150: 'Data_0407/JS124S_BM002_471.hdf5',
+              100: 'Data_0409/JS124S_BM002_474.hdf5',}
+            #   50:  'Data_0409/JS124S_BM002_476.hdf5'}
 
 #: Perpendicular field range to fit for each parallel field
 FIELD_RANGES = {400: (),
@@ -315,7 +315,7 @@ for name in ('I_active', 't_active', 'phi_active'):
                               for i, f in enumerate(datasets)])
 
 # Substract the phase at the lowest gate to define the phase  difference.
-results['dphi'] = (results['phi_active'].T - results['phi_active'][:, 0]).T
+results['dphi'] = -(results['phi_active'].T - results['phi_active'][:, 0]).T
 results['dphi'] %= 2*np.pi
 
 # Save the data if a file was provided.
