@@ -15,35 +15,26 @@ assume the following:
 
 """
 
+#: Name of the config file (located in the configs folder next to this script)
+#: to use. This will overwrite all the following constants. This file should be
+#: a python file defining all the constants defined above # --- Execution
+CONFIG_NAME = 'j2_phaseshift_zero_config.py'
+
 #: Common folder in which the data file are related.
-DATA_ROOT_FOLDER = '/Users/mdartiailh/Labber/Data/2019/04'
+DATA_ROOT_FOLDER = ''
 
 #: Dictionary of parallel field, file path.
-DATA_PATHS = {400: 'Data_0405/JS124S_BM002_465.hdf5',
-              350: 'Data_0406/JS124S_BM002_466.hdf5',
-              300: 'Data_0406/JS124S_BM002_467.hdf5',
-              250: 'Data_0406/JS124S_BM002_468.hdf5',
-              200: 'Data_0407/JS124S_BM002_470.hdf5',
-              150: 'Data_0407/JS124S_BM002_471.hdf5',
-              100: 'Data_0409/JS124S_BM002_474.hdf5',}
-            #   50:  'Data_0409/JS124S_BM002_476.hdf5'}
+DATA_PATHS = {}
 
 #: Perpendicular field range to fit for each parallel field
-FIELD_RANGES = {400: (),
-                350: (),
-                300: (),
-                250: (),
-                200: (),
-                150: (),
-                100: (),
-                50: ()}
+FIELD_RANGES = {}
 
 #: Name/index of the gate column.
 GATE_COLUMN = 1
 
 #: Gate values for which to skip the analysis. The values should be present
 #: in the datasets.
-EXCLUDED_GATES = [-4.75, -3.5, -2.5]
+EXCLUDED_GATES = []
 
 #: Name/index of the perpendicular field column.
 FIELD_COLUMN = 2
@@ -67,6 +58,15 @@ FIX_IDLER_TRANSPARENCY = False
 #: Sign of the phase difference created by the perpendicular field.
 PHASE_SIGN = 1
 
+#: Handedness of the system.
+HANDEDNESS = -1
+
+#: Correction factor to apply on the estimated pulsation
+CONVERSION_FACTOR_CORRECTION = 1
+
+#: Fix the anomalous phase to 0.
+FIX_PHI_ZERO = False
+
 #: Should we plot the initial guess for each trace.
 PLOT_INITIAL_GUESS = False
 
@@ -74,8 +74,7 @@ PLOT_INITIAL_GUESS = False
 PLOT_FITS = True
 
 #: Path to which save the graphs and fitted parameters.
-ANALYSIS_PATH = ('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/'
-                 'SQUID/By/active_t_fixed')
+ANALYSIS_PATH = ''
 
 # =============================================================================
 # --- Execution ---------------------------------------------------------------
@@ -88,6 +87,7 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 from lmfit import minimize, Parameters
+from lmfit.models import LinearModel
 
 from shabanipy.squid.squid_analysis import extract_switching_current
 from shabanipy.squid.squid_model import compute_squid_current
@@ -95,6 +95,15 @@ from shabanipy.squid.cpr import (fraunhofer_envelope,
                                  finite_transparency_jj_current)
 from shabanipy.utils.labber_io import LabberData
 
+if CONFIG_NAME:
+    print(f"Using configuration {CONFIG_NAME}, all scripts constants will be"
+          " overwritten.")
+    path = os.path.join(os.path.dirname(__file__), 'configs', CONFIG_NAME)
+    with open(path) as f:
+        exec(f.read())
+
+if not DATA_ROOT_FOLDER:
+    raise ValueError('No root path for the date was specified.')
 
 gates_number = {}
 datasets = {}
@@ -110,8 +119,9 @@ for f, ppath in DATA_PATHS.items():
         # Often we do not do all perp field so allow to reshape as needed
         shape = (shape[0], -1)
         frange = FIELD_RANGES[f]
-        gates_number[f] = (data.get_axis_dimension(GATE_COLUMN) -
-                           len(EXCLUDED_GATES))
+        gates = [g for g in np.unique(data.get_data(GATE_COLUMN))
+                 if g not in EXCLUDED_GATES]
+        gates_number[f] = len(gates)
 
         if PLOT_EXTRACTED_SWITCHING_CURRENT:
             fig, axes = plt.subplots(gates_number[f], sharex=True,
@@ -119,10 +129,7 @@ for f, ppath in DATA_PATHS.items():
                                      constrained_layout=True)
             fig.suptitle(f'Parallel field {f} mT')
 
-        for i, gate in enumerate(np.unique(data.get_data(GATE_COLUMN))):
-            if gate in EXCLUDED_GATES:
-                continue
-
+        for i, gate in enumerate(gates):
             filt = {GATE_COLUMN: gate}
             field = data.get_data(FIELD_COLUMN, filters=filt).reshape(shape).T
             bias = data.get_data(BIAS_COLUMN, filters=filt).reshape(shape).T
@@ -137,17 +144,6 @@ for f, ppath in DATA_PATHS.items():
             mask = np.logical_not(np.isnan(curr))
             rfield, curr = rfield[mask], curr[mask]
 
-            if PLOT_EXTRACTED_SWITCHING_CURRENT:
-                axes[i].imshow(diff.T,
-                               extent=(rfield[0], rfield[-1],
-                                       bias[0, 0], bias[0, -1]),
-                               origin='lower',
-                               aspect='auto',
-                               vmin=0,
-                               vmax=np.max(diff[0, -1]))
-                axes[i].plot(rfield, curr, color='C1')
-                axes[i].set_title(f'Gate voltage {gate} V')
-
             if any(frange):
                 masks = []
                 if frange[0]:
@@ -159,6 +155,17 @@ for f, ppath in DATA_PATHS.items():
                 datasets[f][gate] = (rfield[index], curr[index])
             else:
                 datasets[f][gate] = (rfield, curr)
+
+            if PLOT_EXTRACTED_SWITCHING_CURRENT:
+                axes[i].imshow(diff.T,
+                               extent=(rfield[0], rfield[-1],
+                                       bias[0, 0], bias[0, -1]),
+                               origin='lower',
+                               aspect='auto',
+                               vmin=0,
+                               vmax=np.max(diff[0, -1]))
+                axes[i].plot(*datasets[f][gate], color='C1')
+                axes[i].set_title(f'Gate voltage {gate} V')
 
 if PLOT_EXTRACTED_SWITCHING_CURRENT:
     plt.show()
@@ -175,12 +182,15 @@ for i, f in enumerate(datasets):
     params.add(f'phi_idler_{i}', value=0, vary=False)
     params.add(f'fraun_offset_{i}', value=0.0)
     if not FIX_IDLER_TRANSPARENCY:
-        params.add(f't_idler_{i}', min=0.0, max=1.0, value=0.5)
+        params.add(f't_idler_{i}', min=0.0, max=0.999, value=0.9, vary=False)
 
-    params.add(f't_active_{i}', min=0.0, max=1.0, value=0.5)
+    params.add(f't_active_{i}', min=0.0, max=0.999, value=0.9)
+    if FIX_PHI_ZERO:
+        params.add(f'phi_active_{i}', value=0.0, min=0, max=2*np.pi)
     for j, gate in enumerate(datasets[f]):
         params.add(f'I_active_{i}_{j}')
-        params.add(f'phi_active_{i}_{j}', value=0.0, min=0, max=2*np.pi)
+        if not FIX_PHI_ZERO:
+            params.add(f'phi_active_{i}_{j}', value=0.0, min=0, max=2*np.pi)
 
 
 def eval_squid_current(pfield, i, j, params):
@@ -192,13 +202,15 @@ def eval_squid_current(pfield, i, j, params):
     idler_params = (params[f'phi_idler_{i}'],
                     params[f'I_idler_{i}'],
                     t_id)
-    active_params = (params[f'phi_active_{i}_{j}'],
+    phi_id = (params[f'phi_active_{i}_{j}']
+              if f'phi_active_{i}_{j}' in params else
+              params[f'phi_active_{i}'])
+    active_params = (phi_id,
                      params[f'I_active_{i}_{j}'],
                      params[f't_active_{i}'])
-    fe = fraunhofer_envelope(pfield*params[f'fraun_scale'] +
-                             params[f'fraun_offset_{i}'])
-    sq = compute_squid_current(pfield*params['phase_conversion'] *
-                               PHASE_SIGN,
+    fraun_phase = pfield*params[f'fraun_scale'] + params[f'fraun_offset_{i}']
+    fe = fraunhofer_envelope(fraun_phase)
+    sq = compute_squid_current(HANDEDNESS*pfield*params['phase_conversion'],
                                finite_transparency_jj_current,
                                idler_params,
                                finite_transparency_jj_current,
@@ -222,7 +234,8 @@ def target_function(params, datasets):
             pfield, curr = datasets[f][g]
             model = eval_squid_current(pfield, i, j, params)
             res.append(model - curr)
-    return np.concatenate(res)
+    res = np.concatenate(res)
+    return res
 
 # Guess reasonable parameters
 freq = []
@@ -233,16 +246,18 @@ for f in datasets:
         fft_freq = np.fft.fftfreq(len(curr), step)
         freq.append(fft_freq[period_index])
 phi_conversion =  2*np.pi*np.average(freq)
-params['phase_conversion'].value = phi_conversion
+params['phase_conversion'].value = (phi_conversion *
+                                    CONVERSION_FACTOR_CORRECTION)
 params['fraun_scale'].value = phi_conversion / 60
 for i, f in enumerate(datasets):
     i_idler = []
-    phi_idler = {}
+    phi_active = {}
     i_active = {}
-    params[f'fraun_offset_{i}'].value = - phi_conversion*np.average(rfield)/60
+    field_at_max = []
     for g in datasets[f]:
         rfield, curr = datasets[f][g]
-        phi_idler[g] = ((phi_conversion*rfield[np.argmax(curr)]) % (2*np.pi))
+        field_at_max.append(rfield[np.argmax(curr)])
+        phi_active[g] = ((phi_conversion*rfield[np.argmax(curr)]) % (2*np.pi))
         maxc, minc = np.amax(curr), np.amin(curr)
         avgc = (maxc + minc)/2
         amp = (maxc - minc)/2
@@ -262,9 +277,25 @@ for i, f in enumerate(datasets):
     params[f'I_idler_{i}'].value = np.average(i_idler)
     for j, g in enumerate(datasets[f]):
         params[f'I_active_{i}_{j}'].value = i_active[g]
-        params[f'phi_active_{i}_{j}'].value = phi_idler[g]
+        if f'phi_active_{i}_{j}' in params:
+            params[f'phi_active_{i}_{j}'].value = HANDEDNESS*phi_active[g]
+    # If we enforce a common phase difference (simply a field offset) use the
+    # average guess
+    if f'phi_active_{i}' in params:
+        params[f'phi_active_{i}'].value = (HANDEDNESS *
+                                           np.average(list(phi_active.values())
+                                           )
+    # Now that rfield refers to the proper field compute the offset for the
+    # Fraunhofer pattern
+    params[f'fraun_offset_{i}'].value = - (np.average(field_at_max) *
+                                           params['fraun_scale'].value)
 
 if PLOT_INITIAL_GUESS:
+    for i, f in enumerate(datasets):
+        plt.figure()
+        for j, g in enumerate(datasets[f]):
+            rfield, curr = datasets[f][g]
+            plt.plot(rfield, curr)
     # Plot the initial guesses to check our automatic guesses
     for i, f in enumerate(datasets):
         fig, axes = plt.subplots(gates_number[f], sharex=True,
@@ -276,7 +307,9 @@ if PLOT_INITIAL_GUESS:
             axes[j].plot(rfield, curr)
             axes[j].plot(rfield,
                          eval_squid_current(rfield, i, j, params.valuesdict()))
-            axes[j].axvline((params[f'phi_active_{i}_{j}'].value +
+            phi_active = (params[f'phi_active_{i}']
+                          if FIX_PHI_ZERO else params[f'phi_active_{i}_{j}'])
+            axes[j].axvline((phi_active.value +
                              params[f'phi_idler_{i}'].value)/phi_conversion)
             axes[j].set_title(f'Gate voltage {g} V')
     plt.show()
@@ -297,7 +330,7 @@ if PLOT_FITS:
             field, curr = datasets[f][g]
             axes[j].plot(field, curr, '+')
             axes[j].plot(field,
-                        eval_squid_current(field, i, j, params.valuesdict()))
+                         eval_squid_current(field, i, j, params.valuesdict()))
             axes[j].set_title(f'Gate voltage {g} V')
         if ANALYSIS_PATH:
             fig.savefig(os.path.join(ANALYSIS_PATH, f'fit_f_{f}.pdf'))
@@ -307,23 +340,34 @@ if PLOT_FITS:
 results = {}
 results['field'] = np.array(list(datasets))
 for name in ('I_idler', 't_idler', 't_active'):
+    if FIX_IDLER_TRANSPARENCY and name == 't_idler':
+        continue
     results[name] = np.array([params[name + f'_{i}'].value
                               for i, _ in enumerate(datasets)])
 
 results['gate'] = np.unique([list(datasets[f]) for f in datasets])
 for name in ('I_active', 'phi_active'):
+    if FIX_PHI_ZERO and name == 'phi_active':
+        results[name] = np.array([params[name + f'_{i}'].value
+                                  for i, f in enumerate(datasets)])
+        continue
     results[name] = np.array([[params[name + f'_{i}_{j}'].value
                                for j, _ in enumerate(datasets[f])]
                               for i, f in enumerate(datasets)])
 
 # Substract the phase at the lowest gate to define the phase  difference.
-results['dphi'] = - (results['phi_active'].T - results['phi_active'][:, 0]).T
-results['dphi'] %= 2*np.pi
+if FIX_PHI_ZERO:
+    results['dphi'] = np.zeros_like(results['phi_active'])
+else:
+    results['dphi'] = - (PHASE_SIGN * (results['phi_active'].T -
+                                       results['phi_active'][:, 0]).T)
+    results['dphi'] %= 2*np.pi
 
 # Save the data if a file was provided.
 if ANALYSIS_PATH:
     with h5py.File(os.path.join(ANALYSIS_PATH, 'results.h5'), 'w') as storage:
         storage.attrs['periodicity'] = 2*np.pi/params['phase_conversion']
+        storage.attrs['res_threshold'] = RESISTANCE_THRESHOLD
         for k, v in results.items():
             storage[k] = v
 
@@ -333,14 +377,17 @@ if ANALYSIS_PATH:
 fig, axes = plt.subplots(1, 2, sharex=True, figsize=(10, 5),
                          constrained_layout=True)
 fig.suptitle('Idler junction parameters')
-axes[0].plot(results['field'], results['I_idler'])
+sort_index = np.argsort(results['field'])
+axes[0].plot(results['field'][sort_index], results['I_idler'][sort_index])
 axes[0].set_xlabel('Parallel field (mT)')
 axes[0].set_ylabel('Idler JJ current (µA)')
-axes[1].plot(results['field'], results['t_idler'])
-axes[1].set_xlabel('Parallel field (mT)')
-axes[1].set_ylabel('Idler JJ transparency')
+if not FIX_IDLER_TRANSPARENCY:
+    axes[1].plot(results['field'][sort_index], results['t_idler'][sort_index])
+    axes[1].set_xlabel('Parallel field (mT)')
+    axes[1].set_ylabel('Idler JJ transparency')
 if ANALYSIS_PATH:
     fig.savefig(os.path.join(ANALYSIS_PATH, 'idler_jj.pdf'))
+print(f"Idler JJ transparency {results['t_idler']}")
 
 # Active parameters vs gate
 fig, axes = plt.subplots(1, 2, sharex=True, figsize=(10, 5),
@@ -350,9 +397,10 @@ for i, f in enumerate(results['field']):
     axes[0].plot(results['gate'], results['I_active'][i],
                  label=f'By={f} mT')
     axes[0].set_ylabel('Active JJ current (µA)')
-    axes[1].plot(results['gate'], results['phi_active'][i],
-                 label=f'By={f} mT')
-    axes[1].set_ylabel('Active JJ phase (rad)')
+    if not FIX_PHI_ZERO:
+        axes[1].plot(results['gate'], results['phi_active'][i],
+                    label=f'By={f} mT')
+        axes[1].set_ylabel('Active JJ phase (rad)')
 for i in range(2):
     axes[i].legend()
     axes[i].set_xlabel('Gate voltage (V)')
@@ -368,41 +416,61 @@ gs = axes[1, 0].get_gridspec()
 for ax in axes[1]:
     ax.remove()
 axes = [axes[0, 0], axes[0, 1], fig.add_subplot(gs[1, :])]
-axes[1].plot(results['field'], results['t_active'],
+sort_index = np.argsort(results['field'])
+axes[1].plot(results['field'][sort_index], results['t_active'][sort_index],
              label=f'Vg={g} V')
 axes[1].set_ylabel('Active JJ transparency')
 for i, g in enumerate(results['gate']):
-    axes[0].plot(results['field'], results['I_active'][:, i],
+    axes[0].plot(results['field'][sort_index],
+                 results['I_active'][:, i][sort_index],
                  label=f'Vg={g} V')
     axes[0].set_ylabel('Active JJ current (µA)')
-    axes[2].plot(results['field'], results['phi_active'][:, i],
+    phi = (results['phi_active'] if FIX_PHI_ZERO else
+           results['phi_active'][:, i])
+    axes[2].plot(results['field'][sort_index],
+                 phi[sort_index],
                  label=f'Vg={g} V')
     axes[2].set_ylabel('Active JJ phase (rad)')
 for i in range(3):
     if i != 1:
         axes[i].legend()
-    axes[i].set_xlabel('Parallel field (V)')
+    axes[i].set_xlabel('Parallel field (mT)')
 if ANALYSIS_PATH:
     fig.savefig(os.path.join(ANALYSIS_PATH, 'active_jj_vs_field.pdf'))
+print(f"Active JJ transparency {results['t_active']}")
 
 # Phase difference vs gate and field
-fig, axes = plt.subplots(1, 2, figsize=(10, 5),
-                         constrained_layout=True)
-fig.suptitle('Phase difference')
-for i, f in enumerate(results['field']):
-    axes[0].plot(results['gate'][1:], results['dphi'][i, 1:],
-                 label=f'By={f} mT')
-    axes[0].set_xlabel('Gate voltage (V)')
-    axes[0].set_ylabel('Phase difference (rad)')
-    axes[0].legend()
-for i, g in enumerate(results['gate']):
-    if i == 0:
-        continue
-    axes[1].plot(results['field'], results['dphi'][:, i],
-                 label=f'Vg={g} V')
+if not FIX_PHI_ZERO:
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5),
+                            constrained_layout=True)
+    fig.suptitle('Phase difference')
+    for i, f in enumerate(results['field']):
+        axes[0].plot(results['gate'][1:], results['dphi'][i, 1:],
+                    label=f'By={f} mT')
+        axes[0].set_xlabel('Gate voltage (V)')
+        axes[0].set_ylabel('Phase difference (rad)')
+        axes[0].legend()
+    for i, g in enumerate(results['gate']):
+        if i == 0:
+            continue
+
+        # Perform a linear fit
+        field = results['field']
+        dphi  = results['dphi'][:, i]
+        if len(dphi) > 1:
+            model = LinearModel()
+            p = model.guess(dphi, x=results['field'])
+            res = model.fit(dphi, p, x=results['field'])
+            ex_field = np.linspace(0, max(field))
+            axes[1].plot(ex_field, res.eval(x=ex_field), color=f'C{i}')
+
+        axes[1].plot(field, dphi, '+', color=f'C{i}', label=f'Vg={g} V')
+
     axes[1].set_xlabel('Parallel field (mT)')
     axes[1].set_ylabel('Phase difference (rad)')
+    axes[1].set_ylim((0, None))
     axes[1].legend()
+
 if ANALYSIS_PATH:
     fig.savefig(os.path.join(ANALYSIS_PATH, 'dphi.pdf'))
 
