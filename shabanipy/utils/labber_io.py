@@ -34,8 +34,7 @@ class LabberData:
         """ Open the underlying HDF5 file.
 
         """
-        self._file = File(self.path)
-
+        self._file = File(self.path, 'r')
         # Identify nested dataset
         i = 2
         nested = []
