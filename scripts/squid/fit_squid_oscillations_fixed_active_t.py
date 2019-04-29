@@ -18,16 +18,16 @@ assume the following:
 #: Name of the config file (located in the configs folder next to this script)
 #: to use. This will overwrite all the following constants. This file should be
 #: a python file defining all the constants defined above # --- Execution
-CONFIG_NAME = 'j2_phaseshift_zero_config.py'
+CONFIG_NAME = 'j2_phaseshift_all_by_config.py'
 
 #: Common folder in which the data file are related.
-DATA_ROOT_FOLDER = ''
+DATA_ROOT_FOLDER = '/Users/mdartiailh/Labber/Data/2019/04'
 
 #: Dictionary of parallel field, file path.
-DATA_PATHS = {}
+DATA_PATHS = {400: 'Data_0405/JS124S_BM002_465.hdf5'}
 
 #: Perpendicular field range to fit for each parallel field
-FIELD_RANGES = {}
+FIELD_RANGES = {400: (-2.28e-3, None)}
 
 #: Name/index of the gate column.
 GATE_COLUMN = 1
@@ -52,23 +52,26 @@ RESISTANCE_THRESHOLD = 1.4e-7
 #: oscillations
 PLOT_EXTRACTED_SWITCHING_CURRENT = False
 
-#: Should we fix the transparency of the idler as a function of field.
-FIX_IDLER_TRANSPARENCY = False
+#: Should we enforce the equality of the transparencies.
+EQUAL_TRANSPARENCIES = True
 
 #: Sign of the phase difference created by the perpendicular field.
 PHASE_SIGN = 1
 
 #: Handedness of the system.
-HANDEDNESS = -1
+HANDEDNESS = 1
 
 #: Correction factor to apply on the estimated pulsation
-CONVERSION_FACTOR_CORRECTION = 1
+CONVERSION_FACTOR_CORRECTION = 1.03
+
+#: Allow different frequency for each field
+FREQUENCY_PER_FIELD = False
 
 #: Fix the anomalous phase to 0.
 FIX_PHI_ZERO = False
 
 #: Should we plot the initial guess for each trace.
-PLOT_INITIAL_GUESS = False
+PLOT_INITIAL_GUESS = True
 
 #: Should we plot the fit for each trace.
 PLOT_FITS = True
@@ -140,9 +143,15 @@ for f, ppath in DATA_PATHS.items():
             rfield, curr = extract_switching_current(field, bias, diff,
                                                      RESISTANCE_THRESHOLD)
 
+            # Flip the first axis if the field was ramped down.
+            if rfield[0] > rfield[1]:
+                diff = diff[::-1]
+
             # Filter out Nan
             mask = np.logical_not(np.isnan(curr))
             rfield, curr = rfield[mask], curr[mask]
+            sort_index = np.argsort(rfield)
+            rfield, curr = rfield[sort_index], curr[sort_index]
 
             if any(frange):
                 masks = []
@@ -172,25 +181,28 @@ if PLOT_EXTRACTED_SWITCHING_CURRENT:
 
 # Setup the fit
 params = Parameters()
-params.add(f'phase_conversion')
+if not FREQUENCY_PER_FIELD:
+    params.add(f'phase_conversion')
 params.add(f'fraun_scale', value=0)
-if FIX_IDLER_TRANSPARENCY:
-    params.add('t_idler', min=0, max=1)
 
 for i, f in enumerate(datasets):
+    if FREQUENCY_PER_FIELD:
+        params.add(f'phase_conversion_{i}')
     params.add(f'I_idler_{i}')
+    params.add(f'Boffset_{i}', vary=False)
     params.add(f'phi_idler_{i}', value=0, vary=False)
     params.add(f'fraun_offset_{i}', value=0.0)
-    if not FIX_IDLER_TRANSPARENCY:
-        params.add(f't_idler_{i}', min=0.0, max=0.999, value=0.9, vary=False)
+    params.add(f't_idler_{i}', min=0.0, max=0.999, value=0.9)
+    if EQUAL_TRANSPARENCIES:
+        params[f't_idler_{i}'].set(expr=f't_active_{i}')
 
     params.add(f't_active_{i}', min=0.0, max=0.999, value=0.9)
     if FIX_PHI_ZERO:
-        params.add(f'phi_active_{i}', value=0.0, min=0, max=2*np.pi)
+        params.add(f'phi_active_{i}', value=0.0, min=-np.pi, max=np.pi)
     for j, gate in enumerate(datasets[f]):
         params.add(f'I_active_{i}_{j}')
         if not FIX_PHI_ZERO:
-            params.add(f'phi_active_{i}_{j}', value=0.0, min=0, max=2*np.pi)
+            params.add(f'phi_active_{i}_{j}', value=0.0, min=-np.pi, max=np.pi)
 
 
 def eval_squid_current(pfield, i, j, params):
@@ -208,9 +220,13 @@ def eval_squid_current(pfield, i, j, params):
     active_params = (phi_id,
                      params[f'I_active_{i}_{j}'],
                      params[f't_active_{i}'])
-    fraun_phase = pfield*params[f'fraun_scale'] + params[f'fraun_offset_{i}']
+    f = (pfield - params[f'Boffset_{i}'])
+    fraun_phase = f*params[f'fraun_scale'] + params[f'fraun_offset_{i}']
     fe = fraunhofer_envelope(fraun_phase)
-    sq = compute_squid_current(HANDEDNESS*pfield*params['phase_conversion'],
+    conversion = (params[f'phase_conversion']
+                  if 'phase_conversion' in params else
+                  params[f'phase_conversion_{i}'])
+    sq = compute_squid_current(HANDEDNESS*f*conversion,
                                finite_transparency_jj_current,
                                idler_params,
                                finite_transparency_jj_current,
@@ -238,26 +254,34 @@ def target_function(params, datasets):
     return res
 
 # Guess reasonable parameters
-freq = []
+freq = {}
 for f in datasets:
+    freq[f] = []
     for rfield, curr in datasets[f].values():
         step = rfield[1] - rfield[0]
         period_index = np.argmax(np.abs(np.fft.rfft(curr)[1:])) + 1
         fft_freq = np.fft.fftfreq(len(curr), step)
-        freq.append(fft_freq[period_index])
-phi_conversion =  2*np.pi*np.average(freq)
-params['phase_conversion'].value = (phi_conversion *
-                                    CONVERSION_FACTOR_CORRECTION)
+        freq[f].append(fft_freq[period_index])
+phi_conversion = 2*np.pi*np.average([np.average(freq[f])
+                                     for f in datasets])
+if FREQUENCY_PER_FIELD:
+    for i, f in enumerate(datasets):
+        params[f'phase_conversion_{i}'].value = (2*np.pi*np.average(freq[f]) *
+                                                 CONVERSION_FACTOR_CORRECTION)
+else:
+    params['phase_conversion'].value = (phi_conversion *
+                                        CONVERSION_FACTOR_CORRECTION)
 params['fraun_scale'].value = phi_conversion / 60
+
+max_fields = []
 for i, f in enumerate(datasets):
     i_idler = []
-    phi_active = {}
     i_active = {}
     field_at_max = []
+    max_fields.append(field_at_max)
     for g in datasets[f]:
         rfield, curr = datasets[f][g]
         field_at_max.append(rfield[np.argmax(curr)])
-        phi_active[g] = ((phi_conversion*rfield[np.argmax(curr)]) % (2*np.pi))
         maxc, minc = np.amax(curr), np.amin(curr)
         avgc = (maxc + minc)/2
         amp = (maxc - minc)/2
@@ -274,28 +298,31 @@ for i, f in enumerate(datasets):
             else:
                 i_idler.append(amp)
                 i_active[g] = avgc
+
+    # Set the guessed values
     params[f'I_idler_{i}'].value = np.average(i_idler)
-    for j, g in enumerate(datasets[f]):
-        params[f'I_active_{i}_{j}'].value = i_active[g]
-        if f'phi_active_{i}_{j}' in params:
-            params[f'phi_active_{i}_{j}'].value = HANDEDNESS*phi_active[g]
-    # If we enforce a common phase difference (simply a field offset) use the
-    # average guess
-    if f'phi_active_{i}' in params:
-        params[f'phi_active_{i}'].value = (HANDEDNESS *
-                                           np.average(list(phi_active.values())
-                                           )
-    # Now that rfield refers to the proper field compute the offset for the
-    # Fraunhofer pattern
-    params[f'fraun_offset_{i}'].value = - (np.average(field_at_max) *
-                                           params['fraun_scale'].value)
+    for k, g in enumerate(datasets[f]):
+        params[f'I_active_{i}_{k}'].value = i_active[g]
+
+    # Set the field offset based on the lowest gate
+    params[f'Boffset_{i}'].value = field_at_max[0]
+
+# To estimate the phase compare the position of the maximum in the data and in
+# the model.
+for i, f in enumerate(datasets):
+    for k, g in enumerate(datasets[f]):
+        rfield, curr = datasets[f][g]
+        model_curr = eval_squid_current(rfield, i, k,
+                                        params.valuesdict())
+        f_index = np.argmin(np.abs(rfield - max_fields[i][k]))
+        period = int(2*np.pi/phi_conversion/abs(rfield[1] - rfield[0]))
+        mask = slice(max(0, f_index - period//2), f_index + period//2)
+        max_model = np.argmax(model_curr[mask])
+        phi = phi_conversion*(max_fields[i][k] -
+                                    rfield[mask][max_model])
+        params[f'phi_active_{i}_{k}'].value = phi
 
 if PLOT_INITIAL_GUESS:
-    for i, f in enumerate(datasets):
-        plt.figure()
-        for j, g in enumerate(datasets[f]):
-            rfield, curr = datasets[f][g]
-            plt.plot(rfield, curr)
     # Plot the initial guesses to check our automatic guesses
     for i, f in enumerate(datasets):
         fig, axes = plt.subplots(gates_number[f], sharex=True,
@@ -307,10 +334,6 @@ if PLOT_INITIAL_GUESS:
             axes[j].plot(rfield, curr)
             axes[j].plot(rfield,
                          eval_squid_current(rfield, i, j, params.valuesdict()))
-            phi_active = (params[f'phi_active_{i}']
-                          if FIX_PHI_ZERO else params[f'phi_active_{i}_{j}'])
-            axes[j].axvline((phi_active.value +
-                             params[f'phi_idler_{i}'].value)/phi_conversion)
             axes[j].set_title(f'Gate voltage {g} V')
     plt.show()
 
@@ -339,9 +362,11 @@ if PLOT_FITS:
 # Build result arrays from the fitted parameters
 results = {}
 results['field'] = np.array(list(datasets))
+if FREQUENCY_PER_FIELD:
+    name = 'phase_conversion'
+    results['period'] = np.array([2*np.pi/params[name + f'_{i}'].value
+                                  for i, _ in enumerate(datasets)])
 for name in ('I_idler', 't_idler', 't_active'):
-    if FIX_IDLER_TRANSPARENCY and name == 't_idler':
-        continue
     results[name] = np.array([params[name + f'_{i}'].value
                               for i, _ in enumerate(datasets)])
 
@@ -361,12 +386,12 @@ if FIX_PHI_ZERO:
 else:
     results['dphi'] = - (PHASE_SIGN * (results['phi_active'].T -
                                        results['phi_active'][:, 0]).T)
-    results['dphi'] %= 2*np.pi
+    # results['dphi'] %= 2*np.pi
 
 # Save the data if a file was provided.
 if ANALYSIS_PATH:
     with h5py.File(os.path.join(ANALYSIS_PATH, 'results.h5'), 'w') as storage:
-        storage.attrs['periodicity'] = 2*np.pi/params['phase_conversion']
+        # storage.attrs['periodicity'] = 2*np.pi/params['phase_conversion']
         storage.attrs['res_threshold'] = RESISTANCE_THRESHOLD
         for k, v in results.items():
             storage[k] = v
@@ -381,10 +406,9 @@ sort_index = np.argsort(results['field'])
 axes[0].plot(results['field'][sort_index], results['I_idler'][sort_index])
 axes[0].set_xlabel('Parallel field (mT)')
 axes[0].set_ylabel('Idler JJ current (µA)')
-if not FIX_IDLER_TRANSPARENCY:
-    axes[1].plot(results['field'][sort_index], results['t_idler'][sort_index])
-    axes[1].set_xlabel('Parallel field (mT)')
-    axes[1].set_ylabel('Idler JJ transparency')
+axes[1].plot(results['field'][sort_index], results['t_idler'][sort_index])
+axes[1].set_xlabel('Parallel field (mT)')
+axes[1].set_ylabel('Idler JJ transparency')
 if ANALYSIS_PATH:
     fig.savefig(os.path.join(ANALYSIS_PATH, 'idler_jj.pdf'))
 print(f"Idler JJ transparency {results['t_idler']}")
@@ -459,8 +483,9 @@ if not FIX_PHI_ZERO:
         dphi  = results['dphi'][:, i]
         if len(dphi) > 1:
             model = LinearModel()
-            p = model.guess(dphi, x=results['field'])
-            res = model.fit(dphi, p, x=results['field'])
+            mask = np.less(field, 450)
+            p = model.guess(dphi[mask], x=field[mask])
+            res = model.fit(dphi[mask], p, x=field[mask])
             ex_field = np.linspace(0, max(field))
             axes[1].plot(ex_field, res.eval(x=ex_field), color=f'C{i}')
 
@@ -473,5 +498,9 @@ if not FIX_PHI_ZERO:
 
 if ANALYSIS_PATH:
     fig.savefig(os.path.join(ANALYSIS_PATH, 'dphi.pdf'))
+
+if FREQUENCY_PER_FIELD:
+    plt.figure()
+    plt.plot(results['field'], results['period'])
 
 plt.show()

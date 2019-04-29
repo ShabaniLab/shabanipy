@@ -31,16 +31,16 @@ DATA_ROOT_FOLDER = '/Users/mdartiailh/Labber/Data/2019'
 #: in which the j2 junction is gated.
 DATA_PATHS = {400: ['04/Data_0405/JS124S_BM002_465.hdf5',
                     '03/Data_0316/JS124S_BM002_390.hdf5'],
-              350: ['04/Data_0406/JS124S_BM002_466.hdf5',
-                    '03/Data_0317/JS124S_BM002_392.hdf5'],
-              300: ['04/Data_0406/JS124S_BM002_467.hdf5',
-                    '03/Data_0318/JS124S_BM002_394.hdf5'],
-              250: ['04/Data_0406/JS124S_BM002_468.hdf5',
-                    '03/Data_0318/JS124S_BM002_395.hdf5'],
-              200: ['04/Data_0407/JS124S_BM002_470.hdf5',
-                    '03/Data_0318/JS124S_BM002_396.hdf5'],
-              150: ['04/Data_0407/JS124S_BM002_471.hdf5',
-                    '03/Data_0319/JS124S_BM002_397.hdf5'],
+            #   350: ['04/Data_0406/JS124S_BM002_466.hdf5',
+            #         '03/Data_0317/JS124S_BM002_392.hdf5'],
+            #   300: ['04/Data_0406/JS124S_BM002_467.hdf5',
+            #         '03/Data_0318/JS124S_BM002_394.hdf5'],
+            #   250: ['04/Data_0406/JS124S_BM002_468.hdf5',
+            #         '03/Data_0318/JS124S_BM002_395.hdf5'],
+            #   200: ['04/Data_0407/JS124S_BM002_470.hdf5',
+            #         '03/Data_0318/JS124S_BM002_396.hdf5'],
+            #   150: ['04/Data_0407/JS124S_BM002_471.hdf5',
+            #         '03/Data_0319/JS124S_BM002_397.hdf5'],
               100: ['04/Data_0409/JS124S_BM002_474.hdf5',
                     '03/Data_0321/JS124S_BM002_405.hdf5']}
 
@@ -99,15 +99,19 @@ CONVERSION_FACTOR_CORRECTION = (1.03, 1.07)
 #: Fix the anomalous phase to 0.
 FIX_PHI_ZERO = False
 
+#: Enforce equality of the transparencies
+EQUAL_TRANSPARENCIES = True
+
 #: Should we plot the initial guess for each trace.
 PLOT_INITIAL_GUESS = False
 
 #: Should we plot the fit for each trace.
-PLOT_FITS = True
+#: Recognized values are False, True, 'color' (to plot over the colormap)
+PLOT_FITS = 'color'
 
 #: Path to which save the graphs and fitted parameters.
-ANALYSIS_PATH = ('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/'
-                 'SQUID/phaseshift_low_field/combined/By')
+ANALYSIS_PATH = ''#('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/'
+                 #'SQUID/phaseshift_low_field/combined/By/equal_transparencies')
 
 # =============================================================================
 # --- Execution ---------------------------------------------------------------
@@ -119,7 +123,7 @@ import math
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
-from lmfit import minimize, Parameters
+from lmfit import Minimizer, Parameters, conf_interval
 from lmfit.models import LinearModel
 
 from shabanipy.squid.squid_analysis import extract_switching_current
@@ -140,11 +144,13 @@ if not DATA_ROOT_FOLDER:
 
 gates_number = {}
 datasets = {}
+datasets_color = {}
 
 # Load and filter all the datasets
 for f, jj_paths in DATA_PATHS.items():
 
     datasets[f] = [{}, {}]
+    datasets_color[f] = [{}, {}]
 
     for ind, jj_path in enumerate(jj_paths):
 
@@ -196,8 +202,16 @@ for f, jj_paths in DATA_PATHS.items():
                     index = (np.nonzero(np.logical_and(*masks))
                             if len(masks) == 2 else np.nonzero(masks[0]))
                     datasets[f][ind][gate] = (rfield[index], curr[index])
+                    datasets_color[f][ind][gate] = (diff[index],
+                                                    (rfield[index][0],
+                                                     rfield[index][-1],
+                                                     bias[0, 0],
+                                                     bias[0, -1]))
                 else:
                     datasets[f][ind][gate] = (rfield, curr)
+                    datasets_color[f][ind][gate] = (diff,
+                                                    (rfield[0], rfield[-1],
+                                                     bias[0, 0], bias[0, -1]))
 
                 if PLOT_EXTRACTED_SWITCHING_CURRENT:
                     axes[i].imshow(diff.T,
@@ -224,6 +238,8 @@ for i, f in enumerate(datasets):
     params.add(f'fraun_offset_{i}', value=0.0)
     params.add(f't_j1_{i}', min=0.0, max=0.999, value=TRANSPARENCY_GUESS[f])
     params.add(f't_j2_{i}', min=0.0, max=0.999, value=TRANSPARENCY_GUESS[f])
+    if EQUAL_TRANSPARENCIES:
+        params[f't_j2_{i}'].set(expr=f't_j1_{i}')
 
     for j, g_dataset in enumerate(datasets[f]):
         # Parameters of the idler junction (j2 for the first dataset, j1 for
@@ -375,10 +391,6 @@ for i, f in enumerate(datasets):
             phi = phi_conversion[j]*(max_fields[i][j][k] -
                                      rfield[mask][max_model])
             params[f'phi_j{j+1}_active_{i}_{k}'].value = phi
-            if f == 400 and g == 1.0:
-                max_data = max_fields[i][j][k]
-                max_model = rfield[mask][max_model]
-                pass
 
 
 if PLOT_INITIAL_GUESS:
@@ -400,8 +412,8 @@ if PLOT_INITIAL_GUESS:
     plt.show()
 
 # Perform the fit
-result = minimize(target_function, params, args=(datasets,),
-                  method='leastsq')
+mini = Minimizer(target_function, params, fcn_args=(datasets,))
+result = mini.minimize(method='leastsq')
 params = result.params
 
 if PLOT_FITS:
@@ -413,10 +425,19 @@ if PLOT_FITS:
         for j, g_dataset in enumerate(datasets[f]):
             for k, g in enumerate(g_dataset):
                 field, curr = datasets[f][j][g]
-                axes[k, j].plot(field, curr, '+')
+                if PLOT_FITS == 'color':
+                    diff, extent = datasets_color[f][j][g]
+                    axes[k, j].imshow(diff.T,
+                                      extent=extent,
+                                      origin='lower',
+                                      aspect='auto',
+                                      vmin=0,
+                                      vmax=np.max(diff[0, -1]))
+                else:
+                    axes[k, j].plot(field, curr, '+')
                 model = eval_squid_current(field, i, j, k,
                                            params.valuesdict())
-                axes[k, j].plot(field, model)
+                axes[k, j].plot(field, model, color='C1')
                 axes[k, j].set_title(f'Gate voltage {g} V')
         if ANALYSIS_PATH:
             fig.savefig(os.path.join(ANALYSIS_PATH, f'fit_f_{f}.pdf'))
@@ -441,7 +462,7 @@ for name in ('I_j1_active', 'I_j2_active',
                                for j, _ in enumerate(datasets[f][index])]
                               for i, f in enumerate(datasets)])
 
-# Substract the phase at the lowest gate to define the phase  difference.
+# Substract the phase at the lowest gate to define the phase difference.
 if FIX_PHI_ZERO:
     results['dphi_j1'] = np.zeros_like(results['phi_j1_active'])
     results['dphi_j2'] = np.zeros_like(results['phi_j2_active'])
@@ -458,6 +479,7 @@ if ANALYSIS_PATH:
         storage.attrs['periodicity_j1'] = 2*np.pi/params['phase_conversion_j1']
         storage.attrs['periodicity_j2'] = 2*np.pi/params['phase_conversion_j2']
         storage.attrs['res_threshold'] = RESISTANCE_THRESHOLD
+        storage.attrs['equal_transparencies'] = EQUAL_TRANSPARENCIES
         for k, v in results.items():
             storage[k] = v
 
@@ -545,8 +567,8 @@ if not FIX_PHI_ZERO:
             continue
         for j in range(2):
             # Perform a linear fit
-            field = results['field']
-            dphi  = results[f'dphi_j{j+1}'][:, i]
+            field    = results['field']
+            dphi     = results[f'dphi_j{j+1}'][:, i]
             if len(dphi) > 1:
                 model = LinearModel()
                 p = model.guess(dphi, x=results['field'])
@@ -554,7 +576,8 @@ if not FIX_PHI_ZERO:
                 ex_field = np.linspace(0, max(field))
                 axes[j, 1].plot(ex_field, res.eval(x=ex_field), color=f'C{i}')
 
-            axes[j, 1].plot(field, dphi, '+', color=f'C{i}', label=f'Vg={g} V')
+            axes[j, 1].plot(field, dphi,
+                                '+', color=f'C{i}', label=f'Vg={g} V')
 
     for j in range(2):
         axes[j, 1].set_xlabel('Parallel field (mT)')

@@ -3,22 +3,22 @@ DATA_ROOT_FOLDER = '/Users/mdartiailh/Labber/Data/2019/04'
 
 #: Dictionary of parallel field, file path.
 DATA_PATHS = {400: 'Data_0405/JS124S_BM002_465.hdf5',
-              350: 'Data_0406/JS124S_BM002_466.hdf5',
-              300: 'Data_0406/JS124S_BM002_467.hdf5',
-              250: 'Data_0406/JS124S_BM002_468.hdf5',
-              200: 'Data_0407/JS124S_BM002_470.hdf5',
-              150: 'Data_0407/JS124S_BM002_471.hdf5',
+            #   350: 'Data_0406/JS124S_BM002_466.hdf5',
+            #   300: 'Data_0406/JS124S_BM002_467.hdf5',
+            #   250: 'Data_0406/JS124S_BM002_468.hdf5',
+            #   200: 'Data_0407/JS124S_BM002_470.hdf5',
+            #   150: 'Data_0407/JS124S_BM002_471.hdf5',
               100: 'Data_0409/JS124S_BM002_474.hdf5',}
             #   50:  'Data_0409/JS124S_BM002_476.hdf5'}
 
 #: Perpendicular field range to fit for each parallel field
-FIELD_RANGES = {400: (),
+FIELD_RANGES = {400: (None, -1.3e-3),
                 350: (),
                 300: (),
                 250: (),
                 200: (),
                 150: (),
-                100: (),
+                100: (None, 0),
                 50: ()}
 
 #: Name/index of the gate column.
@@ -44,11 +44,14 @@ RESISTANCE_THRESHOLD = 1.4e-7
 #: oscillations
 PLOT_EXTRACTED_SWITCHING_CURRENT = False
 
-#: Should we fix the transparency of the idler as a function of field.
-FIX_IDLER_TRANSPARENCY = False
+#: Should we enforce the equality of the transparencies.
+EQUAL_TRANSPARENCIES = True
 
 #: Sign of the phase difference created by the perpendicular field.
 PHASE_SIGN = 1
+
+#: Handedness of the system.
+HANDEDNESS = 1
 
 #: Should we plot the initial guess for each trace.
 PLOT_INITIAL_GUESS = False
@@ -57,5 +60,5 @@ PLOT_INITIAL_GUESS = False
 PLOT_FITS = True
 
 #: Path to which save the graphs and fitted parameters.
-ANALYSIS_PATH = ('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/'
-                 'SQUID/By/active_t_fixed')
+# ANALYSIS_PATH = ('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/'
+#                  'SQUID/By/active_t_fixed')
