@@ -12,7 +12,8 @@
 import numpy as np
 
 
-def compute_squid_current(phase, cpr1, parameters1, cpr2, parameters2):
+def compute_squid_current(phase, cpr1, parameters1, cpr2, parameters2,
+                          positive=True, aux_res=101):
     """Compute the SQUID current from 2 CPRs.
 
     Parameters
@@ -31,10 +32,15 @@ def compute_squid_current(phase, cpr1, parameters1, cpr2, parameters2):
         Parameters to use to compute the current in the second junction.
 
     """
-    aux = np.tile(np.linspace(0, 2*np.pi, 101), (len(phase), 1))
+    aux = np.tile(np.linspace(0, 2*np.pi, aux_res), (len(phase), 1))
     phi1, *p1 = parameters1
     phi1 += (aux.T + phase).T
     phi2, *p2 = parameters2
     phi2 += aux
-    total_current = cpr1(phi1, *p1) + cpr2(phi2, *p2)
-    return np.max(total_current, axis=-1)
+    cp1 = cpr1(phi1, *p1)
+    cp2 = cpr2(phi2, *p2)
+    total_current = cp1 + cp2
+    if positive:
+        return np.max(total_current, axis=-1)
+    else:
+        return np.min(total_current, axis=-1)

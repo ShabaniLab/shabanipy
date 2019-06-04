@@ -63,7 +63,7 @@ def finite_transparency_jj_current(phase, critical_current, transparency,
 
     """
     aux = np.linspace(0, 2*np.pi, 101)
-    norm = np.max(_finite_helper(phase, transparency, temperature, gap))
+    norm = np.max(_finite_helper(aux, transparency, temperature, gap))
     return critical_current / norm * _finite_helper(phase, transparency,
                                                     temperature, gap)
 
