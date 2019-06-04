@@ -102,8 +102,8 @@ class LabberData:
             masks = []
             for k, v in filters.items():
                 index = self.name_or_index_to_index(k)
-                mask = np.less(np.abs(d['Data']['Data'][:, index] - v),
-                               filter_precision)
+                mask_data = d['Data']['Data'][:, index]
+                mask = np.less(np.abs(mask_data - v), filter_precision)
                 masks.append(mask)
 
             mask = masks.pop()
