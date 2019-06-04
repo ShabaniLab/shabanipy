@@ -10,13 +10,13 @@
 """
 
 #: Parameters of the first junction: amplitude, transparency
-FIRST_JUNCTION = (1, 0.)
+FIRST_JUNCTION = (1, .5)
 
 #: Transparencies of the second junction
-SECOND_JUNCTION_TRANSPARENCIES = [0.0, 0.6, 0.9]
+SECOND_JUNCTION_TRANSPARENCIES = [0, 0.2, 0.4, 0.6, 0.8, 0.99999]
 
 #: Amplitudes of the second junction
-SECOND_JUNCTION_AMPLITUDES = [0.1, 0.25, 0.5, 1]
+SECOND_JUNCTION_AMPLITUDES = [1]
 
 # =============================================================================
 # --- Execution ---------------------------------------------------------------
@@ -28,17 +28,31 @@ from shabanipy.squid.squid_model import compute_squid_current
 from shabanipy.squid.cpr import finite_transparency_jj_current as cpr
 
 phase_diff = np.linspace(-2*np.pi, 2*np.pi, 1001)
+offset = 1.2
 
 for t in SECOND_JUNCTION_TRANSPARENCIES:
-    plt.figure()
-    for a in SECOND_JUNCTION_AMPLITUDES:
+    # plt.figure()
+    for i, a in enumerate(SECOND_JUNCTION_AMPLITUDES):
         squid = compute_squid_current(phase_diff,
                                       cpr, (0, *FIRST_JUNCTION),
-                                      cpr, (0, a, t))
+                                      cpr, (offset, a, t))
+        neg_squid = compute_squid_current(phase_diff,
+                                      cpr, (0, *FIRST_JUNCTION),
+                                      cpr, (offset, a, t),
+                                      False)
         amplitude = (np.amax(squid) - np.min(squid))
         baseline = (np.amax(squid) + np.min(squid))/2
         plt.plot(phase_diff,
-                 (squid - baseline)/amplitude,
-                 label=f't={t}, a={a}')
+                 2*(squid - baseline)/amplitude + 1,
+                 label=f't={t}, a={a}')#, color=f'C{i}')
+        amplitude = (np.amax(neg_squid) - np.min(neg_squid))
+        baseline = (np.amax(neg_squid) + np.min(neg_squid))/2
+        plt.plot(phase_diff,
+                 2*(neg_squid - baseline)/amplitude - 1,
+                 color=f'C{i}')
     plt.legend()
+    # plt.figure()
+    # plt.plot(phase_diff, cpr(phase_diff, *FIRST_JUNCTION))
+    # plt.plot(phase_diff, cpr(offset + phase_diff, 1, t))
+    # plt.legend()
 plt.show()

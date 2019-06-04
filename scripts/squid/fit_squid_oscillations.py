@@ -21,7 +21,7 @@ Based on zero field measurements we assume the following:
 #: Name of the config file (located in the configs folder next to this script)
 #: to use. This will overwrite all the following constants. This file should be
 #: a python file defining all the constants defined above # --- Execution
-CONFIG_NAME = ''
+CONFIG_NAME = 'both_phaseshift_by.py'
 
 #: Common folder in which the data file are related.
 DATA_ROOT_FOLDER = '/Users/mdartiailh/Labber/Data/2019'
@@ -67,7 +67,7 @@ GATE_COLUMN = 1
 
 #: Gate values for which to skip the analysis. The values should be present
 #: in the datasets.
-EXCLUDED_GATES = [-4.75, -3.5, -2.5, 2, 3]
+EXCLUDED_GATES = [-4.75, -3.5, -2.5, -2.0, -1.0, 1.0, 2.0, 3.0]
 
 #: Name/index of the perpendicular field column.
 FIELD_COLUMN = 2
@@ -94,7 +94,7 @@ PHASE_SIGN = (1, -1)
 HANDEDNESS = -1
 
 #: Correction factor to apply on the estimated pulsation
-CONVERSION_FACTOR_CORRECTION = (1.03, 1.07)
+CONVERSION_FACTOR_CORRECTION = (1.05, 1.07)
 
 #: Fix the anomalous phase to 0.
 FIX_PHI_ZERO = False
@@ -131,6 +131,11 @@ from shabanipy.squid.squid_model import compute_squid_current
 from shabanipy.squid.cpr import (fraunhofer_envelope,
                                  finite_transparency_jj_current)
 from shabanipy.utils.labber_io import LabberData
+from shabanipy.utils.plotting import format_phase
+
+plt.rcParams['axes.linewidth'] = 1.5
+plt.rcParams['font.size'] = 13
+plt.rcParams['pdf.fonttype'] = 42
 
 if CONFIG_NAME:
     print(f"Using configuration {CONFIG_NAME}, all scripts constants will be"
@@ -419,26 +424,53 @@ params = result.params
 if PLOT_FITS:
     for i, f in enumerate(datasets):
         fig, axes = plt.subplots(gates_number[f], 2,
-                                figsize=(10, 15),
+                                figsize=(12, 12),
                                 constrained_layout=True)
         fig.suptitle(f'Fits: Parallel field {f} mT')
+        color_max = 1.2*max([np.max(datasets_color[f][j][g][0][0, -1])*1e8
+                            for j, g_data in enumerate(datasets[f])
+                            for g in g_data])
         for j, g_dataset in enumerate(datasets[f]):
             for k, g in enumerate(g_dataset):
                 field, curr = datasets[f][j][g]
+                phase = ((field - params[f'Boffset_j{j+1}_{i}']) *
+                         params[f'phase_conversion_j{j+1}'].value/np.pi)
                 if PLOT_FITS == 'color':
                     diff, extent = datasets_color[f][j][g]
-                    axes[k, j].imshow(diff.T,
-                                      extent=extent,
-                                      origin='lower',
-                                      aspect='auto',
-                                      vmin=0,
-                                      vmax=np.max(diff[0, -1]))
+                    f0 = ((extent[0] - params[f'Boffset_j{j+1}_{i}']) *
+                          params[f'phase_conversion_j{j+1}'].value/np.pi)
+                    f1 = ((extent[1] - params[f'Boffset_j{j+1}_{i}']) *
+                          params[f'phase_conversion_j{j+1}'].value/np.pi)
+                    im = axes[-k-1, j].imshow(diff.T*1e8,
+                                           extent=(f0, f1,
+                                                   extent[2], extent[3]),
+                                           origin='lower',
+                                           aspect='auto',
+                                           vmin=0,
+                                           vmax=np.max(diff[0, -1])*1e8)
                 else:
-                    axes[k, j].plot(field, curr, '+')
-                model = eval_squid_current(field, i, j, k,
-                                           params.valuesdict())
-                axes[k, j].plot(field, model, color='C1')
-                axes[k, j].set_title(f'Gate voltage {g} V')
+                    axes[-k-1, j].plot(field, curr, '+')
+                if MULTIPLE_TRANSPARENCIES:
+                    for l, t in enumerate(MULTIPLE_TRANSPARENCIES):
+                        p = params.valuesdict()
+                        # p[f't_j1_{i}'] = t
+                        p[f't_j2_{i}'] = t
+                        model = eval_squid_current(field, i, j, k, p)
+                        axes[-k-1, j].plot(phase, model, color=f'C{l+1}',
+                                           label=f't={t}')
+                else:
+                    model = eval_squid_current(field, i, j, k,
+                                               params.valuesdict())
+                    axes[-k-1, j].plot(phase, model, color='C1')
+                axes[-k-1, j].xaxis.set_major_formatter(plt.FuncFormatter(format_phase))
+                axes[-k-1, j].tick_params(direction='in', width=1.5)
+                axes[-k-1, j].legend(title=f'Vg{j+1} = {g} V', loc=1)
+
+            axes[-1, j].set_xlabel('SQUID phase')
+            axes[len(g_dataset)//2, j].set_ylabel('Bias current (µA)')
+            if PLOT_FITS == 'color':
+                cb = plt.colorbar(im, ax=axes[len(g_dataset)//2, j])
+                cb.set_label('Resistance (Ω)')
         if ANALYSIS_PATH:
             fig.savefig(os.path.join(ANALYSIS_PATH, f'fit_f_{f}.pdf'))
     plt.show()
@@ -472,6 +504,8 @@ else:
                                      (results[f'phi_j{i+1}_active'].T -
                                       results[f'phi_j{i+1}_active'][:, 0]).T)
         results[f'dphi_j{i+1}'] %= 2*np.pi
+        mask = np.greater(results[f'dphi_j{i+1}'], np.pi).astype(int)
+        results[f'dphi_j{i+1}'] -= 2*np.pi*mask
 
 # Save the data if a file was provided.
 if ANALYSIS_PATH:
@@ -497,9 +531,11 @@ axes[0].set_xlabel('Parallel field (mT)')
 axes[0].set_ylabel('Idler JJ current (µA)')
 axes[0].legend()
 for i in (1, 2):
-    axes[1].plot(results['field'][sort_index],
-                 results[f't_j{i}'][sort_index],
-                 label=f'JJ {i}')
+    axes[1].errorbar(results['field'][sort_index],
+                     results[f't_j{i}'][sort_index],
+                     yerr=0.2,
+                     label=f'JJ {i}')
+    axes[1].set_ylim((0, 1))
 axes[1].set_xlabel('Parallel field (mT)')
 axes[1].set_ylabel('JJ transparency')
 axes[1].legend()
@@ -557,7 +593,7 @@ if not FIX_PHI_ZERO:
     for i, f in enumerate(results['field']):
         for j in range(2):
             axes[j, 0].plot(results['gate'][1:],
-                            results[f'dphi_j{j+1}'][i, 1:],
+                            results[f'dphi_j{j+1}'][i, 1:], '+',
                             label=f'By={f} mT')
             axes[j, 0].set_xlabel('Gate voltage (V)')
             axes[j, 0].set_ylabel('Phase difference (rad)')
@@ -573,19 +609,52 @@ if not FIX_PHI_ZERO:
                 model = LinearModel()
                 p = model.guess(dphi, x=results['field'])
                 res = model.fit(dphi, p, x=results['field'])
-                ex_field = np.linspace(0, max(field))
+                ex_field = np.linspace(min(0, min(field)), max(field))
                 axes[j, 1].plot(ex_field, res.eval(x=ex_field), color=f'C{i}')
 
-            axes[j, 1].plot(field, dphi,
-                                '+', color=f'C{i}', label=f'Vg={g} V')
+            axes[j, 1].errorbar(field, dphi, yerr=0.1*np.ones_like(dphi),
+                                fmt='+', color=f'C{i}', label=f'Vg={g} V')
 
     for j in range(2):
         axes[j, 1].set_xlabel('Parallel field (mT)')
         axes[j, 1].set_ylabel('Phase difference (rad)')
-        axes[j, 1].set_ylim((0, None))
+        axes[j, 1].set_ylim((min(0, np.min(dphi)), None))
         axes[j, 1].legend()
 
-if ANALYSIS_PATH:
-    fig.savefig(os.path.join(ANALYSIS_PATH, 'dphi.pdf'))
+    if ANALYSIS_PATH:
+        fig.savefig(os.path.join(ANALYSIS_PATH, 'dphi.pdf'))
+
+
+if not FIX_PHI_ZERO:
+    fig, axes = plt.subplots(1, 2, figsize=(10, 6), sharey=True,
+                             constrained_layout=True)
+    fig.suptitle('Phase difference')
+    for i, f in enumerate(results['field']):
+        for j in range(2):
+            axes[0].errorbar(results['gate'][1:],
+                             results[f'dphi_j{j+1}'][i, 1:],
+                             yerr=0.,
+                             fmt='+' if j == 0 else '*',
+                             color=f'C{i}', label=f'JJ {j+1} By={f} mT')
+        axes[0].set_xlabel('Gate voltage (V)')
+        axes[0].set_ylabel('Phase difference (rad)')
+        axes[0].legend()
+    for i, g in enumerate(results['gate']):
+        if i == 0:
+            continue
+        for j in range(2):
+            field    = results['field']
+            dphi     = results[f'dphi_j{j+1}'][:, i]
+            axes[1].errorbar(field, dphi, yerr=0.,
+                             fmt='+' if j == 0 else '*',
+                             color=f'C{i}', label=f'JJ {j+1} Vg={g} V')
+        axes[1].set_xlabel('Parallel field (mT)')
+        axes[1].set_xlim((min(0, np.min(field)), None))
+        axes[1].set_ylabel('Phase difference (rad)')
+        axes[1].set_ylim((min(0, np.min(dphi)), None))
+        axes[1].legend()
+
+    if ANALYSIS_PATH:
+        fig.savefig(os.path.join(ANALYSIS_PATH, 'fig4.pdf'))
 
 plt.show()
