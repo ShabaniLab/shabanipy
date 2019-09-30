@@ -6,16 +6,18 @@ DATA_ROOT_FOLDER = '/Users/mdartiailh/Labber/Data/2019'
 #: in which the j2 junction is gated.
 DATA_PATHS = {400: ['04/Data_0405/JS124S_BM002_465.hdf5',
                     '03/Data_0316/JS124S_BM002_390.hdf5'],
-            #   350: ['04/Data_0406/JS124S_BM002_466.hdf5',
-            #         '03/Data_0317/JS124S_BM002_392.hdf5'],
-            #   300: ['04/Data_0406/JS124S_BM002_467.hdf5',
-            #         '03/Data_0318/JS124S_BM002_394.hdf5'],
-            #   250: ['04/Data_0406/JS124S_BM002_468.hdf5',
-            #         '03/Data_0318/JS124S_BM002_395.hdf5'],
-            #   200: ['04/Data_0407/JS124S_BM002_470.hdf5',
-            #         '03/Data_0318/JS124S_BM002_396.hdf5'],
-            #   150: ['04/Data_0407/JS124S_BM002_471.hdf5',
-            #         '03/Data_0319/JS124S_BM002_397.hdf5'],
+              350: ['04/Data_0406/JS124S_BM002_466.hdf5',
+                    '03/Data_0317/JS124S_BM002_392.hdf5'],
+              300: ['04/Data_0406/JS124S_BM002_467.hdf5',
+                    '03/Data_0318/JS124S_BM002_394.hdf5'],
+            #   -300: ['04/Data_0430/JS124S_BM002_531.hdf5',
+            #          '04/Data_0430/JS124S_BM002_532.hdf5'],
+              250: ['04/Data_0406/JS124S_BM002_468.hdf5',
+                    '03/Data_0318/JS124S_BM002_395.hdf5'],
+              200: ['04/Data_0407/JS124S_BM002_470.hdf5',
+                    '03/Data_0318/JS124S_BM002_396.hdf5'],
+              150: ['04/Data_0407/JS124S_BM002_471.hdf5',
+                    '03/Data_0319/JS124S_BM002_397.hdf5'],
               100: ['04/Data_0409/JS124S_BM002_474.hdf5',
                     '03/Data_0321/JS124S_BM002_405.hdf5']}
 
@@ -23,26 +25,28 @@ DATA_PATHS = {400: ['04/Data_0405/JS124S_BM002_465.hdf5',
 FIELD_RANGES = {400: [(), (-8e-3, -5.5e-3)],
                 350: [(None, 0.2e-3), (None, -6e-3)],
                 300: [(), (-6.59e-3, -4.75e-3)],
+                -300: [(-0.7e-3, 1.5e-3), (-1e-3, 1.2e-3)],
                 250: [(None, 0.2e-3), ()],
                 200: [(), ()],
                 150: [(), (-4.7e-3, None)],
                 100: [(None, 0.2e-3), (-3.9e-3, -1.1e-3)]}
 
 #: Guess for the transparency of the junctions as a function of the field.
-TRANSPARENCY_GUESS = {400: 0.01,
-                      350: 0.1,
-                      300: 0.2,
-                      250: 0.3,
-                      200: 0.4,
-                      150: 0.6,
-                      100: 0.8}
+TRANSPARENCY_GUESS = {400: 0.4,
+                      350: 0.5,
+                      300: 0.6,
+                      -300: 0.2,
+                      250: 0.7,
+                      200: 0.8,
+                      150: 0.9,
+                      100: 0.9}
 
 #: Name/index of the gate column.
 GATE_COLUMN = 1
 
 #: Gate values for which to skip the analysis. The values should be present
 #: in the datasets.
-EXCLUDED_GATES = [-4.75, -3.5, -2.5, 2, 3]
+EXCLUDED_GATES = [-4.75, -3.5, -2.5, -2.0, -1.0, 1.0, 2.0, 3.0]
 
 #: Name/index of the perpendicular field column.
 FIELD_COLUMN = 2
@@ -69,7 +73,7 @@ PHASE_SIGN = (1, -1)
 HANDEDNESS = -1
 
 #: Correction factor to apply on the estimated pulsation
-CONVERSION_FACTOR_CORRECTION = (1.03, 1.07)
+CONVERSION_FACTOR_CORRECTION = (1.03, 1.05)
 
 #: Fix the anomalous phase to 0.
 FIX_PHI_ZERO = False
@@ -82,8 +86,10 @@ PLOT_INITIAL_GUESS = False
 
 #: Should we plot the fit for each trace.
 #: Recognized values are False, True, 'color' (to plot over the colormap)
-PLOT_FITS = True
+PLOT_FITS = 'color'
+
+MULTIPLE_TRANSPARENCIES = []#[0.01, 0.6, 0.95]
 
 #: Path to which save the graphs and fitted parameters.
-ANALYSIS_PATH = ''#('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/'
-                 #'SQUID/phaseshift_low_field/combined/By/equal_transparencies')
+ANALYSIS_PATH = ('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/'
+                 'SQUID/phaseshift_low_field/combined/By_paper')
