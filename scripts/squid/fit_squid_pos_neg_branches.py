@@ -92,6 +92,9 @@ PLOT_INITIAL_GUESS = False
 #: Should we plot the fit for each trace.
 PLOT_FITS = 'color'
 
+#: Should the fits be plotted vs the field rather than the phase
+PLOT_FITS_FIELD = True
+
 #: Path to which save the graphs and fitted parameters.
 ANALYSIS_PATH = ''
 
@@ -466,8 +469,11 @@ if PLOT_FITS:
                          params[name].value/np.pi)
                 if PLOT_FITS == 'color':
                     diff, (x, bias) = datasets_color[f][g][branch]
-                    x = ((x - params[f'Boffset_{i}']) *
-                         params[name].value/np.pi)
+                    if PLOT_FITS_FIELD:
+                        x = (x / 18.2 * 1000)
+                    else:
+                        x = ((x - params[f'Boffset_{i}']) *
+                            params[name].value/np.pi)
                     im = axes[-k-1].pcolormesh(x, bias, diff*1e8,
                                                vmin=0,
                                                vmax=color_max,
@@ -476,13 +482,21 @@ if PLOT_FITS:
                     axes[-k-1].plot(phase, curr, '+', color='C0')
                 model = eval_squid_current(field, i, k,
                                             params.valuesdict(), branch)
-                axes[-k-1].plot(phase, model, color='C1')
+                if PLOT_FITS_FIELD:
+                    x = (field / 18.2 * 1000)
+                else:
+                    x = phase
+                axes[-k-1].plot(x, model, color='C1')
 
-            axes[-k-1].xaxis.set_major_formatter(plt.FuncFormatter(format_phase))
+            if not PLOT_FITS_FIELD:
+                axes[-k-1].xaxis.set_major_formatter(plt.FuncFormatter(format_phase))
             axes[-k-1].tick_params(direction='in', width=1.5)
             axes[-k-1].legend(title=f'Vg2 = {g} V', loc=1)
 
-        axes[-1].set_xlabel('SQUID phase')
+        if PLOT_FITS_FIELD:
+            axes[-1].set_xlabel('Out of plane field (mT)')
+        else:
+            axes[-1].set_xlabel('SQUID phase')
         axes[len(datasets[f])//2].set_ylabel('Bias current (µA)')
 
         # Add a colorbar if pertinent
