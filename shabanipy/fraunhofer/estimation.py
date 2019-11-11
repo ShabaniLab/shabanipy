@@ -96,16 +96,16 @@ def rebuild_current_distribution(field, fraunhofer, jj_size, site_number,
         v = np.empty_like(u)
         v[0] = 2*u[0] - 2  # field offset
         v[1] = 4*u[1] - 2  # field to k conversion factor
-        v[2] = 2*u[2] - 1
+        v[2] = 2*u[2] - 1  # amplitude
 
         # Current distribution such that the integral is always 1
-        initial = u[3:3+sn]
-        dividers = sorted(initial)
-        v[3:3+sn] = np.array([a - b for a, b in zip(dividers + [1],
-                                                    [0] + dividers)])[:-1]
+        # initial = u[3:3+sn]
+        # dividers = sorted(initial)
+        # v[3:3+sn] = np.array([a - b for a, b in zip(dividers + [1],
+        #                                             [0] + dividers)])[:-1]
 
         # Phase distribution before normalization allowed between 1e-1 and 1e1
-        v[3+sn:3+2*sn] = 2*u[3+sn:3+2*sn] - 1
+        # v[3+sn:3+2*sn] = 2*u[3+sn:3+2*sn] - 1
 
         return v
 
@@ -124,8 +124,8 @@ def rebuild_current_distribution(field, fraunhofer, jj_size, site_number,
 
         # Compute the current distribution
         c_dis = np.ones(site_number)
-        c_dis[1:] = v[3:3+sn]
-        c_dis[0] = 1 - np.sum(c_dis[:-1])
+        # c_dis[1:] = v[3:3+sn]
+        # c_dis[0] = 1 - np.sum(c_dis[:-1])
         c_dis /= jj_size
 
         # Slope leading to a SQUID like pattern with the periodicity extracted from the
@@ -133,17 +133,17 @@ def rebuild_current_distribution(field, fraunhofer, jj_size, site_number,
         phase_slope = np.pi/jj_size/abs(first_node_loc - offset)
 
         p_dis = np.zeros(site_number)
-        p_dis[0] = 0
-        p_dis[1:] = 10**v[3+sn:3+2*sn]*phase_slope
+        # p_dis[0] = 0
+        # p_dis[1:] = 10**v[3+sn:3+2*sn]*phase_slope
 
         f = amp*produce_fraunhofer_fast((field - f_off), field_to_k, jj_size,
                                         c_dis, p_dis, 2**10+1)
 
         err = np.sum((100*(fraunhofer - f)/amplitude)**2)
 
-        return - err
+        return -err
 
-    sampler = NestedSampler(loglike, prior, 11)
+    sampler = NestedSampler(loglike, prior, 3)
     sampler.run_nested(dlogz=precision)
     res = sampler.results
     weights = np.exp(res.logwt - res.logz[-1])

@@ -148,14 +148,15 @@ def produce_fraunhofer(magnetic_field: np.ndarray,
     cd, pd = np.asarray(current_distribution), np.asarray(phase_distribution)
 
     if method == "quad":
+        norm = len(current_distribution)/np.sum(current_distribution)
         re, im = generate_current_integrand(jj_size, field_to_k_conversion, cd, pd)
         f = np.empty_like(magnetic_field)
         for i, b in enumerate(magnetic_field):
             f[i] = np.abs(quad(re, 0, jj_size, (b,), epsrel=eps_rel, epsabs=eps_abs)[0] +
-                        1j * quad(im, 0, jj_size, (b,), epsrel=eps_rel, epsabs=eps_abs)[0]
-                        )
+                          1j * quad(im, 0, jj_size, (b,), epsrel=eps_rel, epsabs=eps_abs)[0]
+                          )
 
-        return f
+        return f*norm
 
     elif method == "romb":
         return produce_fraunhofer_fast(magnetic_field, field_to_k_conversion, jj_size,
@@ -175,6 +176,7 @@ def produce_fraunhofer_fast(magnetic_field: np.ndarray,
                             ) -> np.ndarray:
     f = np.empty_like(magnetic_field)
     step_size = jj_size/(n_points - 1)
+    norm = len(current_distribution)/np.sum(current_distribution)
     for i, b in enumerate(magnetic_field):
         samples = sample_integrands(n_points, b, field_to_k_conversion,
                                     jj_size, current_distribution, phase_distribution)
@@ -182,4 +184,4 @@ def produce_fraunhofer_fast(magnetic_field: np.ndarray,
                       1j*romb_1d(samples[1], step_size)
                       )
 
-    return f
+    return f*norm
