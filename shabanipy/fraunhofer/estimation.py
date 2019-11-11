@@ -12,6 +12,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from dynesty import DynamicNestedSampler, NestedSampler
+from dynesty import utils
 
 from .util import produce_fraunhofer_fast
 
@@ -59,7 +60,8 @@ def guess_current_distribution(field: np.ndarray,
     return (field_offset, field[minimum], amplitude, c_dis, p_dis)
 
 
-def rebuild_current_distribution(field, fraunhofer, jj_size, site_number):
+def rebuild_current_distribution(field, fraunhofer, jj_size, site_number,
+                                 precision=10):
     """Rebuild a current distribution from a Fraunhofer pattern
 
     Parameters
@@ -96,7 +98,7 @@ def rebuild_current_distribution(field, fraunhofer, jj_size, site_number):
         v[1] = 4*u[1] - 2  # field to k conversion factor
         v[2] = 2*u[2] - 1
 
-        Current distribution such that the integral is always 1
+        # Current distribution such that the integral is always 1
         initial = u[3:3+sn]
         dividers = sorted(initial)
         v[3:3+sn] = np.array([a - b for a, b in zip(dividers + [1],
@@ -115,15 +117,15 @@ def rebuild_current_distribution(field, fraunhofer, jj_size, site_number):
         # reference.
         sn = site_number - 1
 
-        f_off = offset + 10**v[0]*first_node_loc
+        f_off = offset + np.sign(v[0])*10**-abs(v[0])*first_node_loc
         # Gives a Fraunhofer pattern at the first node for v[1] = 1
         field_to_k = 2*np.pi/jj_size/abs(first_node_loc - offset)*10**v[1]
-        amp = 10**v[2]
+        amp = amplitude*10**v[2]
 
         # Compute the current distribution
         c_dis = np.ones(site_number)
-        c_dis[:-1] = v[3:3+sn]
-        c_dis[-1] = 1 - np.sum(c_dis[:-1])
+        c_dis[1:] = v[3:3+sn]
+        c_dis[0] = 1 - np.sum(c_dis[:-1])
         c_dis /= jj_size
 
         # Slope leading to a SQUID like pattern with the periodicity extracted from the
@@ -142,5 +144,19 @@ def rebuild_current_distribution(field, fraunhofer, jj_size, site_number):
         return - err
 
     sampler = NestedSampler(loglike, prior, 11)
-    sampler.run_nested(dlogz=1)
-    return sampler.results
+    sampler.run_nested(dlogz=precision)
+    res = sampler.results
+    weights = np.exp(res.logwt - res.logz[-1])
+    mu, cov = utils.mean_and_cov(res["samples"], weights)
+
+    res["fraunhofer_params"] = \
+        {"offset": offset + np.sign(mu[0])*10**-abs(mu[0])*first_node_loc,
+         "field_to_k": 2*np.pi/jj_size/abs(first_node_loc - offset)*10**mu[1],
+         "amplitude": amplitude*10**mu[2]/jj_size,
+         "current_distribution": np.array([1 - np.sum(mu[3:3+site_number-1])] +
+                                          list(mu[3:3+site_number-1])),
+         "phase_distribution": np.array([0] +
+                                        list(mu[3+site_number-1:3+2*site_number-2])),
+        }
+
+    return res
