@@ -20,7 +20,7 @@ from shabanipy.fraunhofer.util import produce_fraunhofer
 
 # Current and phase distribution to use.
 DISTRIBUTIONS = [
-    ([1, 1, 1, 1, 1], [0, 0, 0, 0, 0]),
+    # ([1, 1, 1, 1, 1], [0, 0, 0, 0, 0]),
     ([2.5, 0, 0, 0, 2.5], [0, 0, 0, 0, np.pi/4])
 ]
 
@@ -31,10 +31,11 @@ AMPLITUDE = 5
 # - 3 don't solve for current/phase distribution
 # - 7 don't solve for phase distribution
 # - 11 solve for everything
-DIMENSION = 7
+DIMENSION = 11
 
 
 for d, p in DISTRIBUTIONS:
+    d, p = np.array(d), np.array(p)
     b = np.linspace(-5, 5, 101)
     f = AMPLITUDE*produce_fraunhofer(b, np.pi/4, 4, d, p)
     a = f[50]
@@ -43,7 +44,9 @@ for d, p in DISTRIBUTIONS:
     plt.plot(b, f)
     plt.show()
 
-    res = rebuild_current_distribution(b, f, 4, 5, precision=100, dimension=DIMENSION)
+    res = rebuild_current_distribution(b, f, 4, 5, precision=100, dimension=DIMENSION,
+                                       current_distribution=d,
+                                       phase_distribution=p)
 
     params = res["fraunhofer_params"]
     plt.plot(b, f)

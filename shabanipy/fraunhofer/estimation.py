@@ -61,7 +61,9 @@ def guess_current_distribution(field: np.ndarray,
 
 
 def rebuild_current_distribution(field, fraunhofer, jj_size, site_number,
-                                 precision=100, dimension=11):
+                                 precision=100, dimension=11,
+                                 current_distribution=None,
+                                 phase_distribution=None):
     """Rebuild a current distribution from a Fraunhofer pattern.
 
     Parameters
@@ -111,7 +113,7 @@ def rebuild_current_distribution(field, fraunhofer, jj_size, site_number,
 
         # Phase distribution before normalization allowed between 1e-1 and 1e1
         if dimension > 7:
-            v[3+sn:3+2*sn] = 2*u[3+sn:3+2*sn] - 1
+            v[3+sn:3+2*sn] = 4*u[3+sn:3+2*sn] - 2
 
         return v
 
@@ -130,6 +132,8 @@ def rebuild_current_distribution(field, fraunhofer, jj_size, site_number,
 
         # Compute the current distribution
         c_dis = np.ones(site_number)
+        if current_distribution is not None:
+            c_dis = current_distribution
         if dimension > 3:
             c_dis[1:] = v[3:3+sn]
             c_dis[0] = 1 - np.sum(c_dis[:-1])
@@ -139,9 +143,12 @@ def rebuild_current_distribution(field, fraunhofer, jj_size, site_number,
         phase_slope = np.pi/jj_size/abs(first_node_loc - offset)
 
         p_dis = np.zeros(site_number)
+        if phase_distribution is not None:
+            p_dis = phase_distribution
         if dimension > 7:
             p_dis[0] = 0
-            p_dis[1:] = 10**v[3+sn:3+2*sn]*phase_slope
+            p_dis[1:] = (np.sign(v[3+sn:3+2*sn]) *
+                         10**np.abs(v[3+sn:3+2*sn]) * 10 * phase_slope)
 
         f = amp*produce_fraunhofer_fast((field - f_off), field_to_k, jj_size,
                                         c_dis, p_dis, 2**10+1)
@@ -151,6 +158,7 @@ def rebuild_current_distribution(field, fraunhofer, jj_size, site_number,
         return -err
 
     sampler = NestedSampler(loglike, prior, dimension)
+                            # bound="balls", sample="rstagger")
     sampler.run_nested(dlogz=precision)
     res = sampler.results
     weights = np.exp(res.logwt - res.logz[-1])
