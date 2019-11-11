@@ -24,23 +24,34 @@ DISTRIBUTIONS = [
     ([2.5, 0, 0, 0, 2.5], [0, 0, 0, 0, np.pi/4])
 ]
 
+# Amplitude of the central lobe
+AMPLITUDE = 5
+
+# Dimension of the solution space:
+# - 3 don't solve for current/phase distribution
+# - 7 don't solve for phase distribution
+# - 11 solve for everything
+DIMENSION = 7
+
 
 for d, p in DISTRIBUTIONS:
     b = np.linspace(-5, 5, 101)
-    f = produce_fraunhofer(b, np.pi/4, 4, d, p)
+    f = AMPLITUDE*produce_fraunhofer(b, np.pi/4, 4, d, p)
     a = f[50]
     f[50] = f[51]
     f[51] = a
     plt.plot(b, f)
     plt.show()
 
-    res = rebuild_current_distribution(b, f, 4, 5)
+    res = rebuild_current_distribution(b, f, 4, 5, precision=100, dimension=DIMENSION)
 
     params = res["fraunhofer_params"]
     plt.plot(b, f)
     plt.plot(b,
              params["amplitude"] *
-             produce_fraunhofer(b-params["offset"], params["field_to_k"], 4, d, p)
+             produce_fraunhofer(b-params["offset"], params["field_to_k"], 4,
+                                d if DIMENSION < 4 else params["current_distribution"],
+                                p if DIMENSION < 8 else params["phase_distribution"])
              )
 
     fig, axes = dyplot.traceplot(res)

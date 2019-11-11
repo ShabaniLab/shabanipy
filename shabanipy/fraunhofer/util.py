@@ -120,6 +120,9 @@ def produce_fraunhofer(magnetic_field: np.ndarray,
                        ) -> np.ndarray:
     """Compute the Fraunhoffer pattern for a given current density.
 
+    The Fraunhofer pattern produced is normalized (central lobe max is 1).
+    This is independent of the current distribution used or of the junction size.
+
     Parameters
     ----------
     magnetic_field: np.ndarray
@@ -148,7 +151,7 @@ def produce_fraunhofer(magnetic_field: np.ndarray,
     cd, pd = np.asarray(current_distribution), np.asarray(phase_distribution)
 
     if method == "quad":
-        norm = len(current_distribution)/np.sum(current_distribution)
+        norm = len(current_distribution)/np.sum(current_distribution)/jj_size
         re, im = generate_current_integrand(jj_size, field_to_k_conversion, cd, pd)
         f = np.empty_like(magnetic_field)
         for i, b in enumerate(magnetic_field):
@@ -174,6 +177,9 @@ def produce_fraunhofer_fast(magnetic_field: np.ndarray,
                             phase_distribution: np.ndarray,
                             n_points: int,
                             ) -> np.ndarray:
+    """Fast version of produce_fraunhofer relying on Romberg integration method.
+
+    """
     f = np.empty_like(magnetic_field)
     step_size = jj_size/(n_points - 1)
     norm = len(current_distribution)/np.sum(current_distribution)
@@ -184,4 +190,4 @@ def produce_fraunhofer_fast(magnetic_field: np.ndarray,
                       1j*romb_1d(samples[1], step_size)
                       )
 
-    return f*norm
+    return f*norm/jj_size

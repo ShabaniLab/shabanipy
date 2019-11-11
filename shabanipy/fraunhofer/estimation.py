@@ -61,8 +61,8 @@ def guess_current_distribution(field: np.ndarray,
 
 
 def rebuild_current_distribution(field, fraunhofer, jj_size, site_number,
-                                 precision=10):
-    """Rebuild a current distribution from a Fraunhofer pattern
+                                 precision=100, dimension=11):
+    """Rebuild a current distribution from a Fraunhofer pattern.
 
     Parameters
     ----------
@@ -72,6 +72,10 @@ def rebuild_current_distribution(field, fraunhofer, jj_size, site_number,
         [description]
     jj_size : [type]
         [description]
+
+    Returns
+    -------
+
     """
     # Get the offset and estimated amplitude used in the prior
     # We do not use the estimated current and phase distribution to give the
@@ -99,13 +103,15 @@ def rebuild_current_distribution(field, fraunhofer, jj_size, site_number,
         v[2] = 2*u[2] - 1  # amplitude
 
         # Current distribution such that the integral is always 1
-        # initial = u[3:3+sn]
-        # dividers = sorted(initial)
-        # v[3:3+sn] = np.array([a - b for a, b in zip(dividers + [1],
-        #                                             [0] + dividers)])[:-1]
+        if dimension > 3:
+            initial = u[3:3+sn]
+            dividers = sorted(initial)
+            v[3:3+sn] = np.array([a - b for a, b in zip(dividers + [1],
+                                                        [0] + dividers)])[:-1]
 
         # Phase distribution before normalization allowed between 1e-1 and 1e1
-        # v[3+sn:3+2*sn] = 2*u[3+sn:3+2*sn] - 1
+        if dimension > 7:
+            v[3+sn:3+2*sn] = 2*u[3+sn:3+2*sn] - 1
 
         return v
 
@@ -124,17 +130,18 @@ def rebuild_current_distribution(field, fraunhofer, jj_size, site_number,
 
         # Compute the current distribution
         c_dis = np.ones(site_number)
-        # c_dis[1:] = v[3:3+sn]
-        # c_dis[0] = 1 - np.sum(c_dis[:-1])
-        c_dis /= jj_size
+        if dimension > 3:
+            c_dis[1:] = v[3:3+sn]
+            c_dis[0] = 1 - np.sum(c_dis[:-1])
 
         # Slope leading to a SQUID like pattern with the periodicity extracted from the
         # first node.
         phase_slope = np.pi/jj_size/abs(first_node_loc - offset)
 
         p_dis = np.zeros(site_number)
-        # p_dis[0] = 0
-        # p_dis[1:] = 10**v[3+sn:3+2*sn]*phase_slope
+        if dimension > 7:
+            p_dis[0] = 0
+            p_dis[1:] = 10**v[3+sn:3+2*sn]*phase_slope
 
         f = amp*produce_fraunhofer_fast((field - f_off), field_to_k, jj_size,
                                         c_dis, p_dis, 2**10+1)
@@ -143,7 +150,7 @@ def rebuild_current_distribution(field, fraunhofer, jj_size, site_number,
 
         return -err
 
-    sampler = NestedSampler(loglike, prior, 3)
+    sampler = NestedSampler(loglike, prior, dimension)
     sampler.run_nested(dlogz=precision)
     res = sampler.results
     weights = np.exp(res.logwt - res.logz[-1])
@@ -152,7 +159,7 @@ def rebuild_current_distribution(field, fraunhofer, jj_size, site_number,
     res["fraunhofer_params"] = \
         {"offset": offset + np.sign(mu[0])*10**-abs(mu[0])*first_node_loc,
          "field_to_k": 2*np.pi/jj_size/abs(first_node_loc - offset)*10**mu[1],
-         "amplitude": amplitude*10**mu[2]/jj_size,
+         "amplitude": amplitude*10**mu[2],
          "current_distribution": np.array([1 - np.sum(mu[3:3+site_number-1])] +
                                           list(mu[3:3+site_number-1])),
          "phase_distribution": np.array([0] +
