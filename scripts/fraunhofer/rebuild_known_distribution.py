@@ -31,7 +31,7 @@ AMPLITUDE = 5
 # - 3 don't solve for current/phase distribution
 # - 7 don't solve for phase distribution
 # - 11 solve for everything
-DIMENSION = 11
+DIMENSION = 7
 
 
 for d, p in DISTRIBUTIONS:
