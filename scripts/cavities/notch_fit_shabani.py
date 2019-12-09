@@ -30,12 +30,12 @@ def calculate_total_power(freq,power):
 
 #uncommentresonance parameters line for 0th resonance, 1st resonance, and so on.
 RESONANCE_PARAMETERS = {
-#0: ('min', 51, 500, 1e13, 'amplitude'),
-#1: ('min', 51, 500, 1e13, 'amplitude'),
-#2: ('min', 51, 500, 1e13, 'amplitude'),
-3: ('min', 51, 500, 1e13, 'amplitude'),
-#4: ('max', 51, 1000, 0, 'amplitude'),
-# 5: ('max', 51, 400, 1e13, 'amplitude'),
+#0: ('min', 51, 500, 1e13),
+#1: ('min', 51, 500, 1e13),
+#2: ('min', 51, 500, 1e13),
+3: ('min', 51, 500, 1e13),
+#4: ('max', 51, 1000, 0),
+# 5: ('max', 51, 400, 1e13),
     }
 
 with LabberData(PATH) as data:
@@ -55,7 +55,7 @@ for res_index, res_params in RESONANCE_PARAMETERS.items():
     powerList = []
     qList = []
     photonList = []
-    kind, sav_f, e_delay, base_smooth, method = res_params
+    kind, sav_f, e_delay, base_smooth = res_params
     for p_index, power in enumerate(powers):
         
         f = freq[:, p_index, res_index]
