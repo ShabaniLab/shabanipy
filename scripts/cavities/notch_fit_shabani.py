@@ -127,7 +127,7 @@ for res_index, res_params in RESONANCE_PARAMETERS.items():
         plt.show()
     
     if PLOT_PHOTON_VS_Q == True:
-        plt.plot(photonList,qList)
+        plt.semilogx(photonList,qList)
         plt.title("Photon Number Vs. Qi for resonance at " + str(fc) +"Hz")
         plt.xlabel("photon number")
         plt.ylabel("internal quality factor")
