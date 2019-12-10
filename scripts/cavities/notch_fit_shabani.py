@@ -14,10 +14,10 @@ from shabanipy.cavities.utils import (extract_baseline,
                                       estimate_time_delay,
                                       correct_for_time_delay)
 
-PATH = '/Users/goss/Desktop/Shabani/data/IBM_Resonators/IBM_resonators_JY002_006.hdf5'
+PATH = '/Users/goss/Desktop/Shabani/data/IBM_Resonators/IBM_resonators_20db_on_VNA_JY002_007.hdf5'
 FREQ_COLUMN = 0
 POWER_COLUMN = 1
-ATTENUATION_ON_VNA = 0
+ATTENUATION_ON_VNA = 20
 PLOT_Q_VS_POWER = True
 PLOT_PHOTON_VS_Q = True
 GET_PHOTON_NUMBER = True
@@ -30,10 +30,10 @@ def calculate_total_power(freq,power):
 
 #uncommentresonance parameters line for 0th resonance, 1st resonance, and so on.
 RESONANCE_PARAMETERS = {
-#0: ('min', 51, 500, 1e13),
+0: ('min', 51, 500, 1e13),
 #1: ('min', 51, 500, 1e13),
 #2: ('min', 51, 500, 1e13),
-3: ('min', 51, 500, 1e13),
+#3: ('min', 51, 500, 1e13),
 #4: ('max', 51, 1000, 0),
 # 5: ('max', 51, 400, 1e13),
     }
@@ -121,14 +121,14 @@ for res_index, res_params in RESONANCE_PARAMETERS.items():
 
     if PLOT_Q_VS_POWER == True:
         plt.plot(powerList,qList)
-        plt.title("Power Vs. Qi for resonance at " +str(fc) +"Hz")
+        plt.title("Power Vs. Qi for resonance at " +str('{:.3e}'.format(fc)) +"Hz")
         plt.xlabel("power [dB]")
         plt.ylabel("internal quality factor")
         plt.show()
     
     if PLOT_PHOTON_VS_Q == True:
         plt.semilogx(photonList,qList)
-        plt.title("Photon Number Vs. Qi for resonance at " + str(fc) +"Hz")
+        plt.title("Photon Number Vs. Qi for resonance at " + str('{:.3e}'.format(fc)) +"Hz")
         plt.xlabel("photon number")
         plt.ylabel("internal quality factor")
         plt.show()
