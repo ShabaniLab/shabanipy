@@ -18,6 +18,8 @@ PATH = '/Users/goss/Desktop/Shabani/data/IBM_Resonators/IBM_resonators_20db_on_V
 FREQ_COLUMN = 0
 POWER_COLUMN = 1
 ATTENUATION_ON_VNA = 20
+SUBTRACT_BASELINE = True
+PLOT_SUBTRACTED_BASELINE = True
 PLOT_Q_VS_POWER = True
 PLOT_PHOTON_VS_Q = True
 GET_PHOTON_NUMBER = True
@@ -30,12 +32,14 @@ def calculate_total_power(freq,power):
 
 #uncommentresonance parameters line for 0th resonance, 1st resonance, and so on.
 RESONANCE_PARAMETERS = {
-0: ('min', 51, 500, 1e13),
-#1: ('min', 51, 500, 1e13),
-#2: ('min', 51, 500, 1e13),
-#3: ('min', 51, 500, 1e13),
-#4: ('max', 51, 1000, 0),
-# 5: ('max', 51, 400, 1e13),
+0: ('min', 500, 1e13),
+#1: ('min', 500, 1e13),
+#2: ('min', 500, 1e13),
+#3: ('min', 500, 1e13),
+#4: ('min', 1000, 0),
+# 5: ('min', 400, 1e13),
+    
+    
     }
 
 with LabberData(PATH) as data:
@@ -55,7 +59,7 @@ for res_index, res_params in RESONANCE_PARAMETERS.items():
     powerList = []
     qList = []
     photonList = []
-    kind, sav_f, e_delay, base_smooth = res_params
+    kind, e_delay, base_smooth = res_params
     for p_index, power in enumerate(powers):
         
         f = freq[:, p_index, res_index]
@@ -64,9 +68,6 @@ for res_index, res_params in RESONANCE_PARAMETERS.items():
         i = imag[:, p_index, res_index]
         r = real[:, p_index, res_index]
         phi = np.unwrap(phi)
-        #slope = estimate_time_delay(f, phi,
-        #                          e_delay, False)
-        #phi = correct_for_time_delay(f, phi, slope)
         
         fc = estimate_central_frequency(f, a, kind)
         
@@ -81,17 +82,27 @@ for res_index, res_params in RESONANCE_PARAMETERS.items():
         i = i[indexes]
         r = r[indexes]
 
-        base = extract_baseline(a,
+        if SUBTRACT_BASELINE == True:
+            base = extract_baseline(a,
                                     0.8 if kind == 'min' else 0.2,
                                     base_smooth, plot=False)
-        #New background subtraction code snippet
-        #a /= (base/base[0])
-        #mid = base[base.size//2]
-        #base = base - mid
-        #a = a + base
-        #full = a*np.exp(1j*phi)
-        #r = np.real(full)
-        #i = np.imag(full)
+            a_init = a
+            a /= (base/base[0])
+            a_aft = a
+            mid = base[base.size//2]
+            base_init = base
+            base = base - mid
+            a = a + base
+            full = a*np.exp(1j*phi)
+            r = np.real(full)
+            i = np.imag(full)
+            if PLOT_SUBTRACTED_BASELINE == True:
+                fig, axes = plt.subplots(1, 2, sharex=True)
+                axes[0].plot(f, a_init, '+')
+                axes[0].plot(f, base_init)
+                axes[1].plot(f, a_init, '+')
+                axes[1].plot(f, np.absolute(full))
+                plt.show()
         
         names = ['freq','real','imag','mag','phase']
         data = np.array([f,r,i,a,phi]).T
