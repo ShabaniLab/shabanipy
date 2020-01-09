@@ -10,7 +10,7 @@
 #: Name of the config file (located in the configs folder next to this script)
 #: to use. This will overwrite all the following constants. This file should be
 #: a python file defining all the constants defined above # --- Execution
-CONFIG_NAME = 'JS129.py'
+CONFIG_NAME = 'JS131B.py'
 
 #: Common folder in which all data are stored
 BASE_FOLDER = r'/Users/mdartiailh/Labber/Data/2019/12'
@@ -53,6 +53,10 @@ VOLTAGE_NAME = {"JJ100-1": 1,
 #: analysis.
 COUNTER_NAME = None
 
+#: Name or index of the column containing the gate value for scans with
+#: gate traces (use None if absent).
+GATE_NAME = None
+
 #: Should we correct the offset in voltage and if so on how many points to
 #: average
 CORRECT_VOLTAGE_OFFSET = 5
@@ -82,8 +86,8 @@ from collections import defaultdict
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import constants
-from lmfit.models import LinearModel
 
+from shabanipy.jj.iv_analysis import analyse_vi_curve
 from shabanipy.utils.labber_io import LabberData
 
 plt.rcParams['axes.linewidth'] = 1.5
@@ -108,9 +112,10 @@ with open(OUTPUT, "w") as f:
     f.write(f"# AMPLIFIER_GAIN = {AMPLIFIER_GAIN}\n")
     f.write(f"# IC_VOLTAGE_THRESHOLD = {IC_VOLTAGE_THRESHOLD}\n")
     f.write(f"# HIGH_BIAS_THRESHOLD = {HIGH_BIAS_THRESHOLD}\n")
-    f.write("\t".join(["Sample", "JJGap(nm)", "Tc(K)", "Δ(meV)", "Rn_cold(Ω)",
-                       "Rn_hot(Ω)", "Ic_cold(µA)", "Ic_hot(µA)", "I_exe_cold(µA)",
-                       "I_exe_hot(µA)", "RnIc_cold(meV)", "RnI_exe_cold(meV)"]) + "\n")
+    f.write("\t".join(["Sample", "JJGap(nm)", "Tc(K)", "Δ(meV)", "Vg(V)",
+                       "Rn_cold(Ω)", "Rn_hot(Ω)", "Ic_cold(µA)", "Ic_hot(µA)",
+                       "I_exe_cold(µA)", "I_exe_hot(µA)",
+                       "RnIc_cold(meV)", "RnI_exe_cold(meV)"]) + "\n")
 
 results = defaultdict(list)
 
@@ -127,148 +132,85 @@ for sample, parameters in SAMPLES.items():
             val = data.get_data(counter)[0]
             filters[counter] = val
 
-        current_bias = (data.get_data(get_value(sample, BIAS_NAME), filters=filters) *
-                        get_value(sample, CURRENT_CONVERSION))
-
-        if current_bias[0] < 0.0:
-            cold_value = lambda p, n: abs(p)
-            hot_value = lambda p, n: abs(n)
+        gate_col = get_value(sample, GATE_NAME)
+        if gate_col:
+            gates = np.unique(data.get_data(gate_col))[::-1]
         else:
-            cold_value = lambda p, n: abs(n)
-            hot_value = lambda p, n: abs(p)
+            gates = [None]
 
-        measured_voltage = data.get_data(get_value(sample, VOLTAGE_NAME),
-                                         filters=filters)
+        offset_corr = get_value(sample, CORRECT_VOLTAGE_OFFSET)
 
-        # Sort the data so that the bias always go from negative to positive
-        sorting_index = np.argsort(current_bias)
-        current_bias = current_bias[sorting_index]
-        measured_voltage = measured_voltage[sorting_index]
+        for gate in gates:
 
-        # Index at which the bias current is zero
-        index = np.argmin(np.abs(current_bias))
+            if gate is not None:
+                filters[gate_col] = gate
 
-        # Correct the offset in the voltage data
-        offset_avg = get_value(sample, CORRECT_VOLTAGE_OFFSET)
-        if offset_avg:
-            measured_voltage -= np.average(measured_voltage[index-offset_avg+1:
-                                                            index+offset_avg])
+            current_bias = (data.get_data(get_value(sample, BIAS_NAME),
+                                          filters=filters) *
+                            get_value(sample, CURRENT_CONVERSION))
 
-        # Extract the critical current on the positive and negative branch
-        # Express them in µA
-        ic_n = current_bias[np.max(
-                                np.where(
-                                    np.less(measured_voltage[:index],
-                                            -get_value(sample, IC_VOLTAGE_THRESHOLD)
-                                            )
-                                    )[0]
-                                )
-                            ]   * 1e6
-        ic_p = current_bias[np.min(
-                                np.where(
-                                    np.greater(measured_voltage[index:],
-                                               get_value(sample, IC_VOLTAGE_THRESHOLD)
-                                               )
-                                    )[0]
-                                ) + index
-                            ] * 1e6
+            measured_voltage = data.get_data(get_value(sample, VOLTAGE_NAME),
+                                            filters=filters)
 
-        # Convert the voltage to the physical value
-        measured_voltage /= get_value(sample, AMPLIFIER_GAIN)
+            # Convert the voltage to the physical value
+            measured_voltage /= get_value(sample, AMPLIFIER_GAIN)
 
-        # Fit the high positive/negative bias to extract the normal resistance
-        # excess current and their product
-        index_pos = np.argmin(np.abs(current_bias - HIGH_BIAS_THRESHOLD))
-        index_neg = np.argmin(np.abs(current_bias + HIGH_BIAS_THRESHOLD))
+            title = f"Sample {sample}" + f", Vg = {gate} V" if gate else ""
+            # Store the results to be able to plot a summary at the end
+            offset_corr, rn_c, rn_h, ic_c, ic_h, iexe_c, iexe_h =\
+                analyse_vi_curve(current_bias, measured_voltage,
+                                 offset_corr,
+                                 get_value(sample, IC_VOLTAGE_THRESHOLD)  /
+                                 get_value(sample, AMPLIFIER_GAIN),
+                                 get_value(sample, HIGH_BIAS_THRESHOLD),
+                                 plot_title=title)
+            # Convert to µA
+            ic_c *= 1e6
+            ic_h *= 1e6
+            iexe_c *= 1e6
+            iexe_h *= 1e6
+            for n, v in zip(["sample", "gap_size", "Tc", "gap", "gate",
+                            "rn_cold", "rn_hot", "ic_cold", "ic_hot",
+                            "iexe_cold", "iexe_hot"],
+                            [sample, parameters["gap size"], parameters["Tc"], gap,
+                             gate, rn_c, rn_h, ic_c, ic_h, iexe_c, iexe_h]):
+                results[n].append(v)
 
-        model = LinearModel()
-        pars = model.guess(measured_voltage[index_pos:],
-                           x=current_bias[index_pos:])
-        pos_results = model.fit(measured_voltage[index_pos:], pars,
-                                x=current_bias[index_pos:])
-
-        pars = model.guess(measured_voltage[index_neg:],
-                           x=current_bias[index_neg:])
-        neg_results = model.fit(measured_voltage[:index_neg], pars,
-                                x=current_bias[:index_neg])
-
-        rn_p = pos_results.best_values["slope"]
-        # In µA
-        iexe_p = -pos_results.best_values["intercept"]/rn_p * 1e6
-
-        rn_n = neg_results.best_values["slope"]
-        # In µA
-        iexe_n = -neg_results.best_values["intercept"]/rn_n * 1e6
-
-
-        # Store the results to be able to plot a summary at the end
-        rn_c = cold_value(rn_p, rn_n)
-        rn_h = hot_value(rn_p, rn_n)
-        ic_c = cold_value(ic_p, ic_n)
-        ic_h = hot_value(ic_p, ic_n)
-        iexe_c = cold_value(iexe_p, iexe_n)
-        iexe_h = hot_value(iexe_p, iexe_n)
-        for n, v in zip(["sample", "gap_size", "Tc", "gap", "rn_cold", "rn_hot",
-                         "ic_cold", "ic_hot", "iexe_cold", "iexe_hot"],
-                        [sample, parameters["gap size"], parameters["Tc"], gap,
-                        rn_c, rn_h, ic_c, ic_h, iexe_c, iexe_h]):
-            results[n].append(v)
-
-        # Save the summary of the result
-        with open(OUTPUT, "a") as f:
-            to_save = (sample, parameters["gap size"], parameters["Tc"],
-                       gap, rn_c, rn_h, ic_c, ic_h, iexe_c, iexe_h,
-                       rn_p*ic_c/1e3, rn_p*iexe_c/1e3)
-            f.write("\t".join([f"v" for v in to_save]) + "\n")
-
-        # Prepare a summary plot: full scale
-        fig = plt.figure()
-        fig.suptitle(f"Sample {sample}")
-        ax = fig.gca()
-        ax.plot(current_bias*1e6, measured_voltage*1e3)
-        ax.plot(current_bias[index:]*1e6,
-                model.eval(pos_results.params, x=current_bias[index:])*1e3,
-                "--k")
-        ax.plot(current_bias[:index+1]*1e6,
-                model.eval(neg_results.params, x=current_bias[:index+1])*1e3,
-                "--k")
-        ax.set_xlabel("Bias current (µA)")
-        ax.set_ylabel("Voltage drop (mV)")
-
-        # Prepare a summary plot: zoomed in
-        fig = plt.figure()
-        fig.suptitle(f"Sample {sample}: zoom")
-        ax = fig.gca()
-        mask = np.logical_and(np.greater(current_bias*1e6, -3*ic_p),
-                              np.less(current_bias*1e6, 3*ic_p))
-        ax.plot(current_bias*1e6, measured_voltage*1e3)
-        ax.plot(current_bias[index:]*1e6,
-                model.eval(pos_results.params, x=current_bias[index:])*1e3,
-                "--")
-        ax.plot(current_bias[:index+1]*1e6,
-                model.eval(neg_results.params, x=current_bias[:index+1])*1e3,
-                "--")
-        ax.set_xlim((-3*ic_c, 3*ic_c))
-        ax.set_ylim((np.min(measured_voltage[mask]*1e3),
-                     np.max(measured_voltage[mask]*1e3)))
-        ax.set_xlabel("Bias current (µA)")
-        ax.set_ylabel("Voltage drop (mV)")
+            # Save the summary of the result
+            with open(OUTPUT, "a") as f:
+                to_save = (sample, parameters["gap size"], parameters["Tc"],
+                        gap, gate, rn_c, rn_h, ic_c, ic_h, iexe_c, iexe_h,
+                        rn_c*ic_c/1e3, rn_c*iexe_c/1e3)
+                f.write("\t".join([f"{v}" for v in to_save]) + "\n")
 
 # Prepare comparative plots between samples
 for k in results:
     results[k] = np.array(results[k])
 
-fig = plt.figure()
-plt.suptitle("Size dependence")
-ax = fig.gca()
-ax.plot(results["gap_size"], results["ic_cold"]*results["rn_cold"]/1e3/results["gap"],
-        "+", label="$R_N\,I_c/\Delta$")
-ax.plot(results["gap_size"], results["iexe_cold"]*results["rn_cold"]/1e3/results["gap"],
-        "+", label="$R_N\,I_{exe}/\Delta$")
-ax.axhline(np.pi)
-ax.set_xlabel("Gap size (nm)")
-ax.set_ylabel("")
-ax.legend()
+if None in results["gate"]:
+    fig = plt.figure()
+    plt.suptitle("Size dependence")
+    ax = fig.gca()
+    ax.plot(results["gap_size"], results["ic_cold"]*results["rn_cold"]/1e3/results["gap"],
+            "+", label="$R_N\,I_c/\Delta$")
+    ax.plot(results["gap_size"], results["iexe_cold"]*results["rn_cold"]/1e3/results["gap"],
+            "+", label="$R_N\,I_{exe}/\Delta$")
+    ax.axhline(np.pi)
+    ax.set_xlabel("Gap size (nm)")
+    ax.set_ylabel("")
+    ax.legend()
+else:
+    fig = plt.figure()
+    plt.suptitle("Gate dependence")
+    ax = fig.gca()
+    ax.plot(results["gate"], results["ic_cold"]*results["rn_cold"]/1e3/results["gap"],
+            "+", label="$R_N\,I_c/\Delta$")
+    ax.plot(results["gate"], results["iexe_cold"]*results["rn_cold"]/1e3/results["gap"],
+            "+", label="$R_N\,I_{exe}/\Delta$")
+    ax.axhline(np.pi)
+    ax.set_xlabel("Gate voltage (V)")
+    ax.set_ylabel("")
+    ax.legend()
 
 # Display all figures
 plt.show()
