@@ -50,7 +50,7 @@ def mean_free_time_from_mobility(mobility, effective_mass):
     Parameters
     ----------
     mobility : float | np.ndarray
-        Carriers mobility of the sample in m^2s^-sV^-1.
+        Carriers mobility of the sample in m^2s^-2V^-1.
     effective_mass : float
         Effective mass of the carriers in kg.
 

@@ -116,7 +116,7 @@ def analyse_vi_curve(current_bias, measured_voltage, voltage_offset_correction,
 
     rn_n = neg_results.best_values["slope"]
     # Iexe n
-    iexe_n = -neg_results.best_values["intercept"]/rn_n
+    iexe_n = neg_results.best_values["intercept"]/rn_n
 
     # XXX Fix layout + title plus positive bias plot
     if plots:
@@ -135,8 +135,8 @@ def analyse_vi_curve(current_bias, measured_voltage, voltage_offset_correction,
         ax.set_ylabel("Voltage drop (mV)")
 
         # Prepare a summary plot: zoomed in
-        mask = np.logical_and(np.greater(current_bias*1e6, -3*ic_p),
-                              np.less(current_bias*1e6, 3*ic_p))
+        mask = np.logical_and(np.greater(current_bias, -3*ic_p),
+                              np.less(current_bias, 3*ic_p))
         if np.any(mask):
             fig = plt.figure(constrained_layout=True)
             fig.suptitle(plot_title + ": zoom")
@@ -149,9 +149,10 @@ def analyse_vi_curve(current_bias, measured_voltage, voltage_offset_correction,
             ax.plot(current_bias[:index+1]*1e6,
                     model.eval(neg_results.params, x=current_bias[:index+1])*1e3,
                     "--")
-            ax.set_xlim((-3*cold_value(ic_p, ic_n), 3*cold_value(ic_p, ic_n)))
-            ax.set_ylim((np.min(measured_voltage[mask]*1e3),
-                        np.max(measured_voltage[mask]*1e3)))
+            ax.set_xlim((-3*cold_value(ic_p, ic_n)*1e6, 3*cold_value(ic_p, ic_n)*1e6))
+            aux = measured_voltage[mask]
+            ax.set_ylim((np.min(measured_voltage[mask])*1e3,
+                         np.max(measured_voltage[mask])*1e3))
             ax.set_xlabel("Bias current (µA)")
             ax.set_ylabel("Voltage drop (mV)")
 

@@ -10,7 +10,7 @@
 #: Name of the config file (located in the configs folder next to this script)
 #: to use. This will overwrite all the following constants. This file should be
 #: a python file defining all the constants defined above # --- Execution
-CONFIG_NAME = 'JS131B.py'
+CONFIG_NAME = 'JS307-4JJ-2HB-1.py'
 
 #: Common folder in which all data are stored
 BASE_FOLDER = r'/Users/mdartiailh/Labber/Data/2019/12'
@@ -155,7 +155,10 @@ for sample, parameters in SAMPLES.items():
             # Convert the voltage to the physical value
             measured_voltage /= get_value(sample, AMPLIFIER_GAIN)
 
-            title = f"Sample {sample}" + f", Vg = {gate} V" if gate else ""
+            title = (f"Sample {sample}" +
+                     (f", Vg = {gate} V" if gate else
+                      f", gap {parameters['gap size']} nm")
+            )
             # Store the results to be able to plot a summary at the end
             offset_corr, rn_c, rn_h, ic_c, ic_h, iexe_c, iexe_h =\
                 analyse_vi_curve(current_bias, measured_voltage,
@@ -195,7 +198,10 @@ if None in results["gate"]:
             "+", label="$R_N\,I_c/\Delta$")
     ax.plot(results["gap_size"], results["iexe_cold"]*results["rn_cold"]/1e3/results["gap"],
             "+", label="$R_N\,I_{exe}/\Delta$")
-    ax.axhline(np.pi)
+    ax.axhline(np.pi, ls="--", label="IcRn ballistic limit")
+    ax.axhline(1.32*np.pi/2, ls="-.", label="IcRn diffusive limit")
+    ax.axhline(8/3, color="C1", ls="--", label="IexeRn ballistic limit")
+    ax.axhline(1.467, color="C1", ls="-.", label="IexeRn diffusive limit")
     ax.set_xlabel("Gap size (nm)")
     ax.set_ylabel("")
     ax.legend()
