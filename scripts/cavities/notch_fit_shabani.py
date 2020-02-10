@@ -14,17 +14,17 @@ from shabanipy.cavities.utils import (extract_baseline,
                                       estimate_time_delay,
                                       correct_for_time_delay)
 
-PATH = '/Users/goss/Desktop/Shabani/data/IBM_Resonators/IBM_resonators_20db_on_VNA_JY002_007.hdf5'
+PATH = '/Users/goss/Desktop/Shabani/data/IBM_Resonators/IBM_resonators_007.hdf5'
 FREQ_COLUMN = 0
 POWER_COLUMN = 1
-ATTENUATION_ON_VNA = 20
-SUBTRACT_BASELINE = True
-PLOT_SUBTRACTED_BASELINE = True
+ATTENUATION_ON_VNA = -20
+SUBTRACT_BASELINE = False
+PLOT_SUBTRACTED_BASELINE = False
 PLOT_Q_VS_POWER = True
 PLOT_PHOTON_VS_Q = True
 GET_PHOTON_NUMBER = True
 GET_SINGLE_PHOTON_LIMIT = True
-
+GUI_FITTING = True
 
 def calculate_total_power(freq,power):
     totalPower = (-(1/800000000)*freq - (215/4)) + power + ATTENUATION_ON_VNA
@@ -36,13 +36,20 @@ RESONANCE_PARAMETERS = {
 #1: ('min', 500, 1e13),
 #2: ('min', 500, 1e13),
 #3: ('min', 500, 1e13),
-#4: ('min', 1000, 0),
-# 5: ('min', 400, 1e13),
+#4: ('min', 1000, 1e13),
+#5: ('min', 400, 1e13),
+#6: ('min', 500, 1e13),
+#7: ('min', 500, 1e13),
+#8: ('min', 500, 1e13),
+#9: ('min', 1000, 1e13),
+#10: ('min', 400, 1e13),
     
     
     }
 
 with LabberData(PATH) as data:
+    #print(data.list_channels())
+    #print(list(data._file['Traces']))
     shape = data.compute_shape((FREQ_COLUMN, POWER_COLUMN))
     shape = [shape[1], shape[0]]
     powers = np.unique(data.get_data(POWER_COLUMN))
@@ -53,7 +60,7 @@ with h5py.File(PATH) as f:
     imag  = f['Traces']['VNA - S21'][:, 1].reshape([-1] + shape)
     amp = np.abs(real + 1j*imag)
     phase = np.arctan2(imag, real)
-    
+
 for res_index, res_params in RESONANCE_PARAMETERS.items():
     
     powerList = []
@@ -112,10 +119,12 @@ for res_index, res_params in RESONANCE_PARAMETERS.items():
         port1 = circuit.notch_port(f_data=df["freq"].values,
                                 z_data_raw=(df["real"].values + 1j*df["imag"].values))
         
-        port1.GUIfit()
-        
-        port1.plotall()
-        
+        if GUI_FITTING == True:
+            port1.GUIfit()
+            port1.plotall()
+        else:
+            port1.autofit()
+                
         print("at power " + str(power) + " and " + str(ATTENUATION_ON_VNA) + " attenuation:")
         powerList.append(float(power))
         fit = pd.DataFrame([port1.fitresults]).applymap(lambda x: "{0:.2e}".format(x))
