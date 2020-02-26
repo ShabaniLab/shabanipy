@@ -93,8 +93,8 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-from shabanipy.shapiro import normalize_db_power
-from shabanipy.shapiro.binning import (bin_power_shapiro_steps,
+from shabanipy.jj.shapiro import normalize_db_power
+from shabanipy.jj.shapiro.binning import (bin_power_shapiro_steps,
                                        extract_step_weight)
 from shabanipy.utils.labber_io import LabberData
 

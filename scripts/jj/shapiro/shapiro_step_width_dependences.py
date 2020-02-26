@@ -65,7 +65,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 from lmfit.models import LinearModel
 
-from shabanipy.shapiro import bessel_step_width
+from shabanipy.jj.shapiro import bessel_step_width
 
 dirname = os.path.dirname(CSV_ANALYSIS_SUMMARY_PATH)
 summary = pd.read_csv(CSV_ANALYSIS_SUMMARY_PATH, comment='#')
