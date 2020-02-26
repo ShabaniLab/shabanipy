@@ -44,12 +44,14 @@ def extract_mobility(field, rxx, ryy, density, geometric_factor):
     # Identify the shape of the data and make them suitable for the following
     # treatment.
     if len(field.shape) >= 2:
+        input_is_1d = False
         original_shape = field.shape[:-1]
         trace_number = np.prod(original_shape)
         field = field.reshape((trace_number, -1))
         rxx = rxx.reshape((trace_number, -1))
         ryy = ryy.reshape((trace_number, -1))
     else:
+        input_is_1d = True
         trace_number = 1
         field = np.array((field,))
         rxx = np.array((rxx,))
@@ -62,6 +64,11 @@ def extract_mobility(field, rxx, ryy, density, geometric_factor):
         r0[0, i] = rxx[i, min_field_ind]
         r0[1, i] = ryy[i, min_field_ind]
 
-    r0.reshape((2, ) + original_shape)
     r0 *= geometric_factor
-    return 1/cs.e/density/r0  # Conversion to m^2.s^-1.V^-1
+    mob =  1/cs.e/density/r0  # Conversion to m^2.s^-1.V^-1
+
+    if input_is_1d:
+        return mob[:, 0]
+    else:
+        return mob.reshape((2, ) + original_shape)
+
