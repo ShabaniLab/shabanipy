@@ -1,9 +1,6 @@
 #: Path towards the hdf5 file holding the data
 PATH = '/Users/mdartiailh/Labber/Data/2019/11/Data_1114/JS129D_BM001_038.hdf5'
 
-#: Directory in which to save the figure.
-FIG_DIRECTORY = ''
-
 #: Name or index of the column containing the frequency data if applicable.
 #: Leave blanck if the datafile does not contain a frequency sweep.
 FREQUENCY_NAME = 2

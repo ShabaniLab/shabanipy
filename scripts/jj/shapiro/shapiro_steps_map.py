@@ -15,13 +15,13 @@ The plot use the folling axes:
 #: Name of the config file (located in the configs folder next to this script)
 #: to use. This will overwrite all the following constants. This file should be
 #: a python file defining all the constants defined above # --- Execution
-CONFIG_NAME = 'JS129D/shapiro_step_map+histo.py'
+CONFIG_NAME = 'JS131A/shapiro_step_map+histo.py'
 
 #: Path towards the hdf5 file holding the data
 PATH = '/Users/mdartiailh/Labber/Data/2019/11/Data_1114/JS129D_BM001_038.hdf5'
 
 #: Directory in which to save the figure.
-FIG_DIRECTORY = ''
+FIG_DIRECTORY = '/Users/mdartiailh/Documents/PostDocNYU/Papers/Dartiailh-shapiro-steps/raw-figures/JS131A'
 
 #: Name or index of the column containing the frequency data if applicable.
 #: Leave blanck if the datafile does not contain a frequency sweep.
@@ -190,7 +190,7 @@ for frequency in FREQUENCIES:
 
     if h_power is not None and indexes is not None:
         f = plt.figure(constrained_layout=True,
-                       figsize=(8, 5))
+                       figsize=(9, 6))
         spec = f.add_gridspec(ncols=2, nrows=2, width_ratios=(1, 3),
                               height_ratios=(1, 3))
         w_ax = f.add_subplot(spec[0, 1])
@@ -269,7 +269,7 @@ for frequency in FREQUENCIES:
 
     if FIG_DIRECTORY:
         f.savefig(os.path.join(FIG_DIRECTORY,
-                                f'{frequency/1e9}GHz_' +
+                                f'histo_{frequency/1e9}GHz_' +
                                 os.path.split(PATH)[1].split('.')[0] +
                                 '.pdf'))
 

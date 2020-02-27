@@ -11,13 +11,13 @@ differential conductance
 #: Name of the config file (located in the configs folder next to this script)
 #: to use. This will overwrite all the following constants. This file should be
 #: a python file defining all the constants defined above # --- Execution
-CONFIG_NAME = ''
+CONFIG_NAME = 'JS131A/shapiro_steps_cuts+dvdi.py'
 
 #: Path towards the hdf5 file holding the data
 PATH = '/Users/mdartiailh/Labber/Data/2019/11/Data_1114/JS129D_BM001_038.hdf5'
 
 #: Directory in which to save the figure.
-FIG_DIRECTORY = ''
+FIG_DIRECTORY = '/Users/mdartiailh/Documents/PostDocNYU/Papers/Dartiailh-shapiro-steps/raw-figures/JS131A'
 
 #: Name or index of the column containing the frequency data if applicable.
 #: Leave blanck if the datafile does not contain a frequency sweep.
@@ -116,6 +116,13 @@ plt.rcParams['ytick.direction'] = "in"
 plt.rcParams['font.size'] = 13
 plt.rcParams['pdf.fonttype'] = 42
 
+if CONFIG_NAME:
+    print(f"Using configuration {CONFIG_NAME}, all scripts constants will be"
+          " overwritten.")
+    path = os.path.join(os.path.dirname(__file__), 'configs', CONFIG_NAME)
+    with open(path) as f:
+        exec(f.read())
+
 for frequency in FREQUENCIES:
     print(f'Treating data for frequency {frequency/1e9} GHz')
     f, (vi_ax, dr_ax) = plt.subplots(2, 1, figsize=(7, 9),
@@ -164,9 +171,10 @@ for frequency in FREQUENCIES:
     x_lims = [x or curr[-i + (-1)**i, 0]*X_SCALING
               for i, x in enumerate(X_LIMITS)]
 
+
     # Plot the differential conductance map
     vm, vp = volt[:-2], volt[2:]
-    diff_r = (vp - vm)/(curr[2, 0] - curr[0, 0])
+    diff_r = np.abs((vp - vm)/(curr[2, 0] - curr[0, 0]))  # Ugly hack for alternating data
     im = dr_ax.imshow(diff_r.T,
                       extent=(curr[1, 0]*X_SCALING, curr[-2, 0]*X_SCALING,
                               power[0, 0], power[0, -1]),
@@ -192,7 +200,7 @@ for frequency in FREQUENCIES:
         v *= Y_SCALING
 
         # Plot the data
-        vi_ax.plot(curr[:, index]*X_SCALING, v, label='Power %g dBm' % p)
+        vi_ax.plot(curr[:, index]*X_SCALING, v, label='Power %g dB' % (p - cp))
 
     # --- Generate the differential resistance plot
     if SHOW_SHAPIRO_STEP:
@@ -216,7 +224,7 @@ for frequency in FREQUENCIES:
 
     if FIG_DIRECTORY:
         f.savefig(os.path.join(FIG_DIRECTORY,
-                                f'{frequency/1e9}GHz_' +
+                                f'VI_{frequency/1e9}GHz_' +
                                 os.path.split(PATH)[1].split('.')[0] +
                                 '.pdf'))
 

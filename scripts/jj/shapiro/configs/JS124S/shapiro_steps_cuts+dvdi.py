@@ -1,20 +1,23 @@
 #: Path towards the hdf5 file holding the data
-PATH = '/Users/mdartiailh/Labber/Data/2018/09/Data_0913/JS124L_CD004_009.hdf5'
+PATH = '/Users/mdartiailh/Labber/Data/2019/02/Data_0205/JS124S_BM002_169.hdf5'
+
+#: Directory in which to save the figure.
+FIG_DIRECTORY = ''
 
 #: Name or index of the column containing the frequency data if applicable.
 #: Leave blanck if the datafile does not contain a frequency sweep.
-FREQUENCY_NAME = 2
+FREQUENCY_NAME = None
 
 #: Frequencies of the applied microwave in Hz (one graph will be generated for
 #: each frequecy).
 #: If a FREQUENCY_NAME is supplied data are filtered.
-FREQUENCIES = [6e9, 12e9]
+FREQUENCIES = [4e9, 6e9]
 
 #: Name or index of the column containing the power data
 POWER_NAME = 1
 
 #: Name or index of the column containing the voltage data
-VOLTAGE_NAME = 3
+VOLTAGE_NAME = -1
 
 #: Name or index of the column containing the current data
 #: This should be a stepped channel ! use the applied voltage not the
@@ -23,12 +26,12 @@ CURRENT_NAME = 0
 
 #: Powers in dBm at which to plot the V-I characteristic. To use different
 #: powers per frequency use a dictionary.
-POWERS = {6e9: [-14, 0, 7, 10], 12e9: [-14, -7, 2, 6],
+POWERS = {4e9: [-18, -7, -5, -3], 6e9: [-14, -7, -3, 0],\
           }
 
-#: Critical power at which we close the gap. One can use a dictionary with
-#: frequencies as key.
-CRITICAL_POWER = {6e9: 11, 12e9: 9}
+#: Power at which we observe the gap closing. To use different values per
+#: frequency use a dictionary.
+CRITICAL_POWER = {4e9: -1.8, 6e9: 3.2}
 
 #: Conversion factor to apply to the current data (allow to convert from
 #: applied voltage to current bias).
@@ -60,10 +63,10 @@ X_SCALING = 1e6
 Y_SCALING = 1
 
 #: Limits to use for the x axis (after scaling)
-X_LIMITS = [-7.5, 7.5]
+X_LIMITS = [None, None]
 
 #: Limits to use for the y axis (after scaling)
-Y_LIMITS = [-5, 5]
+Y_LIMITS = [None, None]
 
 #: Plot dashed lines for the specified Shapiro steps
 SHOW_SHAPIRO_STEP = [-3, -2, -1, 1, 2, 3]
@@ -75,4 +78,4 @@ DIFF_Y_AXIS_LABEL = "Microwave power (dB)"
 DIFF_C_AXIS_LABEL = "Differential resistance (Ω)"
 
 #: Limits for the colorbar in the differential resistance map
-DIFF_C_AXIS_LIMITS = (0, None)
+DIFF_C_AXIS_LIMITS = (0, 300)
