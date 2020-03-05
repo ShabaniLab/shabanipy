@@ -11,13 +11,13 @@ differential conductance
 #: Name of the config file (located in the configs folder next to this script)
 #: to use. This will overwrite all the following constants. This file should be
 #: a python file defining all the constants defined above # --- Execution
-CONFIG_NAME = 'JS131A/shapiro_steps_cuts+dvdi.py'
+CONFIG_NAME = 'JS129D/shapiro_steps_cuts+dvdi.py'
 
 #: Path towards the hdf5 file holding the data
 PATH = '/Users/mdartiailh/Labber/Data/2019/11/Data_1114/JS129D_BM001_038.hdf5'
 
 #: Directory in which to save the figure.
-FIG_DIRECTORY = '/Users/mdartiailh/Documents/PostDocNYU/Papers/Dartiailh-shapiro-steps/raw-figures/JS131A'
+FIG_DIRECTORY = '/Users/mdartiailh/Documents/PostDocNYU/Papers/Dartiailh-shapiro-steps/raw-figures/JS129D'
 
 #: Name or index of the column containing the frequency data if applicable.
 #: Leave blanck if the datafile does not contain a frequency sweep.
@@ -171,7 +171,6 @@ for frequency in FREQUENCIES:
     x_lims = [x or curr[-i + (-1)**i, 0]*X_SCALING
               for i, x in enumerate(X_LIMITS)]
 
-
     # Plot the differential conductance map
     vm, vp = volt[:-2], volt[2:]
     diff_r = np.abs((vp - vm)/(curr[2, 0] - curr[0, 0]))  # Ugly hack for alternating data
@@ -203,12 +202,15 @@ for frequency in FREQUENCIES:
         vi_ax.plot(curr[:, index]*X_SCALING, v, label='Power %g dB' % (p - cp))
 
     # --- Generate the differential resistance plot
-    if SHOW_SHAPIRO_STEP:
+    shapiro_steps = (SHOW_SHAPIRO_STEP[frequency]
+                     if isinstance(SHOW_SHAPIRO_STEP, dict) else
+                     SHOW_SHAPIRO_STEP)
+    if shapiro_steps:
         if NORMALIZE_Y:
-            steps = SHOW_SHAPIRO_STEP
+            steps = shapiro_steps
         else:
             steps = [n * shapiro_step(frequency) * Y_SCALING
-                    for n in SHOW_SHAPIRO_STEP]
+                    for n in shapiro_steps]
         vi_ax.hlines(steps, *x_lims, linestyles='dashed')
 
     sample = (PATH.rsplit(os.sep, 1)[1]).split('_')[0]

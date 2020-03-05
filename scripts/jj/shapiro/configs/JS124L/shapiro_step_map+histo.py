@@ -69,8 +69,8 @@ Y_LIMITS = [-5, 5]
 C_LIMITS = [0, 0.1]
 
 #: Plot dashed lines for the specified Shapiro steps
-SHOW_SHAPIRO_STEP = {6e9: [1, 2, 3, 4],
-                     12e9: [1, 2, 3],
+SHOW_SHAPIRO_STEP = {6e9: [-1, -2, -3, -4],
+                     12e9: [-1, -2, -3, -4],
                      }
 
 #: Power range in which to plot the dashed lines for shapiro steps. Use None
@@ -82,7 +82,7 @@ SHAPIRO_STEPS_POWERS = [None, -12]
 HISTOGRAM_AT_POWER = {6e9: 5, 12e9: 2}
 
 #: Index of the Shapiro step whose weight to plot as a function of power.
-SHAPIRO_WEIGTHS = [0, -1, -2]
+SHAPIRO_WEIGTHS = [0, -1, -2, -3, -4]
 
 #: Number of histogram to average together to obtain the weight plot. Should be odd
 SHAPIRO_WEIGTHS_AVG = 1

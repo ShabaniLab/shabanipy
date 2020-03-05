@@ -1,5 +1,5 @@
 #: Path towards the hdf5 file holding the data
-PATH = '/Users/mdartiailh/Labber/Data/2019/11/Data_1114/JS129D_BM001_038.hdf5'
+PATH = '/Users/mdartiailh/Labber/Data/2018/09/Data_0914/JS124L_CD004_010.hdf5'
 
 #: Name or index of the column containing the frequency data if applicable.
 #: Leave blanck if the datafile does not contain a frequency sweep.
@@ -8,13 +8,13 @@ FREQUENCY_NAME = 2
 #: Frequencies of the applied microwave in Hz (one graph will be generated for
 #: each frequecy).
 #: If a FREQUENCY_NAME is supplied data are filtered.
-FREQUENCIES = [7e9, 9e9, 11e9, 13e9]
+FREQUENCIES = [4e9, 5e9]
 
 #: Name or index of the column containing the power data
 POWER_NAME = 1
 
 #: Name or index of the column containing the voltage data
-VOLTAGE_NAME = -1
+VOLTAGE_NAME = 3
 
 #: Name or index of the column containing the current data
 #: This should be a stepped channel ! use the applied voltage not the
@@ -23,15 +23,12 @@ CURRENT_NAME = 0
 
 #: Powers in dBm at which to plot the V-I characteristic. To use different
 #: powers per frequency use a dictionary.
-POWERS = {7e9: [-19.5, -15, -12, -7],
-          9e9: [-9.5, -7, -3, -1],
-          11e9: [-4.5, -2, 1, 8],
-          13e9: [-9.5, -4, -2, 1],
+POWERS = {4e9: [-9, -5, -3], 5e9: [-9, -3, -1]
           }
 
-#: Power at which we observe the gap closing. To use different values per
-#: frequency use a dictionary.
-CRITICAL_POWER = {7e9: -6.3, 9e9: 2.4, 11e9: 8.8, 13e9: 7}
+#: Critical power at which we close the gap. One can use a dictionary with
+#: frequencies as key.
+CRITICAL_POWER = {4e9: -2, 5e9: 1}
 
 #: Conversion factor to apply to the current data (allow to convert from
 #: applied voltage to current bias).
@@ -39,7 +36,7 @@ CURRENT_CONVERSION = 1e-6
 
 #: Conversion factor to apply to the voltage data (take into account possible
 #: amplification)
-VOLTAGE_CONVERSION = 1e-2
+VOLTAGE_CONVERSION = 1
 
 #: Number of points to use to correct for the offset of the voltage using the
 #: lowest power scan.
@@ -63,16 +60,13 @@ X_SCALING = 1e6
 Y_SCALING = 1
 
 #: Limits to use for the x axis (after scaling)
-X_LIMITS = [None, None]
+X_LIMITS = [-5, 5]
 
 #: Limits to use for the y axis (after scaling)
-Y_LIMITS = [-4, 4]
+Y_LIMITS = [-5, 5]
 
 #: Plot dashed lines for the specified Shapiro steps
-SHOW_SHAPIRO_STEP = {7e9: [-3, -2, -1, 1, 2, 3],
-                     9e9: [-3, -2, -1, 1, 2, 3],
-                     11e9: [-3, -2, -1, 1, 2, 3],
-                     13e9: [-2, -1.5, -1, -0.5, 0.5, 1, 1.5, 2]}
+SHOW_SHAPIRO_STEP = [-3, -2, -1, 1, 2, 3]
 
 #: Label of the y axis for the differential resistance map.
 DIFF_Y_AXIS_LABEL = "Microwave power (dB)"
@@ -81,4 +75,4 @@ DIFF_Y_AXIS_LABEL = "Microwave power (dB)"
 DIFF_C_AXIS_LABEL = "Differential resistance (Ω)"
 
 #: Limits for the colorbar in the differential resistance map
-DIFF_C_AXIS_LIMITS = (0, 300)
+DIFF_C_AXIS_LIMITS = (0, None)

@@ -15,13 +15,13 @@ The plot use the folling axes:
 #: Name of the config file (located in the configs folder next to this script)
 #: to use. This will overwrite all the following constants. This file should be
 #: a python file defining all the constants defined above # --- Execution
-CONFIG_NAME = 'JS131A/shapiro_step_map+histo.py'
+CONFIG_NAME = 'JS129D/shapiro_step_map+histo.py'
 
 #: Path towards the hdf5 file holding the data
 PATH = '/Users/mdartiailh/Labber/Data/2019/11/Data_1114/JS129D_BM001_038.hdf5'
 
 #: Directory in which to save the figure.
-FIG_DIRECTORY = '/Users/mdartiailh/Documents/PostDocNYU/Papers/Dartiailh-shapiro-steps/raw-figures/JS131A'
+FIG_DIRECTORY = '/Users/mdartiailh/Documents/PostDocNYU/Papers/Dartiailh-shapiro-steps/raw-figures/JS129D'
 
 #: Name or index of the column containing the frequency data if applicable.
 #: Leave blanck if the datafile does not contain a frequency sweep.
@@ -182,6 +182,10 @@ for frequency in FREQUENCIES:
     if cp is not None:
         power -= cp
 
+    # Determine x limits
+    x_lims = [x or power[-i + (-1)**i]*X_SCALING
+              for i, x in enumerate(X_LIMITS)]
+
     # Plot the data
     h_power = HISTOGRAM_AT_POWER.get(frequency)
     indexes = (SHAPIRO_WEIGTHS.get(frequency)
@@ -238,8 +242,9 @@ for frequency in FREQUENCIES:
     m_ax.set_xlabel(X_AXIS_LABEL or POWER_NAME)
     if not (h_power is not None and indexes is not None):
         m_ax.set_ylabel(Y_AXIS_LABEL)
-    if X_LIMITS:
-        m_ax.set_xlim(X_LIMITS)
+
+    m_ax.set_xlim(x_lims)
+    w_ax.set_xlim(x_lims)
     if Y_LIMITS:
         h_ax.set_ylim(Y_LIMITS)
         m_ax.set_ylim(Y_LIMITS)

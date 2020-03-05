@@ -69,9 +69,9 @@ Y_LIMITS = [None, None]
 C_LIMITS = [0, 0.1]
 
 #: Plot dashed lines for the specified Shapiro steps
-SHOW_SHAPIRO_STEP = {7e9: [1, 2, 3, 4],
+SHOW_SHAPIRO_STEP = {7e9: [-1, -2],
                      9e9: [1, 2, 3],
-                     11e9: [1, 2],
+                     11e9: [-1, -2],
                      13e9: [0.5, 1, 1.5, 2]}
 
 #: Power range in which to plot the dashed lines for shapiro steps. Use None
