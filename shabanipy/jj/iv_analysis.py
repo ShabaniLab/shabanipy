@@ -5,6 +5,30 @@ import numpy as np
 import matplotlib.pyplot as plt
 from lmfit.models import LinearModel
 
+
+def compute_voltage_offset(current_bias, measured_voltage, voltage_offset_correction):
+    """Compute the voltage offset in the VI characteristic of a JJ.
+
+    Parameters
+    ----------
+    current_bias : np.ndarray
+        Current bias applied on the junction in A.
+    measured_voltage : np.ndarray
+        Voltage accross the junction in V.
+    voltage_offset_correction : int
+        Number of points around 0 bias on which to average to correct for the
+        offset in the DC measurement.
+    """
+     # Index at which the bias current is zero
+    index = np.argmin(np.abs(current_bias))
+
+    # Correct the offset in the voltage data
+    avg_sl = slice(index-voltage_offset_correction+1,
+                    index+voltage_offset_correction)
+    to_average = measured_voltage[avg_sl]
+    return np.average(measured_voltage[avg_sl])
+
+
 def analyse_vi_curve(current_bias, measured_voltage, voltage_offset_correction,
                      ic_voltage_threshold, high_bias_threshold, plots=True,
                      plot_title=""):
@@ -69,9 +93,9 @@ def analyse_vi_curve(current_bias, measured_voltage, voltage_offset_correction,
 
     # Correct the offset in the voltage data
     if voltage_offset_correction and isinstance(voltage_offset_correction, int):
-        avg_sl = slice(index-voltage_offset_correction+1,
-                       index+voltage_offset_correction)
-        voltage_offset_correction = np.average(measured_voltage[avg_sl])
+        voltage_offset_correction = compute_voltage_offset(current_bias,
+                                                           measured_voltage,
+                                                           voltage_offset_correction)
 
     measured_voltage -= voltage_offset_correction
 

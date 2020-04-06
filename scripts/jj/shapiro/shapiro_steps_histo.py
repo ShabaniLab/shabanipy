@@ -65,8 +65,8 @@ import os
 
 import matplotlib.pyplot as plt
 
-from shabanipy.shapiro import shapiro_step
-from shabanipy.shapiro.binning import bin_shapiro_steps, center_bin
+from shabanipy.jj.shapiro import shapiro_step
+from shabanipy.jj.shapiro.binning import bin_shapiro_steps, center_bin
 from shabanipy.utils.labber_io import LabberData
 
 for frequency in FREQUENCIES:

@@ -50,6 +50,7 @@ def extract_density(field, rxy, field_cutoffs, plot_fit=False):
     # Identify the shape of the data and make them suitable for the following
     # treatment.
     if len(field.shape) >= 2:
+        input_is_1d = False
         original_shape = field.shape[:-1]
         trace_number = np.prod(original_shape)
         field = field.reshape((trace_number, -1))
@@ -61,6 +62,7 @@ def extract_density(field, rxy, field_cutoffs, plot_fit=False):
             field_cutoffs = fc
         field_cutoffs = field_cutoffs.reshape((trace_number, -1))
     else:
+        input_is_1d = True
         trace_number = 1
         field = np.array((field,))
         rxy = np.array((rxy,))
@@ -92,7 +94,7 @@ def extract_density(field, rxy, field_cutoffs, plot_fit=False):
             plt.ylabel('Rxy')
             plt.tight_layout()
 
-    if results.shape[0] == 1:
-        return results[0]
+    if input_is_1d:
+        return results[:, 0]
     else:
         return results.reshape((2, ) + original_shape)

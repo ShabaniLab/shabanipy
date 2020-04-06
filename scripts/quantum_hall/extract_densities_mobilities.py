@@ -8,10 +8,10 @@
 # =============================================================================
 
 #: Path towards the hdf5 file holding the data
-PATH = r'/Users/mdartiailh/Labber/Data/2019/01/Data_0124/JS138_JS124HB_JY001_008.hdf5'
+PATH = r'/Users/mdartiailh/Labber/Data/2018/08/Data_0827/JS129A_129VP_JY001_002.hdf5'
 
 #: Index or name of the column containing the gate voltage values.
-GATE_COLUMN = 1
+GATE_COLUMN = None
 
 #: Index or name of the column containing the applied magnetic field.
 FIELD_COLUMN = 0
@@ -22,15 +22,15 @@ FIELD_COLUMN = 0
 
 #: Index or name of the column contaning the longitudinal voltage drop
 #: measurement along x.
-XX_VOLTAGE_COLUMN = 2
+XX_VOLTAGE_COLUMN = 1
 
 #: Index or name of the column contaning the longitudinal voltage drop
 #: measurement along y.
-YY_VOLTAGE_COLUMN = 6
+YY_VOLTAGE_COLUMN = 3
 
 #: Index or name of the column contaning the transverse voltage drop
 #: measurement.
-XY_VOLTAGE_COLUMN = 4
+XY_VOLTAGE_COLUMN = 5
 
 #: Component of the measured voltage to use for analysis.
 #: Recognized values are 'real', 'imag', 'magnitude'
@@ -54,8 +54,8 @@ EFFECTIVE_MASS = 0.03
 
 #: File in which to store the results of the analysis as a function of gate
 #: voltage.
-RESULT_PATH = ''#('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/WAL/JS124/'
-              # 'JS138_JS124HB_JY001_008_density_mobility.csv')
+RESULT_PATH = ("/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/Shapiro/2019-11-JS129"
+               "JS129A_129VP_JY001_002_density_mobility.csv")
 
 # =============================================================================
 # --- Execution ---------------------------------------------------------------
@@ -63,6 +63,7 @@ RESULT_PATH = ''#('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/WAL/JS124
 
 import os
 
+import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import scipy.constants as cs
@@ -80,10 +81,14 @@ from shabanipy.utils.labber_io import LabberData
 with LabberData(PATH) as data:
 
     names = data.list_channels()
-    shape = data.compute_shape((GATE_COLUMN, FIELD_COLUMN))
+    if GATE_COLUMN is not None:
+        shape = data.compute_shape((GATE_COLUMN, FIELD_COLUMN))
 
-    gate = data.get_data(GATE_COLUMN).reshape(shape).T
-    field = data.get_data(FIELD_COLUMN).reshape(shape).T
+        gate = data.get_data(GATE_COLUMN).reshape(shape).T
+        field = data.get_data(FIELD_COLUMN).reshape(shape).T
+    else:
+        field = data.get_data(FIELD_COLUMN).T
+        gate = np.zeros(1)
     res = dict.fromkeys(('xx', 'yy', 'xy'))
     for k in res:
         name = globals()[f'{k.upper()}_VOLTAGE_COLUMN']
@@ -94,10 +99,15 @@ with LabberData(PATH) as data:
             val = data.get_data(index+1)
         else:
             val = data.get_data(index)**2 + data.get_data(index+1)**2
-        val = val.reshape(shape).T
+
+        if GATE_COLUMN is not None:
+            val = val.reshape(shape)
+        val = val.T
+
         res[k] = convert_lock_in_meas_to_diff_res(val, PROBE_CURRENT)
 
-gate = gate[:, 0]
+if GATE_COLUMN is not None:
+    gate = gate[:, 0]
 density, std_density = extract_density(field, res['xy'], FIELD_BOUNDS, PLOT_DENSITY_FIT)
 if PLOT_DENSITY_FIT:
     plt.show()
