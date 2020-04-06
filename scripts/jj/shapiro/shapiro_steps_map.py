@@ -123,16 +123,18 @@ from shabanipy.jj.iv_analysis import compute_voltage_offset
 from shabanipy.jj.shapiro.binning import bin_power_shapiro_steps
 from shabanipy.utils.labber_io import LabberData
 
-plt.rcParams['axes.linewidth'] = 1.5
-plt.rcParams['xtick.direction'] = "in"
-plt.rcParams['ytick.direction'] = "in"
-plt.rcParams['font.size'] = 13
-plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams["axes.linewidth"] = 1.5
+plt.rcParams["xtick.direction"] = "in"
+plt.rcParams["ytick.direction"] = "in"
+plt.rcParams["font.size"] = 13
+plt.rcParams["pdf.fonttype"] = 42
 
 if CONFIG_NAME:
-    print(f"Using configuration {CONFIG_NAME}, all scripts constants will be"
-          " overwritten.")
-    path = os.path.join(os.path.dirname(__file__), 'configs', CONFIG_NAME)
+    print(
+        f"Using configuration {CONFIG_NAME}, all scripts constants will be"
+        " overwritten."
+    )
+    path = os.path.join(os.path.dirname(__file__), "configs", CONFIG_NAME)
     with open(path) as f:
         exec(f.read())
 
@@ -140,7 +142,7 @@ if not isinstance(CRITICAL_POWER, dict):
     CRITICAL_POWER = dict.fromkeys(FREQUENCIES, CRITICAL_POWER)
 
 for frequency in FREQUENCIES:
-    print(f'Treating data for frequency {frequency/1e9} GHz')
+    print(f"Treating data for frequency {frequency/1e9} GHz")
     with LabberData(PATH) as data:
 
         filters = {}
@@ -154,10 +156,10 @@ for frequency in FREQUENCIES:
         curr = data.get_data(CURRENT_NAME, filters=filters)
 
         # Handle interruptions in the last scan.
-        while len(power) < shape[0]*shape[1]:
+        while len(power) < shape[0] * shape[1]:
             shape[1] -= 1
 
-        length = shape[0]*shape[1]
+        length = shape[0] * shape[1]
         power = power[:length].reshape(shape)
         volt = volt[:length].reshape(shape)
         curr = curr[:length].reshape(shape)
@@ -174,29 +176,34 @@ for frequency in FREQUENCIES:
         volt *= VOLTAGE_CONVERSION
 
     # Bin the data
-    power, voltage, histo = bin_power_shapiro_steps(power, curr, volt,
-                                                    frequency, STEP_FRACTION)
+    power, voltage, histo = bin_power_shapiro_steps(
+        power, curr, volt, frequency, STEP_FRACTION
+    )
 
-    cp = (CRITICAL_POWER.get(frequency)
-          if isinstance(CRITICAL_POWER, dict) else CRITICAL_POWER)
+    cp = (
+        CRITICAL_POWER.get(frequency)
+        if isinstance(CRITICAL_POWER, dict)
+        else CRITICAL_POWER
+    )
     if cp is not None:
         power -= cp
 
     # Determine x limits
-    x_lims = [x or power[-i + (-1)**i]*X_SCALING
-              for i, x in enumerate(X_LIMITS)]
+    x_lims = [x or power[-i + (-1) ** i] * X_SCALING for i, x in enumerate(X_LIMITS)]
 
     # Plot the data
     h_power = HISTOGRAM_AT_POWER.get(frequency)
-    indexes = (SHAPIRO_WEIGTHS.get(frequency)
-               if isinstance(SHAPIRO_WEIGTHS, dict) else
-               SHAPIRO_WEIGTHS)
+    indexes = (
+        SHAPIRO_WEIGTHS.get(frequency)
+        if isinstance(SHAPIRO_WEIGTHS, dict)
+        else SHAPIRO_WEIGTHS
+    )
 
     if h_power is not None and indexes is not None:
-        f = plt.figure(constrained_layout=True,
-                       figsize=(9, 6))
-        spec = f.add_gridspec(ncols=2, nrows=2, width_ratios=(1, 3),
-                              height_ratios=(1, 3))
+        f = plt.figure(constrained_layout=True, figsize=(9, 6))
+        spec = f.add_gridspec(
+            ncols=2, nrows=2, width_ratios=(1, 3), height_ratios=(1, 3)
+        )
         w_ax = f.add_subplot(spec[0, 1])
         h_ax = f.add_subplot(spec[1, 0])
         m_ax = f.add_subplot(spec[1, 1])
@@ -212,33 +219,37 @@ for frequency in FREQUENCIES:
         f = plt.figure(constrained_layout=True)
         m_ax = f.gca()
 
-    im = m_ax.imshow(C_SCALING * histo.T,
-                     extent=(power[0], power[-1], voltage[0], voltage[-1]),
-                     origin='lower',
-                     aspect='auto',
-                     vmin=C_LIMITS[0],
-                     vmax=C_LIMITS[1])
+    im = m_ax.imshow(
+        C_SCALING * histo.T,
+        extent=(power[0], power[-1], voltage[0], voltage[-1]),
+        origin="lower",
+        aspect="auto",
+        vmin=C_LIMITS[0],
+        vmax=C_LIMITS[1],
+    )
     cbar = f.colorbar(im, ax=m_ax, aspect=50)
     cbar.ax.set_ylabel(C_AXIS_LABEL)
 
-    ssstep = (SHOW_SHAPIRO_STEP.get(frequency, None)
-              if isinstance(SHOW_SHAPIRO_STEP, dict) else SHOW_SHAPIRO_STEP)
+    ssstep = (
+        SHOW_SHAPIRO_STEP.get(frequency, None)
+        if isinstance(SHOW_SHAPIRO_STEP, dict)
+        else SHOW_SHAPIRO_STEP
+    )
     if ssstep:
-        steps = [n * Y_SCALING
-                 for n in ssstep]
+        steps = [n * Y_SCALING for n in ssstep]
         if not X_LIMITS:
             X_LIMITS = [None, None]
-        lims = [x or X_LIMITS[i] or power[-i]
-                for i, x in enumerate(SHAPIRO_STEPS_POWERS)]
-        m_ax.hlines(steps, *lims, linestyles='dashed')
+        lims = [
+            x or X_LIMITS[i] or power[-i] for i, x in enumerate(SHAPIRO_STEPS_POWERS)
+        ]
+        m_ax.hlines(steps, *lims, linestyles="dashed")
 
     if h_power is not None:
-        lims = [y or voltage[-i]
-                for i, y in enumerate(Y_LIMITS)]
+        lims = [y or voltage[-i] for i, y in enumerate(Y_LIMITS)]
         m_ax.vlines([h_power - cp], *lims, linestyle="dotted")
 
-    sample = (PATH.rsplit(os.sep, 1)[1]).split('_')[0]
-    f.suptitle(f'Frequency {frequency/1e9} GHz')
+    sample = (PATH.rsplit(os.sep, 1)[1]).split("_")[0]
+    f.suptitle(f"Frequency {frequency/1e9} GHz")
     m_ax.set_xlabel(X_AXIS_LABEL or POWER_NAME)
     if not (h_power is not None and indexes is not None):
         m_ax.set_ylabel(Y_AXIS_LABEL)
@@ -250,32 +261,43 @@ for frequency in FREQUENCIES:
         m_ax.set_ylim(Y_LIMITS)
 
     # Plot the evolution of the weight of the shapiro steps as a function of power.
-    indexes = (SHAPIRO_WEIGTHS.get(frequency)
-               if isinstance(SHAPIRO_WEIGTHS, dict) else
-               SHAPIRO_WEIGTHS)
-    avg = (SHAPIRO_WEIGTHS_AVG.get(frequency)
-           if isinstance(SHAPIRO_WEIGTHS_AVG, dict) else
-           SHAPIRO_WEIGTHS_AVG)
+    indexes = (
+        SHAPIRO_WEIGTHS.get(frequency)
+        if isinstance(SHAPIRO_WEIGTHS, dict)
+        else SHAPIRO_WEIGTHS
+    )
+    avg = (
+        SHAPIRO_WEIGTHS_AVG.get(frequency)
+        if isinstance(SHAPIRO_WEIGTHS_AVG, dict)
+        else SHAPIRO_WEIGTHS_AVG
+    )
     if avg % 2 != 1:
-        raise ValueError("Need an odd number for SHAPIRO_WEIGTHS_AVG "
-                         f"at frequency {frequency}")
-    avg_i = (avg - 1)//2
+        raise ValueError(
+            "Need an odd number for SHAPIRO_WEIGTHS_AVG " f"at frequency {frequency}"
+        )
+    avg_i = (avg - 1) // 2
     ylim = 0
     for i in indexes:
         index = np.argmin(np.abs(voltage - i))
-        data = C_SCALING * np.average(histo[:, index-avg_i:index+avg_i+1], axis=-1)
+        data = C_SCALING * np.average(
+            histo[:, index - avg_i : index + avg_i + 1], axis=-1
+        )
         data = savgol_filter(data, 7, 2)
         if i != 0:
             ylim = max(ylim, np.max(data))
         w_ax.plot(power, data, label=f"Step {i}")
-    w_ax.set_ylim((0, 1.2*ylim))
+    w_ax.set_ylim((0, 1.2 * ylim))
     w_ax.set_ylabel(C_AXIS_LABEL)
     w_ax.legend()
 
     if FIG_DIRECTORY:
-        f.savefig(os.path.join(FIG_DIRECTORY,
-                                f'histo_{frequency/1e9}GHz_' +
-                                os.path.split(PATH)[1].split('.')[0] +
-                                '.pdf'))
+        f.savefig(
+            os.path.join(
+                FIG_DIRECTORY,
+                f"histo_{frequency/1e9}GHz_"
+                + os.path.split(PATH)[1].split(".")[0]
+                + ".pdf",
+            )
+        )
 
 plt.show()
