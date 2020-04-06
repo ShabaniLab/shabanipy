@@ -63,6 +63,9 @@ VOLTAGE_CONVERSION = 1e-2
 #: lowest power scan.
 Y_OFFSET_CORRECTION = 20
 
+#: Correct the offset at each power for the line plot
+Y_OFFSET_PER_POWER = False
+
 #: Should the Y axis be normalized in unit of the Shapiro step size hf/2e
 NORMALIZE_Y = True
 
@@ -110,24 +113,31 @@ from shabanipy.jj.iv_analysis import compute_voltage_offset
 from shabanipy.jj.shapiro import shapiro_step
 from shabanipy.utils.labber_io import LabberData
 
-plt.rcParams['axes.linewidth'] = 1.5
-plt.rcParams['xtick.direction'] = "in"
-plt.rcParams['ytick.direction'] = "in"
-plt.rcParams['font.size'] = 13
-plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams["axes.linewidth"] = 1.5
+plt.rcParams["xtick.direction"] = "in"
+plt.rcParams["ytick.direction"] = "in"
+plt.rcParams["font.size"] = 13
+plt.rcParams["pdf.fonttype"] = 42
 
 if CONFIG_NAME:
-    print(f"Using configuration {CONFIG_NAME}, all scripts constants will be"
-          " overwritten.")
-    path = os.path.join(os.path.dirname(__file__), 'configs', CONFIG_NAME)
+    print(
+        f"Using configuration {CONFIG_NAME}, all scripts constants will be"
+        " overwritten."
+    )
+    path = os.path.join(os.path.dirname(__file__), "configs", CONFIG_NAME)
     with open(path) as f:
         exec(f.read())
 
 for frequency in FREQUENCIES:
-    print(f'Treating data for frequency {frequency/1e9} GHz')
-    f, (vi_ax, dr_ax) = plt.subplots(2, 1, figsize=(7, 9),
-                                     gridspec_kw=dict(height_ratios=(1, 2)),
-                                     sharex=True, constrained_layout=True)
+    print(f"Treating data for frequency {frequency/1e9} GHz")
+    f, (vi_ax, dr_ax) = plt.subplots(
+        2,
+        1,
+        figsize=(7, 9),
+        gridspec_kw=dict(height_ratios=(1, 2)),
+        sharex=True,
+        constrained_layout=True,
+    )
     with LabberData(PATH) as data:
 
         filters = {}
@@ -141,10 +151,10 @@ for frequency in FREQUENCIES:
         curr = data.get_data(CURRENT_NAME, filters=filters)
 
     # Handle interruptions in the last scan.
-    while len(power) < shape[0]*shape[1]:
+    while len(power) < shape[0] * shape[1]:
         shape[1] -= 1
 
-    length = shape[0]*shape[1]
+    length = shape[0] * shape[1]
     power = power[:length].reshape(shape)
     volt = volt[:length].reshape(shape)
     curr = curr[:length].reshape(shape)
@@ -162,25 +172,35 @@ for frequency in FREQUENCIES:
         volt -= offset
 
     # Get the critical power at the considered frequency
-    cp = (CRITICAL_POWER.get(frequency)
-            if isinstance(CRITICAL_POWER, dict) else CRITICAL_POWER)
+    cp = (
+        CRITICAL_POWER.get(frequency)
+        if isinstance(CRITICAL_POWER, dict)
+        else CRITICAL_POWER
+    )
     if cp is not None:
         power -= cp
 
     # Determine x limits
-    x_lims = [x or curr[-i + (-1)**i, 0]*X_SCALING
-              for i, x in enumerate(X_LIMITS)]
+    x_lims = [x or curr[-i + (-1) ** i, 0] * X_SCALING for i, x in enumerate(X_LIMITS)]
 
     # Plot the differential conductance map
     vm, vp = volt[:-2], volt[2:]
-    diff_r = np.abs((vp - vm)/(curr[2, 0] - curr[0, 0]))  # Ugly hack for alternating data
-    im = dr_ax.imshow(diff_r.T,
-                      extent=(curr[1, 0]*X_SCALING, curr[-2, 0]*X_SCALING,
-                              power[0, 0], power[0, -1]),
-                      origin='lower',
-                      aspect='auto',
-                      vmin=DIFF_C_AXIS_LIMITS[0],
-                      vmax=DIFF_C_AXIS_LIMITS[1])
+    diff_r = np.abs(
+        (vp - vm) / (curr[2, 0] - curr[0, 0])
+    )  # Ugly hack for alternating data
+    im = dr_ax.imshow(
+        diff_r.T,
+        extent=(
+            curr[1, 0] * X_SCALING,
+            curr[-2, 0] * X_SCALING,
+            power[0, 0],
+            power[0, -1],
+        ),
+        origin="lower",
+        aspect="auto",
+        vmin=DIFF_C_AXIS_LIMITS[0],
+        vmax=DIFF_C_AXIS_LIMITS[1],
+    )
     cbar = f.colorbar(im, ax=dr_ax, aspect=50)
     cbar.ax.set_ylabel(DIFF_C_AXIS_LABEL)
 
@@ -189,9 +209,12 @@ for frequency in FREQUENCIES:
     for i, p in enumerate(reversed(sorted(powers))):
         index = np.argmin(np.abs(power[0] + cp - p))
 
-        dr_ax.hlines([p - cp], *x_lims, linestyles='dashed', color=f"C{i}")
+        dr_ax.hlines([p - cp], *x_lims, linestyles="dashed", color=f"C{i}")
 
         v = volt[:, index]
+        if Y_OFFSET_PER_POWER:
+            offset = compute_voltage_offset(curr[:, index], v, Y_OFFSET_CORRECTION)
+            v -= offset
         if NORMALIZE_Y:
             v /= shapiro_step(frequency)
 
@@ -199,22 +222,23 @@ for frequency in FREQUENCIES:
         v *= Y_SCALING
 
         # Plot the data
-        vi_ax.plot(curr[:, index]*X_SCALING, v, label='Power %g dB' % (p - cp))
+        vi_ax.plot(curr[:, index] * X_SCALING, v, label="Power %g dB" % (p - cp))
 
     # --- Generate the differential resistance plot
-    shapiro_steps = (SHOW_SHAPIRO_STEP[frequency]
-                     if isinstance(SHOW_SHAPIRO_STEP, dict) else
-                     SHOW_SHAPIRO_STEP)
+    shapiro_steps = (
+        SHOW_SHAPIRO_STEP[frequency]
+        if isinstance(SHOW_SHAPIRO_STEP, dict)
+        else SHOW_SHAPIRO_STEP
+    )
     if shapiro_steps:
         if NORMALIZE_Y:
             steps = shapiro_steps
         else:
-            steps = [n * shapiro_step(frequency) * Y_SCALING
-                    for n in shapiro_steps]
-        vi_ax.hlines(steps, *x_lims, linestyles='dashed')
+            steps = [n * shapiro_step(frequency) * Y_SCALING for n in shapiro_steps]
+        vi_ax.hlines(steps, *x_lims, linestyles="dashed")
 
-    sample = (PATH.rsplit(os.sep, 1)[1]).split('_')[0]
-    f.suptitle(f'Frequency {frequency/1e9} GHz')
+    sample = (PATH.rsplit(os.sep, 1)[1]).split("_")[0]
+    f.suptitle(f"Frequency {frequency/1e9} GHz")
     vi_ax.set_ylabel(Y_AXIS_LABEL or VOLTAGE_NAME)
     vi_ax.set_xlim(x_lims)
     if Y_LIMITS:
@@ -225,9 +249,13 @@ for frequency in FREQUENCIES:
     dr_ax.set_ylabel(DIFF_Y_AXIS_LABEL or POWER_NAME)
 
     if FIG_DIRECTORY:
-        f.savefig(os.path.join(FIG_DIRECTORY,
-                                f'VI_{frequency/1e9}GHz_' +
-                                os.path.split(PATH)[1].split('.')[0] +
-                                '.pdf'))
+        f.savefig(
+            os.path.join(
+                FIG_DIRECTORY,
+                f"VI_{frequency/1e9}GHz_"
+                + os.path.split(PATH)[1].split(".")[0]
+                + ".pdf",
+            )
+        )
 
 plt.show()
