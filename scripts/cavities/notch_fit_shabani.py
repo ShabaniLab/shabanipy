@@ -38,7 +38,7 @@ RESONANCE_PARAMETERS = {
 #0: ('min', 500, 1e13),
 #1: ('min', 500, 1e13),
 2: ('min', 500, 1e13),
-3: ('min', 500, 1e13),
+#3: ('min', 500, 1e13),
 #4: ('min', 1000, 1e13),
 #5: ('min', 400, 1e13),
 #6: ('min', 500, 1e13),
@@ -60,37 +60,66 @@ res_freq_array = []
 powerList0 = []
 qList0 = []
 qcList0= []
+qlList0= []
 photonList0 = []
+qListErr0 = []
+qlListErr0 = []
+chiSquare0 = []
+
 
 powerList1 = []
 qList1 = []
 qcList1= []
+qlList1 = []
 photonList1 = []
+qListErr1 = []
+qlListErr1 = []
+chiSquare1 = []
 
 powerList2 = []
 qList2 = []
 qcList2= []
+qlList2 = []
 photonList2 = []
+qListErr2 = []
+qlListErr2 = []
+chiSquare2 = []
 
 powerList3 = []
 qList3 = []
 qcList3= []
+qlList3= []
 photonList3 = []
+qListErr3 = []
+qlListErr3 = []
+chiSquare3 = []
 
 powerList4 = []
 qList4 = []
 qcList4= []
+qlList4= []
 photonList4 = []
+qListErr4 = []
+qlListErr4 = []
+chiSquare4 = []
 
 powerList5 = []
 qList5 = []
 qcList5= []
+qlList5 = []
 photonList5 = []
+qListErr5 = []
+qlListErr5 = []
+chiSquare5 = []
 
 powerList = [powerList0,powerList1,powerList2, powerList3, powerList4, powerList5]
 qList = [qList0,qList1,qList2,qList3, qcList4, qcList5]
 qcList = [qcList0,qcList1,qcList2,qcList3,qcList4, qcList5]
+qlList = [qList0,qlList1,qlList2,qlList3,qlList4,qlList5]
 photonList = [photonList0,photonList1,photonList2,photonList3, photonList4, photonList5]
+qListErr = [qListErr0,qListErr1,qListErr2,qListErr3,qListErr4,qListErr5]
+qlListErr = [qlListErr0,qlListErr1,qlListErr2,qlListErr3,qlListErr4,qlListErr5]
+chiSquare = [chiSquare0,chiSquare1,chiSquare2,chiSquare3,chiSquare4,chiSquare5]
 
 j = 0
 for FILENAME in filename:
@@ -120,7 +149,7 @@ for FILENAME in filename:
         if pth.exists(path + FILENAME + '-' + str(res_index) + '.csv'):
             with open(path + FILENAME + '-' + str(res_index) + '.csv', mode='a+') as data_base:
                 data_base.seek(0)
-                fieldnames = ['res_index', 'res_freq', 'attenuation', 'power', 'total_power','photon_num','qi','qc']
+                fieldnames = ['res_index', 'res_freq', 'attenuation', 'power', 'total_power','photon_num','qi','qi_err','qc','ql','ql_err','chi_square']
                 csv_reader = csv.DictReader(data_base)
                 line_count = 0
                 for row in csv_reader:
@@ -129,15 +158,19 @@ for FILENAME in filename:
                         line_count += 1
                     powerList[res_index].append(float(row['total_power']))
                     qList[res_index].append(float(row['qi']))
+                    qListErr[res_index].append(float(row['qi_err']))
                     qcList[res_index].append(float(row['qc']))
+                    qlList[res_index].append(float(row['ql']))
+                    qlListErr[res_index].append(float(row['ql_err']))
                     photonList[res_index].append(float(row['photon_num']))
                     res_freq_array.append(float(row['res_freq']))
+                    chiSquare[res_index].append(float(row['chi_square']))
                     line_count += 1
         else:
             #create a different csv file for each resonance within each .hdf5
             with open(path + FILENAME + '-' + str(res_index) + '.csv', mode='a+') as data_base:
                 data_base.seek(0)
-                fieldnames = ['res_index', 'res_freq', 'attenuation', 'power', 'total_power','photon_num','qi','qc']
+                fieldnames = ['res_index', 'res_freq', 'attenuation', 'power', 'total_power','photon_num','qi','qi_err','qc','ql','ql_err','chi_square']
                 writer = csv.DictWriter(data_base, fieldnames=fieldnames)
                 writer.writeheader()
 
@@ -206,7 +239,11 @@ for FILENAME in filename:
                     fit = pd.DataFrame([port1.fitresults]).applymap(lambda x: "{0:.2e}".format(x))
                     display(fit)
                     qList[res_index].append(float(fit.iat[0,1]))
+                    qListErr[res_index].append(float(fit.iat[0,2]))
                     qcList[res_index].append(float(fit.iat[0,0]))
+                    qlList[res_index].append(float(fit.iat[0,5]))
+                    qlListErr[res_index].append(float(fit.iat[0,6]))
+                    chiSquare[res_index].append(float(fit.iat[0,9]))
                     
                     photonNum = port1.get_photons_in_resonator(calculate_total_power(fc,power),'dBm')
                     photonList[res_index].append(float(photonNum))
@@ -214,7 +251,7 @@ for FILENAME in filename:
                     singlePhotonLim = port1.get_single_photon_limit()
                     print("Power for single photon limit: " + str(singlePhotonLim))
                     writer.writerow({'res_index': str(res_index), 'res_freq':str(fc), 'attenuation' : str(ATTENUATION_ON_VNA), 'power' : str(power), 'total_power': str(calculate_total_power(fc,power)),
-                    'photon_num': str(photonNum),'qi':str(fit.iat[0,1]),'qc': str(fit.iat[0,0])})
+                    'photon_num': str(photonNum),'qi':str(fit.iat[0,1]),'qi_err': str(fit.iat[0,2]),'qc': str(fit.iat[0,0]), 'ql': str(fit.iat[0,5]), 'ql_err': str(fit.iat[0,6]), 'chi_square': str(fit.iat[0,9])})
 
                 res_freq_array.append(fc)
                 data_base.close()
