@@ -51,6 +51,7 @@ RESONANCE_PARAMETERS = {
     }
 #put the path of all files you want to study and then put their associated attenuation below
 path = '/Users/goss/Desktop/Shabani/data/short_stack/'
+csv_directory = '/Users/goss/Desktop/Shabani/data/res_csv/'
 filename = ['JS314_CD1_att20_004', 'JS314_CD1_att40_006', 'JS314_CD1_att60_007'] #do not put file extension in filename
 attenuation_on_vna = [-20,-40,-60]
 
@@ -146,8 +147,8 @@ for FILENAME in filename:
 
     for res_index, res_params in RESONANCE_PARAMETERS.items():
         
-        if pth.exists(path + FILENAME + '-' + str(res_index) + '.csv'):
-            with open(path + FILENAME + '-' + str(res_index) + '.csv', mode='a+') as data_base:
+        if pth.exists(csv_directory + FILENAME + '-' + str(res_index) + '.csv'):
+            with open(csv_directory + FILENAME + '-' + str(res_index) + '.csv', mode='a+') as data_base:
                 data_base.seek(0)
                 fieldnames = ['res_index', 'res_freq', 'attenuation', 'power', 'total_power','photon_num','qi','qi_err','qc','ql','ql_err','chi_square']
                 csv_reader = csv.DictReader(data_base)
@@ -168,7 +169,7 @@ for FILENAME in filename:
                     line_count += 1
         else:
             #create a different csv file for each resonance within each .hdf5
-            with open(path + FILENAME + '-' + str(res_index) + '.csv', mode='a+') as data_base:
+            with open(csv_directory + FILENAME + '-' + str(res_index) + '.csv', mode='a+') as data_base:
                 data_base.seek(0)
                 fieldnames = ['res_index', 'res_freq', 'attenuation', 'power', 'total_power','photon_num','qi','qi_err','qc','ql','ql_err','chi_square']
                 writer = csv.DictWriter(data_base, fieldnames=fieldnames)
