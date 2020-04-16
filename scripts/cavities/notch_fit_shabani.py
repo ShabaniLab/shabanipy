@@ -35,9 +35,9 @@ def calculate_total_power(freq,power):
 
 #uncommentresonance parameters line for 0th resonance, 1st resonance, and so on.
 RESONANCE_PARAMETERS = {
-#0: ('min', 500, 1e13),
+0: ('min', 500, 1e13),
 #1: ('min', 500, 1e13),
-2: ('min', 500, 1e13),
+#2: ('min', 500, 1e13),
 #3: ('min', 500, 1e13),
 #4: ('min', 1000, 1e13),
 #5: ('min', 400, 1e13),
@@ -51,7 +51,7 @@ RESONANCE_PARAMETERS = {
     }
 #put the path of all files you want to study and then put their associated attenuation below
 path = '/Users/goss/Desktop/Shabani/data/short_stack/'
-csv_directory = '/Users/goss/Desktop/Shabani/data/res_csv/'
+csv_directory = '/Users/goss/Desktop/Shabani/data/short_stack/JS314_csv/'
 filename = ['JS314_CD1_att20_004', 'JS314_CD1_att40_006', 'JS314_CD1_att60_007'] #do not put file extension in filename
 attenuation_on_vna = [-20,-40,-60]
 
@@ -134,7 +134,8 @@ for FILENAME in filename:
         print(list(data._file['Traces']))
         shape = data.compute_shape((FREQ_COLUMN, POWER_COLUMN))
         shape = [shape[1], shape[0]] 
-        powers = np.unique(data.get_data(POWER_COLUMN))
+        powers_rev = np.unique(data.get_data(POWER_COLUMN))
+        powers = np.flip(powers_rev)
         print(powers)
 
     with h5py.File(PATH) as f:
