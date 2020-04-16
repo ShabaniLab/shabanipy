@@ -2,6 +2,7 @@ from resonator_tools import circuit
 import numpy as np
 import csv
 from os import path as pth
+import os
 import time
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -18,8 +19,8 @@ from shabanipy.cavities.utils import (extract_baseline,
                                       correct_for_time_delay)
 
 
-FREQ_COLUMN = 1
-POWER_COLUMN = 0
+FREQ_COLUMN = 0
+POWER_COLUMN = 1
 SUBTRACT_BASELINE = True
 PLOT_SUBTRACTED_BASELINE = False
 PLOT_QINT_VS_POWER = True
@@ -35,108 +36,49 @@ def calculate_total_power(freq,power):
 
 #uncommentresonance parameters line for 0th resonance, 1st resonance, and so on.
 RESONANCE_PARAMETERS = {
-0: ('min', 500, 1e13),
-#1: ('min', 500, 1e13),
-#2: ('min', 500, 1e13),
-#3: ('min', 500, 1e13),
-#4: ('min', 1000, 1e13),
-#5: ('min', 400, 1e13),
-#6: ('min', 500, 1e13),
-#7: ('min', 500, 1e13),
-#8: ('min', 500, 1e13),
-#9: ('min', 1000, 1e13),
-#10: ('min', 400, 1e13),
-    
-    
-    }
+    0: ('min', 500, 1e13),
+    #1: ('min', 500, 1e13),
+    #2: ('min', 500, 1e13),
+    #3: ('min', 500, 1e13),
+    #4: ('min', 1000, 1e13),
+    #5: ('min', 400, 1e13),
+    #6: ('min', 500, 1e13),
+    #7: ('min', 500, 1e13),
+    #8: ('min', 500, 1e13),
+    #9: ('min', 1000, 1e13),
+    #10: ('min', 400, 1e13),
+}
 #put the path of all files you want to study and then put their associated attenuation below
-path = '/Users/goss/Desktop/Shabani/data/short_stack/'
-csv_directory = '/Users/goss/Desktop/Shabani/data/short_stack/JS314_csv/'
-filename = ['JS314_CD1_att20_004', 'JS314_CD1_att40_006', 'JS314_CD1_att60_007'] #do not put file extension in filename
-attenuation_on_vna = [-20,-40,-60]
+path = '/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper/data/'
+csv_directory = '/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper/fits/JS200/'
 
+IMAGE_DIR = '/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper/images/JS200/'
+
+filename = ['JS200_JY001_008']
+attenuation_on_vna = [0]
 
 res_freq_array = []
 
-powerList0 = []
-qList0 = []
-qcList0= []
-qlList0= []
-photonList0 = []
-qListErr0 = []
-qlListErr0 = []
-chiSquare0 = []
-
-
-powerList1 = []
-qList1 = []
-qcList1= []
-qlList1 = []
-photonList1 = []
-qListErr1 = []
-qlListErr1 = []
-chiSquare1 = []
-
-powerList2 = []
-qList2 = []
-qcList2= []
-qlList2 = []
-photonList2 = []
-qListErr2 = []
-qlListErr2 = []
-chiSquare2 = []
-
-powerList3 = []
-qList3 = []
-qcList3= []
-qlList3= []
-photonList3 = []
-qListErr3 = []
-qlListErr3 = []
-chiSquare3 = []
-
-powerList4 = []
-qList4 = []
-qcList4= []
-qlList4= []
-photonList4 = []
-qListErr4 = []
-qlListErr4 = []
-chiSquare4 = []
-
-powerList5 = []
-qList5 = []
-qcList5= []
-qlList5 = []
-photonList5 = []
-qListErr5 = []
-qlListErr5 = []
-chiSquare5 = []
-
-powerList = [powerList0,powerList1,powerList2, powerList3, powerList4, powerList5]
-qList = [qList0,qList1,qList2,qList3, qcList4, qcList5]
-qcList = [qcList0,qcList1,qcList2,qcList3,qcList4, qcList5]
-qlList = [qList0,qlList1,qlList2,qlList3,qlList4,qlList5]
-photonList = [photonList0,photonList1,photonList2,photonList3, photonList4, photonList5]
-qListErr = [qListErr0,qListErr1,qListErr2,qListErr3,qListErr4,qListErr5]
-qlListErr = [qlListErr0,qlListErr1,qlListErr2,qlListErr3,qlListErr4,qlListErr5]
-chiSquare = [chiSquare0,chiSquare1,chiSquare2,chiSquare3,chiSquare4,chiSquare5]
+powerList = {}
+qList = {}
+qlList = {}
+qcList = {}
+photonList = {}
+qListErr = {}
+qlListErr = {}
+chiSquare = {}
 
 j = 0
 for FILENAME in filename:
     PATH = path + FILENAME + '.hdf5'
-    print(PATH)
     ATTENUATION_ON_VNA = attenuation_on_vna[j]
-    print(ATTENUATION_ON_VNA)
     j = j+1
+    
     with LabberData(PATH) as data:
-        print(data.list_channels())
-        print(list(data._file['Traces']))
         shape = data.compute_shape((FREQ_COLUMN, POWER_COLUMN))
         shape = [shape[1], shape[0]] 
         powers_rev = np.unique(data.get_data(POWER_COLUMN))
         powers = np.flip(powers_rev)
-        print(powers)
 
     with h5py.File(PATH) as f:
         freq  = f['Traces']['VNA - S21'][:, 2].reshape([-1] + shape)
@@ -147,7 +89,6 @@ for FILENAME in filename:
         phase = np.arctan2(imag, real)
 
     for res_index, res_params in RESONANCE_PARAMETERS.items():
-        
         if pth.exists(csv_directory + FILENAME + '-' + str(res_index) + '.csv'):
             with open(csv_directory + FILENAME + '-' + str(res_index) + '.csv', mode='a+') as data_base:
                 data_base.seek(0)
@@ -156,8 +97,16 @@ for FILENAME in filename:
                 line_count = 0
                 for row in csv_reader:
                     if line_count == 0:
-                        print(f'Column names are {", ".join(row)}')
                         line_count += 1
+                    if res_index not in powerList:
+                        powerList[res_index] = []
+                        qList[res_index] = []
+                        qListErr[res_index] = []
+                        qcList[res_index] = []
+                        qlList[res_index] = []
+                        qlListErr[res_index] = []
+                        photonList[res_index] = []
+                        chiSquare[res_index] = []
                     powerList[res_index].append(float(row['total_power']))
                     qList[res_index].append(float(row['qi']))
                     qListErr[res_index].append(float(row['qi_err']))
@@ -179,7 +128,6 @@ for FILENAME in filename:
                 kind, e_delay, base_smooth = res_params
                 for p_index, power in enumerate(powers):
                     
-                    
                     f = freq[:, res_index, p_index]
                     a = amp[:, res_index, p_index]
                     phi = phase[:, res_index, p_index]
@@ -200,7 +148,7 @@ for FILENAME in filename:
                     i = i[indexes]
                     r = r[indexes]
 
-                    if SUBTRACT_BASELINE == True:
+                    if SUBTRACT_BASELINE:
                         base = extract_baseline(a,
                                                 0.8 if kind == 'min' else 0.2,
                                                 base_smooth, plot=False)
@@ -230,11 +178,21 @@ for FILENAME in filename:
                     port1 = circuit.notch_port(f_data=df["freq"].values,
                                             z_data_raw=(df["real"].values + 1j*df["imag"].values))
                     
-                    if GUI_FITTING == True:
+                    if GUI_FITTING:
                         port1.GUIfit()
                         port1.plotall()
                     else:
                         port1.autofit()
+                    
+                    if res_index not in powerList:
+                        powerList[res_index] = []
+                        qList[res_index] = []
+                        qListErr[res_index] = []
+                        qcList[res_index] = []
+                        qlList[res_index] = []
+                        qlListErr[res_index] = []
+                        photonList[res_index] = []
+                        chiSquare[res_index] = []
                     
                     print("at power " + str(power) + " and " + str(ATTENUATION_ON_VNA) + " attenuation:")
                     powerList[res_index].append(float(calculate_total_power(fc,power)))
@@ -258,65 +216,60 @@ for FILENAME in filename:
                 res_freq_array.append(fc)
                 data_base.close()
 
-if PLOT_QINT_VS_POWER == True:
+markersize   = 10
+labelsize    = 16
+tickfontsize = 12
+legendsize   = 16
 
-    i = 0
-    for res_index, res_params in RESONANCE_PARAMETERS.items():
-        lists = list(zip(powerList[res_index],qList[res_index]))
-        res = sorted(lists, key = lambda x: x[0]) 
-        new_x, new_y = zip(*res)
-        label_string = str('{:.3e}'.format(float(res_freq_array[i]))) +"Hz"
-        plt.plot(new_x,new_y,".", label = label_string)
-        i = i+1
-    plt.title("Power Vs. Qi ")
-    plt.xlabel("power [dB]")
-    plt.ylabel("internal quality factor")
-    plt.legend()
-    plt.show()
-    
-if PLOT_PHOTON_VS_QINT == True:
-    i = 0
-    for res_index, res_params in RESONANCE_PARAMETERS.items():
-        lists = list(zip(photonList[res_index],qList[res_index]))
-        res = sorted(lists, key = lambda x: x[0]) 
-        new_x, new_y = zip(*res)
-        label_string = str('{:.3e}'.format(float(res_freq_array[i]))) +"Hz"
-        plt.loglog(new_x,new_y,".", label = label_string)
-        i = i+1
-    plt.title("Photon Number Vs. Qi")
-    plt.xlabel("photon number")
-    plt.ylabel("internal quality factor")
-    plt.legend()
-    plt.show()
+xscale = 'log'
+yscale = 'log'
 
-if PLOT_QC_VS_POWER == True:
-    i = 0
-    for res_index, res_params in RESONANCE_PARAMETERS.items():
-        lists = list(zip(powerList[res_index],qcList[res_index]))
-        res = sorted(lists, key = lambda x: x[0]) 
-        new_x, new_y = zip(*res)
-        label_string = str('{:.3e}'.format(float(res_freq_array[i]))) +"Hz"
-        plt.plot(new_x,new_y,".", label = label_string)
-        i = i+1
-    plt.title("Power Vs. Qc ")
-    plt.xlabel("power [dB]")
-    plt.ylabel("coupled quality factor")
-    plt.legend()
-    plt.show()
+bottom = .15
+top    = .9
+right  = .9
+left   = .15
 
-    
-    
-if PLOT_PHOTON_VS_QC == True:
-    i = 0
-    for res_index, res_params in RESONANCE_PARAMETERS.items():
-        lists = list(zip(photonList[res_index],qcList[res_index]))
-        res = sorted(lists, key = lambda x: x[0]) 
-        new_x, new_y = zip(*res)
-        label_string = str('{:.3e}'.format(float(res_freq_array[i]))) +"Hz"
-        plt.loglog(new_x,new_y,".", label = label_string)
-        i = i+1
-    plt.title("Photon Number Vs. Qc")
-    plt.xlabel("photon number")
-    plt.ylabel("coupled quality factor")
-    plt.legend()
-    plt.show()
+
+plot_info = [
+    [PLOT_QINT_VS_POWER, "Power Vs. Q$_i$", "linear", "log", "Power [dB]",
+        "Internal Quality Factor", powerList, qList, '_Qi'],
+    [PLOT_PHOTON_VS_QINT, "Photon Number Vs. Q$_i$", "log", "log", "Photon Number",
+        "Internal Quality Factor", photonList, qList, '_Qi_photon'],
+    [PLOT_QC_VS_POWER, "Power Vs. Q$_C$", "linear", "log", "Power [dB]",
+        "Coupled Quality Factor", powerList, qcList, '_Qc'],
+    [PLOT_PHOTON_VS_QC, "Photon Number Vs. Q$_C$", "log", "log", "Photon Number",
+        "Coupled Quality Factor", photonList, qcList, '_Qc_photon'],
+]
+
+for plot_check, title, xscale, yscale, xlabel, ylabel, xdata, ydata, filename_suffix in plot_info:
+    if plot_check:
+        i = 0
+        f,ax = plt.subplots(1,1)
+        for res_index, res_params in RESONANCE_PARAMETERS.items():
+            lists = list(zip(xdata[res_index],ydata[res_index]))
+            res = sorted(lists, key = lambda x: x[0]) 
+            new_x, new_y = zip(*res)
+            label_string = f'{res_freq_array[i]/1e9:.3f} GHz'
+            ax.plot(new_x,new_y,".",label=label_string,markersize=markersize)
+            i += 1
+        ax.set_title(title,fontsize=labelsize)
+        ax.set_xlabel(xlabel,fontsize=labelsize)
+        ax.set_ylabel(ylabel,fontsize=labelsize)
+
+        ax.set_xscale(xscale)
+        ax.set_yscale(yscale)
+        
+        for _ax in [ax.xaxis,ax.yaxis]:
+            for tick in _ax.get_major_ticks():
+                tick.label.set_fontsize(tickfontsize)
+        
+        ax.legend(fontsize=legendsize)
+        plt.subplots_adjust(
+            bottom=bottom,
+            right=right,
+            top=top,
+            left=left
+        )
+        f.savefig(pth.join(IMAGE_DIR,FILENAME + filename_suffix+'.png'))
+        plt.show()
+
