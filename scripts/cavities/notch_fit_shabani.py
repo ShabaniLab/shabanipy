@@ -37,10 +37,10 @@ def calculate_total_power(freq,power):
 #uncommentresonance parameters line for 0th resonance, 1st resonance, and so on.
 RESONANCE_PARAMETERS = {
     0: ('min', 500, 1e13),
-    #1: ('min', 500, 1e13),
-    #2: ('min', 500, 1e13),
-    #3: ('min', 500, 1e13),
-    #4: ('min', 1000, 1e13),
+    1: ('min', 500, 1e13),
+    2: ('min', 500, 1e13),
+    3: ('min', 500, 1e13),
+    4: ('min', 1000, 1e13),
     #5: ('min', 400, 1e13),
     #6: ('min', 500, 1e13),
     #7: ('min', 500, 1e13),
@@ -50,12 +50,12 @@ RESONANCE_PARAMETERS = {
 }
 #put the path of all files you want to study and then put their associated attenuation below
 path = '/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper/data/'
-csv_directory = '/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper/fits/JS200/'
+csv_directory = '/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper/fits/JS314/'
 
-IMAGE_DIR = '/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper/images/JS200/'
+IMAGE_DIR = '/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper/images/JS314/'
 
-filename = ['JS200_JY001_008']
-attenuation_on_vna = [0]
+filename = ['JS314_CD1_att20_004', 'JS314_CD1_att40_006', 'JS314_CD1_att60_007']
+attenuation_on_vna = [-20,-40,-60]
 
 res_freq_array = []
 
@@ -114,9 +114,9 @@ for FILENAME in filename:
                     qlList[res_index].append(float(row['ql']))
                     qlListErr[res_index].append(float(row['ql_err']))
                     photonList[res_index].append(float(row['photon_num']))
-                    res_freq_array.append(float(row['res_freq']))
                     chiSquare[res_index].append(float(row['chi_square']))
                     line_count += 1
+                res_freq_array.append(float(row['res_freq']))
         else:
             #create a different csv file for each resonance within each .hdf5
             with open(csv_directory + FILENAME + '-' + str(res_index) + '.csv', mode='a+') as data_base:
@@ -127,15 +127,13 @@ for FILENAME in filename:
 
                 kind, e_delay, base_smooth = res_params
                 for p_index, power in enumerate(powers):
-                    
-                    f = freq[:, res_index, p_index]
-                    a = amp[:, res_index, p_index]
+                    f   = freq[:, res_index, p_index]
+                    a   = amp[:, res_index, p_index]
+                    i   = imag[:, res_index, p_index]
+                    r   = real[:, res_index, p_index]
                     phi = phase[:, res_index, p_index]
-                    i = imag[:, res_index, p_index]
-                    r = real[:, res_index, p_index]
                     phi = np.unwrap(phi)
-                    
-                    fc = estimate_central_frequency(f, a, kind)
+                    fc  = estimate_central_frequency(f, a, kind)
                     
                     width = estimate_width(f, a, kind)
                     
@@ -216,17 +214,14 @@ for FILENAME in filename:
                 res_freq_array.append(fc)
                 data_base.close()
 
-markersize   = 10
+markersize   = 20
 labelsize    = 16
 tickfontsize = 12
 legendsize   = 16
 
-xscale = 'log'
-yscale = 'log'
-
-bottom = .15
-top    = .9
-right  = .9
+bottom = .12
+top    = .93
+right  = .98
 left   = .15
 
 
