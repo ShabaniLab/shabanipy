@@ -34,13 +34,13 @@ def calculate_total_power(freq,power):
     totalPower = (-(1/800000000)*freq - (215/4)) + power + ATTENUATION_ON_VNA
     return totalPower
 
-#uncommentresonance parameters line for 0th resonance, 1st resonance, and so on.
+# uncommentresonance parameters line for 0th resonance, 1st resonance, and so on.
 RESONANCE_PARAMETERS = {
     0: ('min', 500, 1e13),
-    1: ('min', 500, 1e13),
-    2: ('min', 500, 1e13),
-    3: ('min', 500, 1e13),
-    4: ('min', 1000, 1e13),
+    #1: ('min', 500, 1e13),
+    #2: ('min', 500, 1e13),
+    #3: ('min', 500, 1e13),
+    #4: ('min', 1000, 1e13),
     #5: ('min', 400, 1e13),
     #6: ('min', 500, 1e13),
     #7: ('min', 500, 1e13),
@@ -49,13 +49,21 @@ RESONANCE_PARAMETERS = {
     #10: ('min', 400, 1e13),
 }
 #put the path of all files you want to study and then put their associated attenuation below
-path = '/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper/data/'
-csv_directory = '/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper/fits/JS314/'
 
-IMAGE_DIR = '/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper/images/JS314/'
+SAMPLE = 'JS200'
+BASEPATH = '/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper'
 
-filename = ['JS314_CD1_att20_004', 'JS314_CD1_att40_006', 'JS314_CD1_att60_007']
-attenuation_on_vna = [-20,-40,-60]
+path = pth.join(BASEPATH,'data')
+csv_directory = pth.join(BASEPATH,'fits',SAMPLE)
+IMAGE_DIR = pth.join(BASEPATH,'images',SAMPLE)
+
+filename = ['JS200_JY001_008']
+#filename = ['JS314_CD1_att20_004', 'JS314_CD1_att40_006', 'JS314_CD1_att60_007']
+
+# Strip off '.hdf5' in case file extensions are left on
+filename = [i.rstrip('.hdf5') for i in filename] 
+
+attenuation_on_vna = [0]
 
 res_freq_array = []
 
@@ -70,10 +78,11 @@ chiSquare = {}
 
 j = 0
 for FILENAME in filename:
-    PATH = path + FILENAME + '.hdf5'
+    PATH = pth.join(path, FILENAME + '.hdf5')
     ATTENUATION_ON_VNA = attenuation_on_vna[j]
     j = j+1
     
+    print(PATH)
     with LabberData(PATH) as data:
         shape = data.compute_shape((FREQ_COLUMN, POWER_COLUMN))
         shape = [shape[1], shape[0]] 
@@ -89,8 +98,9 @@ for FILENAME in filename:
         phase = np.arctan2(imag, real)
 
     for res_index, res_params in RESONANCE_PARAMETERS.items():
-        if pth.exists(csv_directory + FILENAME + '-' + str(res_index) + '.csv'):
-            with open(csv_directory + FILENAME + '-' + str(res_index) + '.csv', mode='a+') as data_base:
+        res_result_path = pth.join(csv_directory,FILENAME + '-' + str(res_index) + '.csv')
+        if pth.exists(res_result_path):
+            with open(res_result_path, mode='a+') as data_base:
                 data_base.seek(0)
                 fieldnames = ['res_index', 'res_freq', 'attenuation', 'power', 'total_power','photon_num','qi','qi_err','qc','ql','ql_err','chi_square']
                 csv_reader = csv.DictReader(data_base)
@@ -119,7 +129,7 @@ for FILENAME in filename:
                 res_freq_array.append(float(row['res_freq']))
         else:
             #create a different csv file for each resonance within each .hdf5
-            with open(csv_directory + FILENAME + '-' + str(res_index) + '.csv', mode='a+') as data_base:
+            with open(res_result_path, mode='a+') as data_base:
                 data_base.seek(0)
                 fieldnames = ['res_index', 'res_freq', 'attenuation', 'power', 'total_power','photon_num','qi','qi_err','qc','ql','ql_err','chi_square']
                 writer = csv.DictWriter(data_base, fieldnames=fieldnames)
@@ -214,7 +224,8 @@ for FILENAME in filename:
                 res_freq_array.append(fc)
                 data_base.close()
 
-markersize   = 20
+
+markersize   = 15
 labelsize    = 16
 tickfontsize = 12
 legendsize   = 16
@@ -227,24 +238,47 @@ left   = .15
 
 plot_info = [
     [PLOT_QINT_VS_POWER, "Power Vs. Q$_i$", "linear", "log", "Power [dB]",
-        "Internal Quality Factor", powerList, qList, '_Qi'],
+        "Internal Quality Factor", powerList, qList, chiSquare, '_Qi'],
     [PLOT_PHOTON_VS_QINT, "Photon Number Vs. Q$_i$", "log", "log", "Photon Number",
-        "Internal Quality Factor", photonList, qList, '_Qi_photon'],
+        "Internal Quality Factor", photonList, qList, chiSquare, '_Qi_photon'],
     [PLOT_QC_VS_POWER, "Power Vs. Q$_C$", "linear", "log", "Power [dB]",
-        "Coupled Quality Factor", powerList, qcList, '_Qc'],
+        "Coupled Quality Factor", powerList, qcList, chiSquare, '_Qc'],
     [PLOT_PHOTON_VS_QC, "Photon Number Vs. Q$_C$", "log", "log", "Photon Number",
-        "Coupled Quality Factor", photonList, qcList, '_Qc_photon'],
+        "Coupled Quality Factor", photonList, qcList, chiSquare, '_Qc_photon'],
 ]
 
-for plot_check, title, xscale, yscale, xlabel, ylabel, xdata, ydata, filename_suffix in plot_info:
+def moving_average(values,index,pts):
+    if pts%2 == 0:
+        step = pts//2
+    else:
+        step = (pts-1)//2
+    L = max(0, index - step)
+    R = max(len(values)-1, index + step)
+    return np.average(values[L:R])
+
+# Work in progress
+
+def filter_points(xdata,ydata,chi2,box_average_pts=3,filter_multiple=10):
+    return xdata,ydata
+    filtered_x,filtered_y = [],[]
+    for i in range(len(xdata)):
+        avg_q = moving_average(ydata,i,box_average_pts)
+        if avg_q*filter_multiple > ydata[i] > avg_q/filter_multiple:
+            filtered_x.append(xdata[i])
+            filtered_y.append(ydata[i])
+    return filtered_x,filtered_y
+        
+chi2_cutoff = .1
+
+for plot_check, title, xscale, yscale, xlabel, ylabel, xdata, ydata, chi2, filename_suffix in plot_info:
     if plot_check:
         i = 0
         f,ax = plt.subplots(1,1)
         for res_index, res_params in RESONANCE_PARAMETERS.items():
-            lists = list(zip(xdata[res_index],ydata[res_index]))
-            res = sorted(lists, key = lambda x: x[0]) 
-            new_x, new_y = zip(*res)
-            label_string = f'{res_freq_array[i]/1e9:.3f} GHz'
+            lists = list(zip(xdata[res_index],ydata[res_index],chi2[res_index]))
+            res = sorted(lists, key = lambda x: x[0])
+            new_x, new_y = filter_points(*zip(*res),box_average_pts=5)
+            label_string = '$f_r$ = ' + f'{res_freq_array[i]/1e9:.3f} GHz'
             ax.plot(new_x,new_y,".",label=label_string,markersize=markersize)
             i += 1
         ax.set_title(title,fontsize=labelsize)
@@ -266,5 +300,5 @@ for plot_check, title, xscale, yscale, xlabel, ylabel, xdata, ydata, filename_su
             left=left
         )
         f.savefig(pth.join(IMAGE_DIR,FILENAME + filename_suffix+'.png'))
-        plt.show()
+plt.show()
 
