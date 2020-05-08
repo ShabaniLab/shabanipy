@@ -15,8 +15,8 @@ import numpy as np
 import scipy.constants as cs
 
 GEOMETRIC_FACTORS = {
-    'Van der Pauw': pi/log(2),
-    'Standard Hall bar': 0.75,
+    "Van der Pauw": pi / log(2),
+    "Standard Hall bar": 0.75,
 }
 
 
@@ -24,7 +24,7 @@ def convert_lock_in_meas_to_diff_res(measured_voltage, bias_current):
     """Convert the voltage measured using a lock-in to differential resistance.
 
     """
-    return measured_voltage/bias_current
+    return measured_voltage / bias_current
 
 
 def kf_from_density(density):
@@ -41,7 +41,7 @@ def kf_from_density(density):
         Fermi wavevector in m^-1.
 
     """
-    return np.sqrt(2*np.pi*density)
+    return np.sqrt(2 * np.pi * density)
 
 
 def mean_free_time_from_mobility(mobility, effective_mass):
@@ -60,7 +60,7 @@ def mean_free_time_from_mobility(mobility, effective_mass):
         Mean free time in s.
 
     """
-    return mobility*effective_mass/cs.e
+    return mobility * effective_mass / cs.e
 
 
 def fermi_velocity_from_kf(kf, effective_mass):
@@ -70,6 +70,8 @@ def fermi_velocity_from_kf(kf, effective_mass):
     ----------
     kf : float | np.ndarray
         Fermi wavevector in m^-1.
+    effective_mass : float | np.ndarray
+        Effective mass in kg.
 
     Returns
     -------
@@ -77,7 +79,7 @@ def fermi_velocity_from_kf(kf, effective_mass):
         Fermi velocity in m.s^-1.
 
     """
-    return cs.hbar*kf/effective_mass
+    return cs.hbar * kf / effective_mass
 
 
 def fermi_velocity_from_density(density, effective_mass):
@@ -97,8 +99,7 @@ def fermi_velocity_from_density(density, effective_mass):
     return fermi_velocity_from_kf(kf_from_density(density), effective_mass)
 
 
-def diffusion_constant_from_mobility_density(mobility, density,
-                                             effective_mass):
+def diffusion_constant_from_mobility_density(mobility, density, effective_mass):
     """Compute the diffusion constant from mobility and density.
 
     Parameters
@@ -116,7 +117,7 @@ def diffusion_constant_from_mobility_density(mobility, density,
     """
     vf = fermi_velocity_from_density(density, effective_mass)
     mft = mean_free_time_from_mobility(mobility, effective_mass)
-    return vf**2*mft/2
+    return vf ** 2 * mft / 2
 
 
 def htr_from_mobility_density(mobility, density, effective_mass):
@@ -133,7 +134,6 @@ def htr_from_mobility_density(mobility, density, effective_mass):
     -------
 
     """
-    d = diffusion_constant_from_mobility_density(mobility, density,
-                                                 effective_mass)
+    d = diffusion_constant_from_mobility_density(mobility, density, effective_mass)
     mft = mean_free_time_from_mobility(mobility, effective_mass)
-    return cs.hbar/(4*cs.e*d*mft)
+    return cs.hbar / (4 * cs.e * d * mft)
