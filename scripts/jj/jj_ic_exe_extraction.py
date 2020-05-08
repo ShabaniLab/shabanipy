@@ -10,25 +10,38 @@
 #: Name of the config file (located in the configs folder next to this script)
 #: to use. This will overwrite all the following constants. This file should be
 #: a python file defining all the constants defined above # --- Execution
-CONFIG_NAME = 'JS307-4JJ-2HB-1.py'
+CONFIG_NAME = "JS308-4JJ-2HB-1.py"
 
 #: Common folder in which all data are stored
-BASE_FOLDER = r'/Users/mdartiailh/Labber/Data/2019/12'
+BASE_FOLDER = r"/Users/mdartiailh/Labber/Data/2019/12"
 
 #: Name of the sample and associated parameters as a dict.
 #: The currently expected keys are:
 #: - path
 #: - Tc (in K)
 #: - gap size (in nm)
-SAMPLES = {"JJ100-1": {"path": "Data_1205/JS131A_BM001_JJ100-1_006.hdf5",
-                       "Tc": 1.44, "gap size": 100},
-           "JJ100-2": {"path": "Data_1205/JS131A_BM001_JJ100-2_011.hdf5",
-                       "Tc": 1.44, "gap size": 100},
-           "JJ300": {"path": "Data_1205/JS131A_BM001_JJ300_015.hdf5",
-                     "Tc": 1.44, "gap size": 300},
-           "JJ500": {"path": "Data_1205/JS131A_BM001_JJ500_023.hdf5",
-                     "Tc": 1.44, "gap size": 500},
-            }
+SAMPLES = {
+    "JJ100-1": {
+        "path": "Data_1205/JS131A_BM001_JJ100-1_006.hdf5",
+        "Tc": 1.44,
+        "gap size": 100,
+    },
+    "JJ100-2": {
+        "path": "Data_1205/JS131A_BM001_JJ100-2_011.hdf5",
+        "Tc": 1.44,
+        "gap size": 100,
+    },
+    "JJ300": {
+        "path": "Data_1205/JS131A_BM001_JJ300_015.hdf5",
+        "Tc": 1.44,
+        "gap size": 300,
+    },
+    "JJ500": {
+        "path": "Data_1205/JS131A_BM001_JJ500_023.hdf5",
+        "Tc": 1.44,
+        "gap size": 500,
+    },
+}
 
 #: Path to the file in which to write the output
 OUTPUT = "/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/JJ/JS131/results.csv"
@@ -42,11 +55,12 @@ OUTPUT = "/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/JJ/JS131/results.c
 BIAS_NAME = 0
 
 #: Name or index of the column containing the voltage data
-VOLTAGE_NAME = {"JJ100-1": 1,
-                "JJ100-2": 3,
-                "JJ300": 3,
-                "JJ500": 3,
-                }
+VOLTAGE_NAME = {
+    "JJ100-1": 1,
+    "JJ100-2": 3,
+    "JJ300": 3,
+    "JJ500": 3,
+}
 
 #: Name or index of the column containing the counter value for scans with
 #: multiple traces (use None if absent). Only the first trace is used in the
@@ -90,14 +104,16 @@ from scipy import constants
 from shabanipy.jj.iv_analysis import analyse_vi_curve
 from shabanipy.utils.labber_io import LabberData
 
-plt.rcParams['axes.linewidth'] = 1.5
-plt.rcParams['font.size'] = 13
-plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams["axes.linewidth"] = 1.5
+plt.rcParams["font.size"] = 13
+plt.rcParams["pdf.fonttype"] = 42
 
 if CONFIG_NAME:
-    print(f"Using configuration {CONFIG_NAME}, all scripts constants will be"
-          " overwritten.")
-    path = os.path.join(os.path.dirname(__file__), 'configs', CONFIG_NAME)
+    print(
+        f"Using configuration {CONFIG_NAME}, all scripts constants will be"
+        " overwritten."
+    )
+    path = os.path.join(os.path.dirname(__file__), "configs", CONFIG_NAME)
     with open(path) as f:
         exec(f.read())
 
@@ -112,20 +128,37 @@ with open(OUTPUT, "w") as f:
     f.write(f"# AMPLIFIER_GAIN = {AMPLIFIER_GAIN}\n")
     f.write(f"# IC_VOLTAGE_THRESHOLD = {IC_VOLTAGE_THRESHOLD}\n")
     f.write(f"# HIGH_BIAS_THRESHOLD = {HIGH_BIAS_THRESHOLD}\n")
-    f.write("\t".join(["Sample", "JJGap(nm)", "Tc(K)", "Δ(meV)", "Vg(V)",
-                       "Rn_cold(Ω)", "Rn_hot(Ω)", "Ic_cold(µA)", "Ic_hot(µA)",
-                       "I_exe_cold(µA)", "I_exe_hot(µA)",
-                       "RnIc_cold(meV)", "RnI_exe_cold(meV)"]) + "\n")
+    f.write(
+        "\t".join(
+            [
+                "Sample",
+                "JJGap(nm)",
+                "Tc(K)",
+                "Δ(meV)",
+                "Vg(V)",
+                "Rn_cold(Ω)",
+                "Rn_hot(Ω)",
+                "Ic_cold(µA)",
+                "Ic_hot(µA)",
+                "I_exe_cold(µA)",
+                "I_exe_hot(µA)",
+                "RnIc_cold(meV)",
+                "RnI_exe_cold(meV)",
+            ]
+        )
+        + "\n"
+    )
 
 results = defaultdict(list)
 
 for sample, parameters in SAMPLES.items():
 
     # Superconducting gap in meV
-    gap = 1.674*constants.Boltzmann/constants.e*1000*parameters["Tc"]
+    gap = 1.674 * constants.Boltzmann / constants.e * 1000 * parameters["Tc"]
 
     with LabberData(os.path.join(BASE_FOLDER, parameters["path"])) as data:
 
+        print(data.list_channels())
         filters = {}
         counter = get_value(sample, COUNTER_NAME)
         if counter is not None:
@@ -145,45 +178,82 @@ for sample, parameters in SAMPLES.items():
             if gate is not None:
                 filters[gate_col] = gate
 
-            current_bias = (data.get_data(get_value(sample, BIAS_NAME),
-                                          filters=filters) *
-                            get_value(sample, CURRENT_CONVERSION))
+            current_bias = data.get_data(
+                get_value(sample, BIAS_NAME), filters=filters
+            ) * get_value(sample, CURRENT_CONVERSION)
 
-            measured_voltage = data.get_data(get_value(sample, VOLTAGE_NAME),
-                                            filters=filters)
+            measured_voltage = data.get_data(
+                get_value(sample, VOLTAGE_NAME), filters=filters
+            )
 
             # Convert the voltage to the physical value
             measured_voltage /= get_value(sample, AMPLIFIER_GAIN)
 
-            title = (f"Sample {sample}" +
-                     (f", Vg = {gate} V" if gate else
-                      f", gap {parameters['gap size']} nm")
+            title = f"Sample {sample}" + (
+                f", Vg = {gate} V" if gate else f", gap {parameters['gap size']} nm"
             )
             # Store the results to be able to plot a summary at the end
-            offset_corr, rn_c, rn_h, ic_c, ic_h, iexe_c, iexe_h =\
-                analyse_vi_curve(current_bias, measured_voltage,
-                                 offset_corr,
-                                 get_value(sample, IC_VOLTAGE_THRESHOLD)  /
-                                 get_value(sample, AMPLIFIER_GAIN),
-                                 get_value(sample, HIGH_BIAS_THRESHOLD),
-                                 plot_title=title)
+            offset_corr, rn_c, rn_h, ic_c, ic_h, iexe_c, iexe_h = analyse_vi_curve(
+                current_bias,
+                measured_voltage,
+                offset_corr,
+                get_value(sample, IC_VOLTAGE_THRESHOLD)
+                / get_value(sample, AMPLIFIER_GAIN),
+                get_value(sample, HIGH_BIAS_THRESHOLD),
+                plot_title=title,
+            )
             # Convert to µA
             ic_c *= 1e6
             ic_h *= 1e6
             iexe_c *= 1e6
             iexe_h *= 1e6
-            for n, v in zip(["sample", "gap_size", "Tc", "gap", "gate",
-                            "rn_cold", "rn_hot", "ic_cold", "ic_hot",
-                            "iexe_cold", "iexe_hot"],
-                            [sample, parameters["gap size"], parameters["Tc"], gap,
-                             gate, rn_c, rn_h, ic_c, ic_h, iexe_c, iexe_h]):
+            for n, v in zip(
+                [
+                    "sample",
+                    "gap_size",
+                    "Tc",
+                    "gap",
+                    "gate",
+                    "rn_cold",
+                    "rn_hot",
+                    "ic_cold",
+                    "ic_hot",
+                    "iexe_cold",
+                    "iexe_hot",
+                ],
+                [
+                    sample,
+                    parameters["gap size"],
+                    parameters["Tc"],
+                    gap,
+                    gate,
+                    rn_c,
+                    rn_h,
+                    ic_c,
+                    ic_h,
+                    iexe_c,
+                    iexe_h,
+                ],
+            ):
                 results[n].append(v)
 
             # Save the summary of the result
             with open(OUTPUT, "a") as f:
-                to_save = (sample, parameters["gap size"], parameters["Tc"],
-                        gap, gate, rn_c, rn_h, ic_c, ic_h, iexe_c, iexe_h,
-                        rn_c*ic_c/1e3, rn_c*iexe_c/1e3)
+                to_save = (
+                    sample,
+                    parameters["gap size"],
+                    parameters["Tc"],
+                    gap,
+                    gate,
+                    rn_c,
+                    rn_h,
+                    ic_c,
+                    ic_h,
+                    iexe_c,
+                    iexe_h,
+                    rn_c * ic_c / 1e3,
+                    rn_c * iexe_c / 1e3,
+                )
                 f.write("\t".join([f"{v}" for v in to_save]) + "\n")
 
 # Prepare comparative plots between samples
@@ -194,13 +264,21 @@ if None in results["gate"]:
     fig = plt.figure()
     plt.suptitle("Size dependence")
     ax = fig.gca()
-    ax.plot(results["gap_size"], results["ic_cold"]*results["rn_cold"]/1e3/results["gap"],
-            "+", label="$R_N\,I_c/\Delta$")
-    ax.plot(results["gap_size"], results["iexe_cold"]*results["rn_cold"]/1e3/results["gap"],
-            "+", label="$R_N\,I_{exe}/\Delta$")
+    ax.plot(
+        results["gap_size"],
+        results["ic_cold"] * results["rn_cold"] / 1e3 / results["gap"],
+        "+",
+        label="$R_N\,I_c/\Delta$",
+    )
+    ax.plot(
+        results["gap_size"],
+        results["iexe_cold"] * results["rn_cold"] / 1e3 / results["gap"],
+        "+",
+        label="$R_N\,I_{exe}/\Delta$",
+    )
     ax.axhline(np.pi, ls="--", label="IcRn ballistic limit")
-    ax.axhline(1.32*np.pi/2, ls="-.", label="IcRn diffusive limit")
-    ax.axhline(8/3, color="C1", ls="--", label="IexeRn ballistic limit")
+    ax.axhline(1.32 * np.pi / 2, ls="-.", label="IcRn diffusive limit")
+    ax.axhline(8 / 3, color="C1", ls="--", label="IexeRn ballistic limit")
     ax.axhline(1.467, color="C1", ls="-.", label="IexeRn diffusive limit")
     ax.set_xlabel("Gap size (nm)")
     ax.set_ylabel("")
@@ -209,10 +287,18 @@ else:
     fig = plt.figure()
     plt.suptitle("Gate dependence")
     ax = fig.gca()
-    ax.plot(results["gate"], results["ic_cold"]*results["rn_cold"]/1e3/results["gap"],
-            "+", label="$R_N\,I_c/\Delta$")
-    ax.plot(results["gate"], results["iexe_cold"]*results["rn_cold"]/1e3/results["gap"],
-            "+", label="$R_N\,I_{exe}/\Delta$")
+    ax.plot(
+        results["gate"],
+        results["ic_cold"] * results["rn_cold"] / 1e3 / results["gap"],
+        "+",
+        label="$R_N\,I_c/\Delta$",
+    )
+    ax.plot(
+        results["gate"],
+        results["iexe_cold"] * results["rn_cold"] / 1e3 / results["gap"],
+        "+",
+        label="$R_N\,I_{exe}/\Delta$",
+    )
     ax.axhline(np.pi)
     ax.set_xlabel("Gate voltage (V)")
     ax.set_ylabel("")
