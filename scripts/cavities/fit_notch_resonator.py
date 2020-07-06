@@ -8,7 +8,7 @@
 # =============================================================================
 
 #: Path to the HDF5 storing the data.
-PATH = '/Users/mdartiailh/Labber/Data/2019/04/Data_0402/InPG_JY001_005.hdf5'
+PATH = '/Users/goss/Desktop/Shabani/data/test/InPG_JY001_005.hdf5'
 
 #: Name or index of the central frequency column.
 FREQ_COLUMN = 0
