@@ -9,10 +9,43 @@
 """ IO tools to interact with Labber saved data.
 
 """
+import os
+from dataclasses import dataclass
 from typing import Union, Optional
 
 import numpy as np
 from h5py import File
+
+
+@dataclass
+class RampConfig:
+
+    #:
+    start: float
+
+    #:
+    stop: float
+
+    #:
+    steps: int
+
+
+@dataclass
+class StepConfig:
+    """
+    """
+
+    #:
+    name: str
+
+    #:
+    is_ramped: bool
+
+    #:
+    value: Optional[float]
+
+    #:
+    ramps: Optional[List[RampConfig]]
 
 
 class LabberData:
@@ -25,6 +58,7 @@ class LabberData:
 
     def __init__(self, path: str) -> None:
         self.path = path
+        self.filename = path.rsplit(os.sep, 1)[-1]
         self._file = None
         self._channel_names = None
         self._axis_dimensions = None
@@ -39,8 +73,8 @@ class LabberData:
         # Identify nested dataset
         i = 2
         nested = []
-        while f'Log_{i}' in self._file:
-            nested.append(self._file[f'Log_{i}'])
+        while f"Log_{i}" in self._file:
+            nested.append(self._file[f"Log_{i}"])
             i += 1
 
         if nested:
@@ -56,9 +90,13 @@ class LabberData:
         self._axis_dimensions = None
         self._nested = []
 
-    def get_data(self, name_or_index: Union[str, int],
-                 filters: Optional[dict]=None,
-                 filter_precision=1e-10):
+    def get_data(
+        self,
+        name_or_index: Union[str, int],
+        filters: Optional[dict] = None,
+        filter_precision=1e-10,
+        # XXX specify rather or not we want x data for vector
+    ):
         """ Retrieve data base on channel name or index
 
         Parameters
@@ -82,16 +120,18 @@ class LabberData:
 
         """
         if not self._file:
-            msg = ('The underlying file needs to be opened before accessing '
-                   'data. Either call open or better use a context manager.')
+            msg = (
+                "The underlying file needs to be opened before accessing "
+                "data. Either call open or better use a context manager."
+            )
             raise RuntimeError(msg)
 
         index = self.name_or_index_to_index(name_or_index)
 
         # Copy the data to an array to get a more efficient masking.
-        data = [self._file['Data']['Data'][:, index]]
+        data = [self._file["Data"]["Data"][:, index]]
         for internal in self._nested:
-            data.append(internal['Data']['Data'][:, index])
+            data.append(internal["Data"]["Data"][:, index])
 
         if not filters:
             return np.hstack([np.ravel(d) for d in data])
@@ -103,8 +143,9 @@ class LabberData:
             masks = []
             for k, v in filters.items():
                 index = self.name_or_index_to_index(k)
-                mask = np.less(np.abs(d['Data']['Data'][:, index] - v),
-                               filter_precision)
+                mask = np.less(
+                    np.abs(d["Data"]["Data"][:, index] - v), filter_precision
+                )
                 masks.append(mask)
 
             mask = masks.pop()
@@ -120,8 +161,9 @@ class LabberData:
 
         """
         shape = []
-        for sw in sorted(self.name_or_index_to_index(i)
-                         for i in sweeps_indexes_or_names):
+        for sw in sorted(
+            self.name_or_index_to_index(i) for i in sweeps_indexes_or_names
+        ):
             shape.append(self.get_axis_dimension(sw))
         return shape
 
@@ -136,16 +178,20 @@ class LabberData:
 
         """
         if not self._axis_dimensions:
-            data_attrs = self._file['Data'].attrs
-            dims = {k: v for k, v in zip(data_attrs['Step index'],
-                                         data_attrs['Step dimensions'])}
+            data_attrs = self._file["Data"].attrs
+            dims = {
+                k: v
+                for k, v in zip(data_attrs["Step index"], data_attrs["Step dimensions"])
+            }
             self._axis_dimensions = dims
 
         dims = self._axis_dimensions
         index = self.name_or_index_to_index(name_or_index)
         if index not in dims:
-            msg = (f'The specified axis {name_or_index} is not a stepped one. '
-                   f'Stepped axis are {list(dims)}.')
+            msg = (
+                f"The specified axis {name_or_index} is not a stepped one. "
+                f"Stepped axis are {list(dims)}."
+            )
             raise ValueError(msg)
         return dims[index]
 
@@ -154,19 +200,23 @@ class LabberData:
 
         """
         if self._channel_names is None:
-            _ch_names = self._file['Data']['Channel names']
+            _ch_names = self._file["Data"]["Channel names"]
             self._channel_names = [n for (n, _) in list(_ch_names)]
         ch_names = self._channel_names
 
         if isinstance(name_or_index, str):
             if name_or_index not in ch_names:
-                msg = (f'The specified name ({name_or_index}) does not exist '
-                       f'in the dataset. Existing names are {ch_names}')
+                msg = (
+                    f"The specified name ({name_or_index}) does not exist "
+                    f"in the dataset. Existing names are {ch_names}"
+                )
                 raise ValueError(msg)
             return ch_names.index(name_or_index)
         elif name_or_index >= len(ch_names):
-            msg = (f'The specified index ({name_or_index}) '
-                   f'exceeds the number of channel: {len(ch_names)}')
+            msg = (
+                f"The specified index ({name_or_index}) "
+                f"exceeds the number of channel: {len(ch_names)}"
+            )
             raise ValueError(msg)
         else:
             return name_or_index
@@ -176,9 +226,42 @@ class LabberData:
 
         """
         if self._channel_names is None:
-            _ch_names = self._file['Data']['Channel names']
-            self._channel_names = [n for (n, _) in list(_ch_names)]
+            names = [s for s in self.list_steps if s.is_ramped] + self.list_logs()
         return self._channel_names
+
+        # _ch_names = self._file["Data"]["Channel names"]
+        # self._channel_names = [n for (n, _) in list(_ch_names)]
+
+    # XXX  document
+    # XXX
+    def list_steps(self):
+        """
+        """
+        steps = []
+        for (step, *_) in self._file["Step list"]:
+            config = self._file["Step config"][step]["Step items"]
+            is_ramped = len(config) > 1 or bool(config[0][0])
+            steps.append(
+                StepConfig(
+                    name=step,
+                    is_ramped=is_ramped,
+                    value=config[2] if not is_ramped else None,
+                    ramp=[
+                        RampConfig(start=cfg[3], stop=cfg[4], steps=cfg[8])
+                        for cfg in config
+                    ]
+                    if is_ramped
+                    else None,
+                )
+            )
+
+        return steps
+
+    # XXX  document
+    def list_logs(self) -> List[str]:
+        """
+        """
+        return [e[0] for e in self._file["Log list"]]
 
     def __enter__(self):
         """ Open the underlying HDF5 file when used as a context manager.
