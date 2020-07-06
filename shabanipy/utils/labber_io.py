@@ -267,7 +267,7 @@ class LabberData:
 
         return steps
 
-    # XXX  document
+    # XXX provide more structure (in particular indicate vector data)
     def list_logs(self) -> List[str]:
         """
         """
