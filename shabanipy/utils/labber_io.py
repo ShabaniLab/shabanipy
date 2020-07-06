@@ -195,6 +195,41 @@ class LabberData:
 
 
 if __name__ == "__main__":
-    pass
+    PATH = '/Users/javadshabani/Desktop/Projects/ResonatorPaper/JS314/JS314_CD1_att60_007.hdf5'
+    #PATH = '/Users/javadshabani/Desktop/Projects/ResonatorPaper/Labber Test Data/Feng_JY002_both_004.hdf5'
+    import h5py
+
+    with h5py.File(PATH) as f:
+        print(list(f['Step list']))
+        step_channels = [item[0] for item in f['Step list']]
+        for item in f['Step list']:
+            print(item)
+        print(step_channels)
+
+        config_labels = ['swept','?','single point','start','end','center','span','rate','number points','?','Sweep rate','?']
+        for step_channel in step_channels:
+            if step_channel in f['Step config']:
+                print(step_channel)
+                for i,config in enumerate(list(f['Step config'][step_channel]['Step items'])):
+                    print('\tConfig #',i+1)
+                    for label,value in zip(config_labels,config):
+                        print('\t\t',label,':',value)
+        
+        print(list(f))
+        print(list(f['Data']['Channel names']))
+        print(list(f['Data']['Data'].shape))
+        print(list(f['Log list']))
+        for log in list(f['Log list']):
+            print(f['Log list'])
+        print(f['Traces'])
+        print(list(f['Traces']['VNA - S21'].attrs))
+        print(list(f['Traces']['VNA - S21'].attrs.items()))
+        
+
+        
+        
+        
+
+
 
 
