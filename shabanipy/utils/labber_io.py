@@ -48,6 +48,19 @@ class StepConfig:
     ramps: Optional[List[RampConfig]]
 
 
+@dataclass
+class LogEntry:
+
+    #:
+    name: str
+
+    #:
+    is_vector: bool = False
+
+    #:
+    x_name: str = ""
+
+
 class LabberData:
     """Labber save data in HDF5 files and organize them by channel.
 
@@ -232,9 +245,9 @@ class LabberData:
 
         """
         if self._channel_names is None:
-            self._channel_names = [
-                s.name for s in self.list_steps if s.is_ramped
-            ] + self.list_logs()
+            self._channel_names = [s.name for s in self.list_steps if s.is_ramped] + [
+                l.name for l in self.list_logs()
+            ]
             # XXX cache data data, vector data
             # XXX cache complex data data
         return self._channel_names
@@ -268,10 +281,22 @@ class LabberData:
         return steps
 
     # XXX provide more structure (in particular indicate vector data)
-    def list_logs(self) -> List[str]:
+    def list_logs(self) -> List[LogEntry]:
         """
         """
-        return [e[0] for e in self._file["Log list"]]
+        names = [e[0] for e in self._file["Log list"]]
+        if "Traces" in self._file:
+            for i, n in enumerate(names[:]):
+                if n in self._file["Traces"]:
+                    names[i] = LogEntry(
+                        name=n,
+                        is_vector=True,
+                        x_name=self._file["Traces"][n].attrs["x, name"],
+                    )
+                else:
+                    names[i] = LogEntry(name=n)
+
+        return [LogEntry(name=e[0]) for e in self._file["Log list"]]
 
     def __enter__(self):
         """ Open the underlying HDF5 file when used as a context manager.
