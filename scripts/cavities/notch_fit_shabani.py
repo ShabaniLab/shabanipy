@@ -25,7 +25,6 @@ PLOT_PHOTON_VS_Q = True
 GET_PHOTON_NUMBER = True
 GET_SINGLE_PHOTON_LIMIT = True
 
-
 def calculate_total_power(freq,power):
     totalPower = (-(1/800000000)*freq - (215/4)) + power + ATTENUATION_ON_VNA
     return totalPower
@@ -37,10 +36,8 @@ RESONANCE_PARAMETERS = {
 #2: ('min', 500, 1e13),
 #3: ('min', 500, 1e13),
 #4: ('min', 1000, 0),
-# 5: ('min', 400, 1e13),
-    
-    
-    }
+#5: ('min', 400, 1e13),
+}
 
 with LabberData(PATH) as data:
     shape = data.compute_shape((FREQ_COLUMN, POWER_COLUMN))
@@ -55,7 +52,6 @@ with h5py.File(PATH) as f:
     phase = np.arctan2(imag, real)
     
 for res_index, res_params in RESONANCE_PARAMETERS.items():
-    
     powerList = []
     qList = []
     photonList = []
@@ -110,10 +106,9 @@ for res_index, res_params in RESONANCE_PARAMETERS.items():
         #display(df.head())
         
         port1 = circuit.notch_port(f_data=df["freq"].values,
-                                z_data_raw=(df["real"].values + 1j*df["imag"].values))
-        
+                                   z_data_raw=(df["real"].values +
+                                               1j*df["imag"].values))
         port1.GUIfit()
-        
         port1.plotall()
         
         print("at power " + str(power) + " and " + str(ATTENUATION_ON_VNA) + " attenuation:")
