@@ -156,6 +156,7 @@ class LabberData:
 
         return np.hstack(results)
 
+    # XXX issue if axis are not in the order of the measurement
     def compute_shape(self, sweeps_indexes_or_names):
         """ Compute the expected shape of data based on sweep axis.
 
@@ -167,6 +168,7 @@ class LabberData:
             shape.append(self.get_axis_dimension(sw))
         return shape
 
+    # XXX issue if axis are not in the order of the measurement
     def reshape_data(self, sweeps_indexes_or_names, data):
         """ Reshape data based on the swept quantities during the acquisition.
 
@@ -195,6 +197,10 @@ class LabberData:
             raise ValueError(msg)
         return dims[index]
 
+    # XXX should be private
+    # XXX index in either data or traces
+    # XXX can return is_complex
+    # XXX track all complex field in data space
     def name_or_index_to_index(self, name_or_index):
         """Helper raising a nice error when a channel does not exist.
 
@@ -226,15 +232,19 @@ class LabberData:
 
         """
         if self._channel_names is None:
-            names = [s for s in self.list_steps if s.is_ramped] + self.list_logs()
+            self._channel_names = [
+                s.name for s in self.list_steps if s.is_ramped
+            ] + self.list_logs()
+            # XXX cache data data, vector data
+            # XXX cache complex data data
         return self._channel_names
 
         # _ch_names = self._file["Data"]["Channel names"]
-        # self._channel_names = [n for (n, _) in list(_ch_names)]
+        #  = [n for (n, _) in list(_ch_names)]
 
     # XXX  document
     # XXX
-    def list_steps(self):
+    def list_steps(self) -> List[StepConfig]:
         """
         """
         steps = []
