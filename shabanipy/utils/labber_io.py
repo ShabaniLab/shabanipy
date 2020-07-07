@@ -268,9 +268,13 @@ class LabberData:
                 StepConfig(
                     name=step,
                     is_ramped=is_ramped,
-                    value=config[2] if not is_ramped else None,
+                    value=config[0][2] if not is_ramped else None,
                     ramp=[
-                        RampConfig(start=cfg[3], stop=cfg[4], steps=cfg[8])
+                        (
+                            RampConfig(start=cfg[3], stop=cfg[4], steps=cfg[8])
+                            if cfg[0]
+                            else RampConfig(start=cfg[2], stop=cfg[2], steps=1)
+                        )
                         for cfg in config
                     ]
                     if is_ramped
