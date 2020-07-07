@@ -15,13 +15,13 @@ import re
 from collections import defaultdict, namedtuple
 from dataclasses import astuple, dataclass, field, fields
 from itertools import product
-from typing import Dict, List, NamedTuple, Optional, Sequence, Set, Union
+from typing import Dict, List, NamedTuple, Optional, Sequence, Set, Tuple, Union
 
 import numpy as np
+
 from h5py import File, Group
 
 from .labber_io import LabberData, LogEntry, StepConfig
-
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class Classifier(NamedTuple):
     column_name: Optional[str]
 
     #:
-    values: Sequence
+    values: tuple
 
     #:
     requires_filtering: bool = False
@@ -96,10 +96,10 @@ class FilenamePattern(NamePattern):
 
         d = match.groupdict()
         if d:
-            return {k: Classifier(None, [v]) for k, v in d.items()}
+            return {k: Classifier(None, (v,)) for k, v in d.items()}
 
         try:
-            return {self.classifier_name: Classifier(None, [match.group(1)])}
+            return {self.classifier_name: Classifier(None, (match.group(1),))}
         except IndexError:
             return None
 
@@ -252,7 +252,7 @@ class StepPattern:
 
         return True
 
-    def extract(self, config: StepConfig) -> Sequence[float]:
+    def extract(self, config: StepConfig) -> tuple:
         """
         """
         if self.ramps and not config.is_ramped:
@@ -261,9 +261,11 @@ class StepPattern:
                 f"Step: {config}, pattern: {self}"
             )
         if config.ramps:
-            return np.hstack([np.linspace(*astuple(ramp)) for ramp in config.ramps])
+            return tuple(
+                np.hstack([np.linspace(*astuple(ramp)) for ramp in config.ramps])
+            )
         else:
-            return np.array((config.value,))
+            return (config.value,)
 
 
 @dataclass(init=True)
@@ -426,6 +428,13 @@ class DataClassifier:
             else:
                 return False
 
+    def prune_identified_datasets(self, black_list: Set[str]):
+        """
+        """
+        for p in list(self._datasets):
+            if p.rsplit(os.sep, 1)[-1] in black_list:
+                del self._datasets[p]
+
     def dump_dataset_list(self):
         """
         """
@@ -454,7 +463,10 @@ class DataClassifier:
                     classifiers = patterns[name].extract_classifiers(f)
                 classified[path] = classifiers
 
-        # XXX ensure we have no duplicate or deal properly with it
+            for path, clsf in classified.items():
+                for p, c in classified.items():
+                    if p != path and clsf == c:
+                        raise RuntimeError(f"{path} and {p} have identical classifiers")
 
         self._classified_datasets = classified_datasets
 
