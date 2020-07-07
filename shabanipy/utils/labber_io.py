@@ -11,9 +11,10 @@
 """
 import os
 from dataclasses import dataclass
-from typing import Union, Optional
+from typing import Dict, List, Optional, Union
 
 import numpy as np
+
 from h5py import File
 
 
@@ -81,7 +82,7 @@ class LabberData:
         """ Open the underlying HDF5 file.
 
         """
-        self._file = File(self.path)
+        self._file = File(self.path, "r")
 
         # Identify nested dataset
         i = 2
@@ -107,7 +108,8 @@ class LabberData:
         self,
         name_or_index: Union[str, int],
         filters: Optional[dict] = None,
-        filter_precision=1e-10,
+        filter_precision: float = 1e-10,
+        get_x: bool = False
         # XXX specify rather or not we want x data for vector
     ):
         """ Retrieve data base on channel name or index
@@ -269,7 +271,7 @@ class LabberData:
                     name=step,
                     is_ramped=is_ramped,
                     value=config[0][2] if not is_ramped else None,
-                    ramp=[
+                    ramps=[
                         (
                             RampConfig(start=cfg[3], stop=cfg[4], steps=cfg[8])
                             if cfg[0]
