@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # -----------------------------------------------------------------------------
-# Copyright 2018 by ShabaniPy Authors, see AUTHORS for more details.
+# Copyright 2018-2020 by ShabaniPy Authors, see AUTHORS for more details.
 #
 # Distributed under the terms of the MIT license.
 #
@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Union
 
 import numpy as np
 
-from h5py import File
+from h5py import File, Group
 
 
 @dataclass
@@ -70,10 +70,22 @@ class LabberData:
 
     """
 
+    #:
+    path: str
+
+    #:
+    filename: str
+
+    #:
+    _file: Optional[File]
+
+    #:
+    _nested: List[Group]
+
     def __init__(self, path: str) -> None:
         self.path = path
         self.filename = path.rsplit(os.sep, 1)[-1]
-        self._file = None
+        self._file: Optional[File] = None
         self._channel_names = None
         self._axis_dimensions = None
         self._nested = []
@@ -98,7 +110,8 @@ class LabberData:
         """ Close the underlying HDF5 file.
 
         """
-        self._file.close()
+        if self._file:
+            self._file.close()
         self._file = None
         self._channel_names = None
         self._axis_dimensions = None
@@ -262,6 +275,9 @@ class LabberData:
     def list_steps(self) -> List[StepConfig]:
         """
         """
+        if not self._file:
+            raise RuntimeError("No file currently opened")
+
         steps = []
         for (step, *_) in self._file["Step list"]:
             config = self._file["Step config"][step]["Step items"]
@@ -290,6 +306,9 @@ class LabberData:
     def list_logs(self) -> List[LogEntry]:
         """
         """
+        if not self._file:
+            raise RuntimeError("No file currently opened")
+
         names = [e[0] for e in self._file["Log list"]]
         if "Traces" in self._file:
             for i, n in enumerate(names[:]):
