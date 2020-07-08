@@ -61,7 +61,6 @@ class LogEntry:
     #:
     x_name: str = ""
 
-
 class LabberData:
     """Labber save data in HDF5 files and organize them by channel.
 
@@ -89,6 +88,9 @@ class LabberData:
         self._channel_names = None
         self._axis_dimensions = None
         self._nested = []
+        
+        self._steps = None
+        self._logs = None
 
     def open(self) -> None:
         """ Open the underlying HDF5 file.
@@ -140,6 +142,9 @@ class LabberData:
 
         filter_precision : float, optional
             Precision used when comparing the data to the mask value.
+
+        get_x : bool
+            Specify for vector data whether the x-data should be returned along with y-data
 
         Returns
         -------
@@ -234,8 +239,9 @@ class LabberData:
 
         """
         if self._channel_names is None:
-            _ch_names = self._file["Data"]["Channel names"]
-            self._channel_names = [n for (n, _) in list(_ch_names)]
+            self.list_channels()
+            #_ch_names = self._file["Data"]["Channel names"]
+            #self._channel_names = [n for (n, _) in list(_ch_names)]
         ch_names = self._channel_names
 
         if isinstance(name_or_index, str):
@@ -260,47 +266,103 @@ class LabberData:
 
         """
         if self._channel_names is None:
-            self._channel_names = [s.name for s in self.list_steps if s.is_ramped] + [
+            self._channel_names = [s.name for s in self.list_steps() if s.is_ramped] + [
                 l.name for l in self.list_logs()
             ]
+            self._channels = [s for s in self.list_steps() if s.is_ramped] + [
+                l for l in self.list_logs()
+            ]
+            print(list(self._file['Traces']))
+            print(list(self._file['Data']['Data']))
+            print(list(self._file['Data']['Channel names']))
+            for channel in self._channels:
+                if isinstance(channel,LogEntry):
+                    if channel.is_vector:
+                        print(channel.name,self._get_traces_data(channel.name))
+                    else:
+                        print(channel.name,self._get_data_data(channel.name))
+                else:
+                    print(channel.name,self._get_data_data(channel.name))
             # XXX cache data data, vector data
-            # XXX cache complex data data
+            # XXX cache complex data
         return self._channel_names
 
         # _ch_names = self._file["Data"]["Channel names"]
         #  = [n for (n, _) in list(_ch_names)]
 
+    def _get_traces_data(self,channel_name,x_data=False):
+        print('test',channel_name,list(self._file['Traces']))
+        if channel_name in self._file['Traces']:
+            data_info = dict(self._file['Traces'][channel_name].attrs)
+            if 'complex' in data_info and data_info['complex']:
+                # XXX assumes data has format index0=ydata real, index1=ydata imag, index2=xdata 
+                real = self._file['Traces'][channel_name][0]
+                imag = self._file['Traces'][channel_name][1]
+                data = real + 1j*imag
+                x = self._file['Traces'][channel_name][2]
+            else:
+                # XXX assumes data has format index0=ydata, index1=xdata 
+                data = self._file['Traces'][channel_name][0]
+                x = self._file['Traces'][channel_name][1]
+            if x_data:
+                return x,data
+            else:
+                return data
+        else:
+            # XXX handle case where channel_name not found
+            pass
+    
+    def _get_data_data(self,channel_name):
+        for i,ch in enumerate(self._file['Data']['Channel names']):
+            ch_name, ch_type = ch
+            if ch_name == channel_name:
+                if ch_type == 'Real' and i + 1 < len(self._file['Data']['Channel names']):
+                    ch_next_name, ch_next_type = self._file['Data']['Channel names'][i+1]
+                    real = self._file['Data']['Data'][i]
+                    imag = self._file['Data']['Data'][i+1]
+                    return real + 1j*imag
+                else:
+                    return self._file['Data']['Data'][:,i]
+    
+    def get_channel_info(self,name) -> Union[StepConfig,LogEntry]:
+        for step in self._steps:
+            if name == step.name:
+                return step
+        for log in self._logs:
+            if name == log.name:
+                return log
+        
+
     # XXX  document
-    # XXX
     def list_steps(self) -> List[StepConfig]:
         """
         """
         if not self._file:
             raise RuntimeError("No file currently opened")
-
-        steps = []
-        for (step, *_) in self._file["Step list"]:
-            config = self._file["Step config"][step]["Step items"]
-            is_ramped = len(config) > 1 or bool(config[0][0])
-            steps.append(
-                StepConfig(
-                    name=step,
-                    is_ramped=is_ramped,
-                    value=config[0][2] if not is_ramped else None,
-                    ramps=[
-                        (
-                            RampConfig(start=cfg[3], stop=cfg[4], steps=cfg[8])
-                            if cfg[0]
-                            else RampConfig(start=cfg[2], stop=cfg[2], steps=1)
-                        )
-                        for cfg in config
-                    ]
-                    if is_ramped
-                    else None,
+        if not self._steps:
+            steps = []
+            for (step, *_) in self._file["Step list"]:
+                config = self._file["Step config"][step]["Step items"]
+                is_ramped = len(config) > 1 or bool(config[0][0])
+                steps.append(
+                    StepConfig(
+                        name=step,
+                        is_ramped=is_ramped,
+                        value=config[0][2] if not is_ramped else None,
+                        ramps=[
+                            (
+                                RampConfig(start=cfg[3], stop=cfg[4], steps=cfg[8])
+                                if cfg[0]
+                                else RampConfig(start=cfg[2], stop=cfg[2], steps=1)
+                            )
+                            for cfg in config
+                        ]
+                        if is_ramped
+                        else None,
+                    )
                 )
-            )
-
-        return steps
+            self._steps = steps
+        return self._steps
 
     # XXX provide more structure (in particular indicate vector data)
     def list_logs(self) -> List[LogEntry]:
@@ -308,20 +370,23 @@ class LabberData:
         """
         if not self._file:
             raise RuntimeError("No file currently opened")
-
-        names = [e[0] for e in self._file["Log list"]]
-        if "Traces" in self._file:
-            for i, n in enumerate(names[:]):
-                if n in self._file["Traces"]:
-                    names[i] = LogEntry(
-                        name=n,
-                        is_vector=True,
-                        x_name=self._file["Traces"][n].attrs["x, name"],
-                    )
-                else:
-                    names[i] = LogEntry(name=n)
-
-        return [LogEntry(name=e[0]) for e in self._file["Log list"]]
+        if not self._logs:
+            names = [e[0] for e in self._file["Log list"]]
+            if "Traces" in self._file:
+                for i, n in enumerate(names[:]):
+                    if n in self._file["Traces"]:
+                        names[i] = LogEntry(
+                            name=n,
+                            is_vector=True,
+                            x_name=self._file["Traces"][n].attrs["x, name"],
+                        )
+                    else:
+                        names[i] = LogEntry(name=n)
+                self._logs = names
+            else:    
+                self._logs = [LogEntry(name=e[0]) for e in self._file["Log list"]]
+        
+        return self._logs
 
     def __enter__(self):
         """ Open the underlying HDF5 file when used as a context manager.
@@ -335,3 +400,13 @@ class LabberData:
 
         """
         self.close()
+
+
+if __name__ == '__main__':
+    FILE = '/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper/data/JS314_CD1_att60_007.hdf5'
+
+    with LabberData(FILE) as ld:
+        print(ld.list_channels())
+    
+
+    
