@@ -165,7 +165,7 @@ def estimate_time_delay(frequency, phase, npoints=50, plot=False):
     Returns
     ----------
     corrected_phase : np.ndarray
-        Phase from which the cqble delay impact has been substracted.
+        Phase from which the cable delay impact has been substracted.
 
     """
     phase = np.unwrap(phase)
@@ -200,4 +200,114 @@ def correct_for_time_delay(frequency, phase, slope):
     phase -= frequency*slope
     phase -= phase[0]
     return ( phase + np.pi) % (2 * np.pi ) - np.pi
+
+def to_dB(value_raw,reference=1.):
+    """Converts a value to decibels (dB) with optional reference value
+    
+    Parameters
+    ----------
+    value_raw : np.ndarray
+        Array or single value to be converted
+    reference (= 1.) : float
+        Reference level to use when converting to decibels (dB)
+
+    Returns
+    -------
+    value_db : np.array
+        Array of single value converted to decibels (dB)
+    """
+    return 10*np.log10(value_raw/reference)
+
+def from_dB(value_dB,reference=1):
+    """Converts a value from dB to units of optional reference value
+
+    Parameters
+    ----------
+    value_dB : np.ndarray
+        Array or single value to be converted from decibels (dB)
+    reference (= 1.) : float
+        Reference level to use when converting from decibels (dB)
+
+    Returns
+    -------
+    value_raw : np.array
+        Array of single value converted to units of reference
+    """
+    return reference*(10**(value_dB/10))
+
+def center_data(frequency,complex_data,kind='min'):
+    """Centers the data around the estimated resonant frequency 
+
+    Applies function estimate_central_frequency and trims the data
+    
+    Parameters
+    ----------
+    frequency : np.ndarray
+        Array of data representing frequency at which microwave transmission
+        line is probed
+    complex_data : float
+        Array of complex data representing microwave transmission data
+    kind (= 'min') : str
+        can be either 'min' or 'max' to indicate which type of feature to
+        look for
+
+    Returns
+    -------
+    frequency : np.ndarray
+        Frequency data centered 
+    complex_data : np.ndarray
+        Complex data centered
+    """
+    amplitude = np.absolute(complex_data)
+    phase = np.angle(complex_data)
+    fc  = estimate_central_frequency(frequency, amplitude,kind=kind)
+    fc_idx = np.argmin(np.abs(frequency - fc))
+    width = estimate_width(frequency, amplitude, kind=kind)
+    min_to_edge = min(abs(frequency.size - fc_idx),fc_idx)
+    indexes = slice(fc_idx - min_to_edge, fc_idx + min_to_edge)
+    frequency = frequency[indexes]
+    amplitude = amplitude[indexes]
+    phase = phase[indexes]
+    return frequency, amplitude*np.exp(1j*phase)
+
+def subtract_baseline(complex_data, asymmetry=0.8, base_smooth=1e13, plot_baseline=False):
+    """Subtracts the linear baseline for the transmission data
+
+    Applies function extract_baseline
+
+    Parameters
+    ----------
+    complex_data : np.ndarray
+        Array of complex data representing microwave transmission data
+    asymmetry : float
+        A starting value for asymmetry in the lorentzian shape for absorption
+    base_smooth : float
+        ?
+    plot_baseline : boolean
+        Flag indicating whether to plot the data and found baseline
+
+    Returns
+    -------
+    complex_data : np.ndarray
+        Array of complex data after baseline has been adjusted
+    """
+    if len(complex_data.shape) >= 2:
+        original_shape = complex_data.shape[:-1]
+        trace_number = np.prod(original_shape)
+        complex_data = complex_data.reshape((trace_number, -1))
+    else:
+        trace_number = 1
+        complex_data = np.array((complex_data,))
+
+    for i in range(complex_data.shape[0]):
+        amplitude = np.absolute(complex_data[i])
+        phase     = np.angle(complex_data[i])
+        base = extract_baseline(amplitude, asymmetry, base_smooth, plot=plot_baseline)
+        amplitude /= (base/base[0])
+        mid = base[base.size//2]
+        base = base - mid
+        amplitude = amplitude + base
+        complex_data[i] = amplitude*np.exp(1j*phase)
+    return complex_data
+
 

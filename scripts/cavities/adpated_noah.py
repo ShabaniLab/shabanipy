@@ -1,4 +1,4 @@
-rom resonator_tools import circuit
+from resonator_tools import circuit
 import numpy as np
 import csv
 from os import path as pth
@@ -13,15 +13,14 @@ from shabanipy.utils.labber_io import LabberData
 import matplotlib.pyplot as plt
 from shabanipy.cavities.utils import (extract_baseline,
                                       estimate_central_frequency,
-                                      estimate_peak_amplitude,
-                                      estimate_width,
-                                      estimate_time_delay,
-                                      correct_for_time_delay)
+                                      estimate_width)
+
+from shabanipy.cavities.notch_geometry import fit_complex
+
 
 
 FREQ_COLUMN = 0
 POWER_COLUMN = 1
-SUBTRACT_BASELINE = True
 PLOT_SUBTRACTED_BASELINE = False
 PLOT_QINT_VS_POWER = True
 PLOT_QC_VS_POWER = True
@@ -29,6 +28,20 @@ PLOT_PHOTON_VS_QC = True
 PLOT_PHOTON_VS_QINT = True
 GUI_FITTING = True
 
+FIELDNAMES = [
+    'res_index',
+    'res_freq',
+    'attenuation',
+    'power',
+    'total_power',
+    'photon_num',
+    'qi',
+    'qi_err',
+    'qc',
+    'ql',
+    'ql_err',
+    'chi_square'
+]
 
 def calculate_total_power(freq,power):
     totalPower = (-(1/800000000)*freq - (215/4)) + power + ATTENUATION_ON_VNA
@@ -53,7 +66,7 @@ RESONANCE_PARAMETERS = {
 SAMPLE = 'JS200'
 BASEPATH = '/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper'
 
-path = pth.join(BASEPATH,'data')
+data_path = pth.join(BASEPATH,'data')
 csv_directory = pth.join(BASEPATH,'fits',SAMPLE)
 IMAGE_DIR = pth.join(BASEPATH,'images',SAMPLE)
 
@@ -76,9 +89,24 @@ qListErr = {}
 qlListErr = {}
 chiSquare = {}
 
+csv_column_names = [
+    'res_index',
+    'res_freq',
+    'attenuation',
+    'power',
+    'total_power',
+    'photon_num',
+    'qi',
+    'qi_err',
+    'qc',
+    'ql',
+    'ql_err',
+    'chi_square',
+]
+
 j = 0
 for FILENAME in filename:
-    PATH = pth.join(path, FILENAME + '.hdf5')
+    PATH = pth.join(data_path, FILENAME + '.hdf5')
     ATTENUATION_ON_VNA = attenuation_on_vna[j]
     j = j+1
     
@@ -99,13 +127,9 @@ for FILENAME in filename:
 
     for res_index, res_params in RESONANCE_PARAMETERS.items():
         res_result_path = pth.join(csv_directory,FILENAME + '-' + str(res_index) + '.csv')
-        if pth.exists(res_result_path):
+        if False and pth.exists(res_result_path):
             with open(res_result_path, mode='a+') as data_base:
                 data_base.seek(0)
-                fieldnames = [
-                    'res_index', 'res_freq', 'attenuation', 'power', 'total_power',
-                    'photon_num','qi','qi_err','qc','ql','ql_err','chi_square'
-                ]
                 csv_reader = csv.DictReader(data_base)
                 line_count = 0
                 for row in csv_reader:
@@ -133,69 +157,27 @@ for FILENAME in filename:
         else:
             #create a different csv file for each resonance within each .hdf5
             with open(res_result_path, mode='a+') as data_base:
-               data_base.seek(0)
-                fieldnames = ['res_index', 'res_freq', 'attenuation', 'power', 'total_power','photon_num','qi','qi_err','qc','ql','ql_err','chi_square']
-                writer = csv.DictWriter(data_base, fieldnames=fieldnames)
+                data_base.seek(0)
+                
+                writer = csv.DictWriter(data_base, fieldnames=FIELDNAMES)
                 writer.writeheader()
 
                 kind, e_delay, base_smooth = res_params
                 for p_index, power in enumerate(powers):
-                    f   = freq[:, res_index, p_index]
-                    a   = amp[:, res_index, p_index]
-                    i   = imag[:, res_index, p_index]
-                    r   = real[:, res_index, p_index]
-                    phi = phase[:, res_index, p_index]
-                    phi = np.unwrap(phi)
-                    fc  = estimate_central_frequency(f, a, kind)
+                    f = freq[:, res_index, p_index]
+                    i = imag[:, res_index, p_index]
+                    r = real[:, res_index, p_index]
+                    z = r + 1j*i
+                    a = np.absolute(z)
                     
-                    width = estimate_width(f, a, kind)
+                    fc = estimate_central_frequency(f, a, kind)
                     
-                    indexes = slice(np.argmin(np.abs(f - fc + 10*width)),
-                                    np.argmin(np.abs(f - fc - 10*width)))
-                    f = f[indexes]
-                    a = a[indexes]
-                    phi = phi[indexes]
-                    phi = np.unwrap(phi)
-                    i = i[indexes]
-                    r = r[indexes]
-
-                    if SUBTRACT_BASELINE:
-                        base = extract_baseline(a,
-                                                0.8 if kind == 'min' else 0.2,
-                                                base_smooth, plot=False)
-                        a_init = a
-                        a /= (base/base[0])
-                        a_aft = a
-                        mid = base[base.size//2]
-                        base_init = base
-                        base = base - mid
-                        a = a + base
-                        full = a*np.exp(1j*phi)
-                        r = np.real(full)
-                        i = np.imag(full)
-                        if PLOT_SUBTRACTED_BASELINE == True:
-                            fig, axes = plt.subplots(1, 2, sharex=True)
-                            axes[0].plot(f, a_init, '+')
-                            axes[0].plot(f, base_init)
-                            axes[1].plot(f, a_init, '+')
-                            axes[1].plot(f, np.absolute(full))
-                            plt.show()
-                    
-                    names = ['freq','real','imag','mag','phase']
-                    data = np.array([f,r,i,a,phi]).T
-                    df = pd.DataFrame(data = data, columns = names)
-                    #display(df.head())
-                    
-                    port1 = circuit.notch_port(
-                        f_data=df["freq"].values,
-                        z_data_raw=(df["real"].values + 1j*df["imag"].values)
+                    result = fit_complex(
+                        f,
+                        z,
+                        powers=calculate_total_power(fc,power),
+                        gui_fit=GUI_FITTING
                     )
-                    
-                    if GUI_FITTING:
-                        port1.GUIfit()
-                        port1.plotall()
-                    else:
-                        port1.autofit()
                     
                     if res_index not in powerList:
                         powerList[res_index] = []
@@ -207,28 +189,44 @@ for FILENAME in filename:
                         photonList[res_index] = []
                         chiSquare[res_index] = []
                     
-                    print("at power " + str(power) + " and " + str(ATTENUATION_ON_VNA) + " attenuation:")
-                    powerList[res_index].append(float(calculate_total_power(fc,power)))
-                    fit = pd.DataFrame([port1.fitresults]).applymap(lambda x: "{0:.2e}".format(x))
+                    print(
+                        "at power " + str(power) + " and " +
+                        str(ATTENUATION_ON_VNA) + " attenuation:"
+                    )
+                    powerList[res_index].append(
+                        float(calculate_total_power(fc,power))
+                    )
+                    fit = pd.DataFrame([result]).applymap(
+                        lambda x: "{0:.2e}".format(x)
+                    )
                     display(fit)
+                    qcList[res_index].append(float(fit.iat[0,0]))
                     qList[res_index].append(float(fit.iat[0,1]))
                     qListErr[res_index].append(float(fit.iat[0,2]))
-                    qcList[res_index].append(float(fit.iat[0,0]))
                     qlList[res_index].append(float(fit.iat[0,5]))
                     qlListErr[res_index].append(float(fit.iat[0,6]))
                     chiSquare[res_index].append(float(fit.iat[0,9]))
+                    photonList[res_index].append(float(fit.iat))
                     
-                    photonNum = port1.get_photons_in_resonator(calculate_total_power(fc,power),'dBm')
-                    photonList[res_index].append(float(photonNum))
                     print("There are " + str(photonNum) + " photons in the cavity")
                     singlePhotonLim = port1.get_single_photon_limit()
                     print("Power for single photon limit: " + str(singlePhotonLim))
-                    writer.writerow({'res_index': str(res_index), 'res_freq':str(fc), 'attenuation' : str(ATTENUATION_ON_VNA), 'power' : str(power), 'total_power': str(calculate_total_power(fc,power)),
-                    'photon_num': str(photonNum),'qi':str(fit.iat[0,1]),'qi_err': str(fit.iat[0,2]),'qc': str(fit.iat[0,0]), 'ql': str(fit.iat[0,5]), 'ql_err': str(fit.iat[0,6]), 'chi_square': str(fit.iat[0,9])})
-
+                    writer.writerow({
+                            'res_index': str(res_index), 
+                            'res_freq':str(fc),
+                            'attenuation' : str(ATTENUATION_ON_VNA),
+                            'power' : str(power),
+                            'total_power': str(calculate_total_power(fc,power)),
+                            'photon_num': str(photonNum),
+                            'qi':str(fit.iat[0,1]),
+                            'qi_err': str(fit.iat[0,2]),
+                            'qc': str(fit.iat[0,0]),
+                            'ql': str(fit.iat[0,5]),
+                            'ql_err': str(fit.iat[0,6]),
+                            'chi_square': str(fit.iat[0,9])
+                    })
                 res_freq_array.append(fc)
                 data_base.close()
-
 
 markersize   = 15
 labelsize    = 16
@@ -239,7 +237,6 @@ bottom = .12
 top    = .93
 right  = .98
 left   = .15
-
 
 plot_info = [
     [PLOT_QINT_VS_POWER, "Power Vs. Q$_i$", "linear", "log", "Power [dB]",
@@ -275,7 +272,8 @@ def filter_points(xdata,ydata,chi2,box_average_pts=3,filter_multiple=10):
         
 chi2_cutoff = .1
 
-for plot_check, title, xscale, yscale, xlabel, ylabel, xdata, ydata, chi2, filename_suffix in plot_info:
+for (plot_check, title, xscale, yscale, xlabel, ylabel, xdata, ydata, chi2,
+        filename_suffix) in plot_info:
     if plot_check:
         i = 0
         f,ax = plt.subplots(1,1)
@@ -305,5 +303,5 @@ for plot_check, title, xscale, yscale, xlabel, ylabel, xdata, ydata, chi2, filen
             left=left
         )
         f.savefig(pth.join(IMAGE_DIR,FILENAME + filename_suffix+'.png'))
-plt.show()
 
+plt.show()
