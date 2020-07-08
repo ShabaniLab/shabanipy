@@ -29,7 +29,6 @@ PLOT_PHOTON_VS_QC = True
 PLOT_PHOTON_VS_QINT = True
 GUI_FITTING = True
 
-
 def calculate_total_power(freq,power):
     totalPower = (-(1/800000000)*freq - (215/4)) + power + ATTENUATION_ON_VNA
     return totalPower
