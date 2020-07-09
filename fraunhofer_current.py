@@ -45,7 +45,8 @@ def fraunhofer(bfield, current_dist, jj_width, jj_length, london_depth=0.0):
     Returns (np.ndarray):
         Critical current values I_c(B) at corresponding values of bfield.
     """
-    # TODO: determine x and B scales of discrete Fourier transform
+    # TODO: determine x and B scales of discrete Fourier transform (output step
+    # size is reciprocal of input window width)
     #beta = 2*np.pi * (2*london_depth + jj_length) * bfield / flux_quantum
     return np.abs(rfft(current_dist))
 
