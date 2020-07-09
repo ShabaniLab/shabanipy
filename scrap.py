@@ -4,6 +4,8 @@ from numpy.fft import fft
 from scipy import constants as c
 
 from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
+from shabanipy.jj.fraunhofer.deterministic_reconstruction \
+        import extract_theta, extract_current_distribution
 
 # constants and junction dimensions
 PHI0 = c.physical_constants['mag. flux quantum'][0]
@@ -35,3 +37,4 @@ B = beta * PHI0 / (2*np.pi * d)  # T
 
 ic2 = produce_fraunhofer_fast(B, a, np.array([2*np.pi*d/PHI0]*len(jx)), jx, 1 +
         2**7)
+theta = extract_theta(B, ic2)

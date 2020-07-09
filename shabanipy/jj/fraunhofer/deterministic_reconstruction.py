@@ -119,7 +119,7 @@ def extract_theta(
         use_romb = use_interpolation
         if n_points is None:
             # Need 2**n + 1 for romb integration
-            n_points = 2 ** (int(np.log(len(fields), 2)) + 1) + 1
+            n_points = 2 ** (int(np.log2(len(fields))) + 1) + 1
         if not is_compatible_with_romberg(fields.shape[-1]):
             fine_fields, fine_ics = generate_finer_data(
                 fields, ics, interpolation_kind, n_points
@@ -127,7 +127,7 @@ def extract_theta(
             log_fine_ics = np.log(fine_ics)
     else:
         # If the data are properly sampled use romb even if we did not interpolate.
-        use_romb = n_points - 1 > 0 and not (n_points - 1 & (n_points - 2))
+        use_romb = is_compatible_with_romberg(n_points)
         fine_fields = fields
         log_fine_ics = np.log(ics)
 
@@ -135,7 +135,7 @@ def extract_theta(
     with np.nditer(
         (fields, ics, theta),
         flags=["external_loop"],
-        op_flags=["readonly", "readonly", "writeonly"],
+        op_flags=(["readonly"], ["readonly"], ["writeonly"]),
     ) as it:
         for inner_field, inner_ics, theta in it:
             for i, (field, ic) in enumerate(zip(fields, ics)):
@@ -143,10 +143,10 @@ def extract_theta(
                 diff = fine_fields ** 2 - field ** 2
                 # Replace zeros in the denominators by a small value
                 # (the numerator should be zero too at those points anyway).
-                mask = np.logical_not(np.nonzero(diff))
-                diff[mask] = 1e-9
+                diff[diff == 0] = 1e-9
 
                 if use_romb:
+                    step = abs(fine_fields[0] - fine_fields[1])
                     theta[i] = field / (2 * pi) * romb(samples / diff, step)
                 else:
                     theta[i] = field / (2 * pi) * simps(samples / diff, fields)
