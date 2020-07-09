@@ -29,10 +29,10 @@ from scipy.interpolate import interp1d
 from scipy.integrate import romb, simps
 
 
-def is_compatible_with_rombert(n_points: int) -> bool:
+def is_compatible_with_romberg(n_points: int) -> bool:
     """Determine if a number of points is of the form 2**n + 1
 
-    We need that kind of number for intergrating using teh Rombert method.
+    We need that kind of number for intergrating using the Romberg method.
 
     """
     return n_points - 1 > 0 and not (n_points - 1 & (n_points - 2))
@@ -68,7 +68,7 @@ def generate_finer_data(
         Critical currents interpolated to have n_points on the last axis.
 
     """
-    if not is_compatible_with_rombert:
+    if not is_compatible_with_romberg:
         raise ValueError("n_points should of the form 2**n + 1")
 
     # Create a finer ic and field to use in the integration
@@ -109,7 +109,7 @@ def extract_theta(
         occur on the last axis.
     use_interpolation : bool, optional
         Allow to resample the points using spline interpolation. This allows to
-        use the more precise Rombert integration method instead of the Simpson
+        use the more precise Romberg integration method instead of the Simpson
         one. The default is True.
     interpolation_kind : str, optional
         Order of the spline use in the interpolation (see `interp1d` for
@@ -128,7 +128,7 @@ def extract_theta(
         if n_points is None:
             # Need 2**n + 1 for romb integration
             n_points = 2 ** (int(np.log(len(fields), 2)) + 1) + 1
-        if not is_compatible_with_rombert(fields.shape[-1]):
+        if not is_compatible_with_romberg(fields.shape[-1]):
             fine_fields, fine_ics = generate_finer_data(
                 fields, ics, interpolation_kind, n_points
             )
@@ -192,7 +192,7 @@ def extract_current_distribution(
         Number of points used to describe the junction inside jj_size.
     use_interpolation : bool, optional
         Allow to resample the points using spline interpolation. This allows to
-        use the more precise Rombert integration method instead of the Simpson
+        use the more precise Romberg integration method instead of the Simpson
         one. The default is True.
     interpolation_kind : str, optional
         Order of the spline use in the interpolation (see `interp1d` for
@@ -214,7 +214,7 @@ def extract_current_distribution(
         if n_points is None:
             # Need 2**n + 1 for romb integration
             n_points = 2 ** (int(np.log(len(fields), 2)) + 1) + 1
-        if not is_compatible_with_rombert(fields.shape[-1]):
+        if not is_compatible_with_romberg(fields.shape[-1]):
             fine_fields, fine_ics = generate_finer_data(
                 fields, ics, interpolation_kind, n_points
             )
