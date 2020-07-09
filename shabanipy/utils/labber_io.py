@@ -160,11 +160,18 @@ class LabberData:
             raise RuntimeError(msg)
 
         index = self.name_or_index_to_index(name_or_index)
+        
+        channel = self._channels[index]
+        
+        if isinstance(channel,LogEntry):
+            if channel.is_vector:
+                data = self._get_traces_data(channel.name)
+            else:
+                data = self._get_data_data(channel.name)
+        else:
+            data = self._get_data_data(channel.name)
 
         # Copy the data to an array to get a more efficient masking.
-        data = [self._file["Data"]["Data"][:, index]]
-        for internal in self._nested:
-            data.append(internal["Data"]["Data"][:, index])
 
         if not filters:
             return np.hstack([np.ravel(d) for d in data])
@@ -272,17 +279,6 @@ class LabberData:
             self._channels = [s for s in self.list_steps() if s.is_ramped] + [
                 l for l in self.list_logs()
             ]
-            print(list(self._file['Traces']))
-            print(list(self._file['Data']['Data']))
-            print(list(self._file['Data']['Channel names']))
-            for channel in self._channels:
-                if isinstance(channel,LogEntry):
-                    if channel.is_vector:
-                        print(channel.name,self._get_traces_data(channel.name))
-                    else:
-                        print(channel.name,self._get_data_data(channel.name))
-                else:
-                    print(channel.name,self._get_data_data(channel.name))
             # XXX cache data data, vector data
             # XXX cache complex data
         return self._channel_names
@@ -318,11 +314,17 @@ class LabberData:
             if ch_name == channel_name:
                 if ch_type == 'Real' and i + 1 < len(self._file['Data']['Channel names']):
                     ch_next_name, ch_next_type = self._file['Data']['Channel names'][i+1]
-                    real = self._file['Data']['Data'][i]
-                    imag = self._file['Data']['Data'][i+1]
+                    real = self._pull_nested_data(i)
+                    imag = self._pull_nested_data(i+1)
                     return real + 1j*imag
                 else:
-                    return self._file['Data']['Data'][:,i]
+                    return self._pull_nested_data(i)
+    
+    def _pull_nested_data(self,index):
+        data = [self._file["Data"]["Data"][:, index]]
+        for internal in self._nested:
+            data.append(internal["Data"]["Data"][:, index])
+        return data
     
     def get_channel_info(self,name) -> Union[StepConfig,LogEntry]:
         for step in self._steps:
@@ -331,7 +333,6 @@ class LabberData:
         for log in self._logs:
             if name == log.name:
                 return log
-        
 
     # XXX  document
     def list_steps(self) -> List[StepConfig]:
@@ -406,7 +407,6 @@ if __name__ == '__main__':
     FILE = '/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper/data/JS314_CD1_att60_007.hdf5'
 
     with LabberData(FILE) as ld:
-        print(ld.list_channels())
-    
+        for ch in ld.list_channels():
+            print(ch,ld.get_data(ch))
 
-    
