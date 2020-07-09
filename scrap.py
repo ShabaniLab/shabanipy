@@ -3,6 +3,8 @@ import numpy as np
 from numpy.fft import fft
 from scipy import constants as c
 
+from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
+
 # constants and junction dimensions
 PHI0 = c.physical_constants['mag. flux quantum'][0]
 a = 1e-6    # junction width
@@ -27,3 +29,9 @@ ic = dx*np.abs(g)  # A
 dbeta = 2*np.pi / (len(jx)*dx)  # rad / m
 beta = np.arange(len(ic))*dbeta
 B = beta * PHI0 / (2*np.pi * d)  # T
+
+
+###########
+
+ic2 = produce_fraunhofer_fast(B, a, np.array([2*np.pi*d/PHI0]*len(jx)), jx, 1 +
+        2**7)

@@ -160,7 +160,7 @@ def produce_fraunhofer(
         raise ValueError("Unsupported method")
 
 
-@njit(cache=True, fastmath=True)
+#@njit(cache=True, fastmath=True)
 def resample_distribution(
     n_points: int,
     jj_size: float,
@@ -203,9 +203,9 @@ def resample_distribution(
     return cd, f2k
 
 
-@njit(cache=True, fastmath=True)
+#@njit(cache=True, fastmath=True)
 def produce_fraunhofer_fast(
-    magnetic_fields: np.ndarray,
+    magnetic_field: np.ndarray,
     jj_size: float,
     field_to_k_conversion: np.ndarray,
     current_distribution: np.ndarray,
@@ -222,6 +222,9 @@ def produce_fraunhofer_fast(
         )
     else:
         cd, f2k = current_distribution, field_to_k_conversion
+
+    pos = np.arange(len(cd)) * step_size
+
     for i, field in enumerate(magnetic_field):
         current[i] = np.abs(
             romb_1d(cd * np.cos(f2k * pos * field), step_size)
