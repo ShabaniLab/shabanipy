@@ -38,6 +38,7 @@ def is_compatible_with_romberg(n_points: int) -> bool:
     return n_points - 1 > 0 and not (n_points - 1 & (n_points - 2))
 
 
+# TODO does this duplicate resample_distribution() generate_pattern.py?
 def generate_finer_data(
     fields: np.ndarray,
     ics: np.ndarray,
@@ -68,24 +69,15 @@ def generate_finer_data(
         Critical currents interpolated to have n_points on the last axis.
 
     """
-    if not is_compatible_with_romberg:
+    if not is_compatible_with_romberg(n_points):
         raise ValueError("n_points should of the form 2**n + 1")
 
     # Create a finer ic and field to use in the integration
-    fine_fields = np.empty(fields.shape[:-1] + (n_points,))
-    log_fine_ics = np.empty_like(fine_fields)
-    with np.nditer(
-        (fields, fine_fields, ics, fine_ics),
-        flags=["external_loop"],
-        op_flags=[["readonly"], ["readwrite"], ["readonly"], ["writeonly"]],
-    ) as it:
-        for inner_fields, inner_fine_fields, inner_ics, inner_log_fine_ics in it:
-            inner_fine_fields[:] = np.linspace(
-                inner_fields[0], inner_fields[-1], n_points
-            )
-            ic_func = interp1d(inner_fields, inner_ics, interpolation_kind)
-            step = abs(fine_fields[0] - fine_fields[1])
-            inner_log_fine_ics[:] = ic_func(inner_fine_fields)
+    fine_fields = np.linspace(fields[0], fields[-1], n_points)
+    fine_ics = np.empty_like(fine_fields)
+    ic_func = interp1d(fields, ics, interpolation_kind)
+    step = abs(fine_fields[0] - fine_fields[1])
+    fine_ics[:] = ic_func(fine_fields)
 
     return fine_fields, fine_ics
 
