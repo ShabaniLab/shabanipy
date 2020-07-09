@@ -19,6 +19,7 @@ References:
 """
 import numpy as np
 from numpy.fft import rfft
+from scipy.signal import hilbert
 
 
 def fraunhofer(bfield, current_dist, jj_width, jj_length, london_depth=0.0):
@@ -47,3 +48,21 @@ def fraunhofer(bfield, current_dist, jj_width, jj_length, london_depth=0.0):
     # TODO: determine x and B scales of discrete Fourier transform
     #beta = 2*np.pi * (2*london_depth + jj_length) * bfield / flux_quantum
     return np.abs(rfft(current_dist))
+
+
+def phase(bfield, crit_curr):
+    """Reconstruct phase of Fourier coefficients from their absolute values.
+
+    This implements the Hilbert transform defined in Eq. (5) of [1].
+
+    Arguments:
+        bfield (np.ndarray):
+            Magnetic field values at which to compute Fourier phases.
+        crit_curr (np.ndarray):
+            Critical current values I_c(B); i.e. Fraunhofer pattern.
+
+    Returns (np.ndarrary):
+        TODO
+    """
+    # TODO most certainly wrong
+    return np.angle(hilbert(crit_curr))
