@@ -24,6 +24,6 @@ g = np.conj(g)  # match sign convention of (3) vs. numpy.fft
 ic = dx*np.abs(g)  # A
 
 # field step size
-dbeta = 1 / (len(jx)*dx)
-beta = np.arange(len(ic))*dbeta  # rad / m
+dbeta = 2*np.pi / (len(jx)*dx)  # rad / m
+beta = np.arange(len(ic))*dbeta
 B = beta * PHI0 / (2*np.pi * d)  # T
