@@ -11,7 +11,7 @@
 """
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -65,24 +65,32 @@ class StepConfig:
     #: Total number of set points for this step
     points: int = field(init=False)
 
+    #: Number of points per log file
+    points_per_log: Tuple[int, ...] = field(init=False)
+
     def __post_init__(self):
         if not self.ramps:
             return 1
 
+        points_per_log = []
         points = 0
         last_stop = None
         for r in self.ramps:
-            dim += r.steps
+            points += r.steps
             # If the ramp is part of a separate measurement that was appended
-            # reset the last stop.
+            # reset the last stop and store the number of points
             if r.new_log:
                 last_stop = None
+                points_per_log.append(points)
+                points = 0
             # For multiple ramps whose the start match the previous stop Labber
             # saves a single point.
             if last_stop is not None and r.start == last_stop:
-                dim -= 1
+                points -= 1
             last_stop = r.stop
-        return points
+        points_per_log.append(points)
+        self.points_per_log = tuple(points_per_log)
+        self.points = sum(points_per_log)
 
 
 @dataclass
@@ -307,55 +315,105 @@ class LabberData:
         # (is_vector, is_complex, )
         channel = self._channels[index]
 
-        if isinstance(channel, LogEntry) and channel.is_vector:
-            data = self._get_traces_data(
+        x_data: List[np.ndarray] = []
+        vectorial_data = bool(isinstance(channel, LogEntry) and channel.is_vector)
+        vec_dim = 0
+        if vectorial_data:
+            aux = self._get_traces_data(
                 channel.name, is_complex=channel.is_complex, get_x=get_x
             )
+            if not get_x:
+                data = aux[0]
+            else:
+                x_data, data = aux
+            vec_dim = data[0].shape[0]
         else:
             data = self._get_data_data(
                 channel.name, is_complex=getattr(channel, "is_complex", False)
             )
 
         # Filter the data based on the provided filters.
+        filters = filters if filters is not None else {}
         if filters:
             datasets = [self._file] + self._nested[:]
             results = []
+            x_results = []
             for i, d in enumerate(datasets):
                 masks = []
                 for k, v in filters.items():
                     index = self._name_or_index_to_index(k)
-                    mask = np.less(
-                        np.abs(d["Data"]["Data"][:, index] - v), filter_precision
-                    )
+                    d = d["Data"]["Data"][:, index]
+                    # Create the mask filtering the data
+                    mask = np.less(np.abs(d - v), filter_precision)
+                    # If the mask is not empty, ensure we do not eliminate nans
+                    # added by labber to have complete sweeps
+                    if np.any(mask):
+                        np.logical_or(mask, np.isnan(d), mask)
                     masks.append(mask)
 
                 mask = masks.pop()
                 for m in masks:
                     np.logical_and(mask, m, mask)
 
+                # Filter
                 results.append(data[i][mask])
+                if vectorial_data and get_x:
+                    x_results.append(x_data[i][mask])
 
-        return np.hstack(results)
+                # If the filtering produces an empty output return early
+                if not any(len(r) for r in results):
+                    if get_x:
+                        return np.empty(0), np.empty(0)
+                    else:
+                        return np.empty(0)
 
-    def get_axis_dimension(self, name_or_index):
-        """Get the dimension of sweeping channel."""
-        if not self._axis_dimensions:
-            data_attrs = self._file["Data"].attrs
-            dims = {
-                k: v
-                for k, v in zip(data_attrs["Step index"], data_attrs["Step dimensions"])
-            }
-            self._axis_dimensions = dims
+        else:
+            results = data
+            x_results = x_data
 
-        dims = self._axis_dimensions
-        index = self.name_or_index_to_index(name_or_index)
-        if index not in dims:
-            msg = (
-                f"The specified axis {name_or_index} is not a stepped one. "
-                f"Stepped axis are {list(dims)}."
-            )
-            raise ValueError(msg)
-        return dims[index]
+        # Identify the ramped steps not used for filtering
+        steps_points = [
+            s.points_per_log for s in self.list_steps() if s.name not in filters
+        ]
+
+        if vectorial_data:
+            steps_points.insert(0, (vec_dim,) * len(steps_points[0]))
+
+        # Get expected shape per log
+        shape_per_logs = np.array(steps_points).T
+        shaped_results = []
+        shaped_x = []
+        for i, shape in shape_per_logs:
+            # If the filtering produced an empty array skip it
+            if results[i].shape == (0,):
+                continue
+
+            padding = len(results[i]) % np.prod(shape[:-1])
+            # Pad the data to ensure that only the last axis shrinks
+            if padding:
+                results[i] = np.concatenate(
+                    (results[i], np.nan * np.ones(padding)), None
+                )
+                if vectorial_data and get_x:
+                    x_results[i] = np.concatenate(
+                        (x_results[i], np.nan * np.ones(padding)), None
+                    )
+            shaped_results.append(results[i].reshape(shape[:-1] + (-1,)))
+            if vectorial_data and get_x:
+                shaped_x.append(x_results[i].reshape(shape[:-1] + (-1,)))
+
+        # Create the complete data
+        full_data = np.concatenate(results, axis=-1)
+        if vectorial_data and get_x:
+            full_x = np.concatenate(x_results, axis=-1)
+
+        # Transpose the axis so that the inner most loops occupy the last dimensions
+        full_data = np.transpose(full_data)
+        if vectorial_data and get_x:
+            full_x = np.transpose(full_x)
+            return full_x, full_data
+        else:
+            return full_data
 
     def _name_or_index_to_index(self, name_or_index: Union[str, int]) -> int:
         """Provide the index of a channel from its name."""
@@ -380,7 +438,7 @@ class LabberData:
 
     def _get_traces_data(
         self, channel_name: str, is_complex: bool = False, get_x: bool = False
-    ) -> np.ndarray:
+    ) -> Tuple[List[np.ndarray], ...]:
         """Get data stored as traces ie vector."""
         if not self._file:
             raise RuntimeError("No file currently opened")
@@ -390,20 +448,21 @@ class LabberData:
 
         x_data = []
         data = []
+        # Traces dimensions are (sweep, real/imag/x, steps)
         for storage in [self._file] + self._nested:
             if is_complex:
-                real = storage["Traces"][channel_name][:, :, 0]
-                imag = storage["Traces"][channel_name][:, :, 1]
+                real = storage["Traces"][channel_name][:, 0, :]
+                imag = storage["Traces"][channel_name][:, 1, :]
                 data.append(real + 1j * imag)
             else:
-                data.append(storage["Traces"][channel_name][:, :, 0])
+                data.append(storage["Traces"][channel_name][:, 0, :])
             if get_x:
-                x_data.append(storage["Traces"][channel_name][:, :, 1])
+                x_data.append(storage["Traces"][channel_name][:, -1, :])
 
         if get_x:
             return x_data, data
         else:
-            return data
+            return (data,)
 
     def _get_data_data(
         self, channel_name: str, is_complex: bool = False
@@ -457,4 +516,3 @@ if __name__ == "__main__":
 
         plt.plot(np.absolute(cdata))
         plt.show()
-
