@@ -309,7 +309,7 @@ class LabberData:
 
         if isinstance(channel, LogEntry) and channel.is_vector:
             data = self._get_traces_data(
-                channel.name, is_complex=channel.is_complex, xdata=get_x
+                channel.name, is_complex=channel.is_complex, get_x=get_x
             )
         else:
             data = self._get_data_data(
@@ -379,48 +379,53 @@ class LabberData:
             return name_or_index
 
     def _get_traces_data(
-        self, channel_name: str, is_complex: bool = False, xdata: bool = False
+        self, channel_name: str, is_complex: bool = False, get_x: bool = False
     ) -> np.ndarray:
         """Get data stored as traces ie vector."""
         if not self._file:
             raise RuntimeError("No file currently opened")
 
-        if channel_name in self._file["Traces"]:
-            data_info = dict(self._file["Traces"][channel_name].attrs)
-            if "complex" in data_info and data_info["complex"]:
-                # XXX assumes data has format index0=ydata real, index1=ydata imag, index2=xdata
-                real = self._file["Traces"][channel_name][:, :, 0]
-                imag = self._file["Traces"][channel_name][:, :, 1]
-                data = real + 1j * imag
-                x = self._file["Traces"][channel_name][:, :, 2]
-            else:
-                # XXX assumes data has format index0=ydata, index1=xdata
-                data = self._file["Traces"][channel_name][:, :, 0]
-                x = self._file["Traces"][channel_name][:, :, 1]
-            if xdata:
-                return np.array([x, data])
-            else:
-                return data
-        else:
+        if channel_name not in self._file["Traces"]:
             raise ValueError(f"Unknown traces data {channel_name}")
 
-    def _get_data_data(self, channel_name: str, is_complex: bool = False):
-        for i, ch in enumerate(self._file["Data"]["Channel names"]):
-            ch_name, ch_type = ch
-            if ch_name == channel_name:
-                if ch_type == "Real" and i + 1 < len(
-                    self._file["Data"]["Channel names"]
-                ):
-                    ch_next_name, ch_next_type = self._file["Data"]["Channel names"][
-                        i + 1
-                    ]
-                    real = self._pull_nested_data(i)
-                    imag = self._pull_nested_data(i + 1)
-                    return real + 1j * imag
-                else:
-                    return self._pull_nested_data(i)
+        x_data = []
+        data = []
+        for storage in [self._file] + self._nested:
+            if is_complex:
+                real = storage["Traces"][channel_name][:, :, 0]
+                imag = storage["Traces"][channel_name][:, :, 1]
+                data.append(real + 1j * imag)
+            else:
+                data.append(storage["Traces"][channel_name][:, :, 0])
+            if get_x:
+                x_data.append(storage["Traces"][channel_name][:, :, 1])
 
-    def _pull_nested_data(self, index: int) -> np.ndarray:
+        if get_x:
+            return x_data, data
+        else:
+            return data
+
+    def _get_data_data(
+        self, channel_name: str, is_complex: bool = False
+    ) -> List[np.ndarray]:
+        """Pull data stored in the data segment of the log file."""
+        if not self._file:
+            raise RuntimeError("No file currently opened")
+
+        names = list(self._file["Data"]["Channel names"])
+        if is_complex:
+            re_index = names.index(channel_name + " - Real")
+            im_index = names.index(channel_name + " - Imag")
+            real = self._pull_nested_data(re_index)
+            imag = self._pull_nested_data(im_index)
+            return [r + 1j * i for r, i in zip(real, imag)]
+        else:
+            return self._pull_nested_data(names.index(channel_name))
+
+    def _pull_nested_data(self, index: int) -> List[np.ndarray]:
+        """Pull data stored in the data segmentfrom all nested logs."""
+        if not self._file:
+            raise RuntimeError("No file currently opened")
         data = [self._file["Data"]["Data"][:, index]]
         for internal in self._nested:
             data.append(internal["Data"]["Data"][:, index])
