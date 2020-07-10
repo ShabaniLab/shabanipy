@@ -10,7 +10,7 @@
 
 """
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Union
 
 import numpy as np
@@ -18,49 +18,91 @@ import numpy as np
 from h5py import File, Group
 
 
+# XXX currently only linear sweeps are supported
 @dataclass
 class RampConfig:
+    """Description of single ramp in a step.
 
-    #:
+    For ramps with a single point start and stop are equal and steps is one,
+    np.linspace(start, stop, points) produces the expected result.
+
+    """
+
+    #: Start of the ramp
     start: float
 
-    #:
+    #: Stop of the ramp
     stop: float
 
-    #:
+    #: Number of points in the ramp
     steps: int
+
+    #: Is that ramp the first of a measurement (used to discrimate similar ramps)
+    #: taken from appended logs
+    new_log: bool
+
+    def create_array(self):
+        """Create an array representing the ramp."""
+        return np.linspace(self.start, self.stop, self.points)
 
 
 @dataclass
 class StepConfig:
-    """
-    """
+    """Configuration describing a single step in a Labber measurement."""
 
-    #:
+    #: Name of the step. Match the name of the dataset in the log file.
     name: str
 
-    #:
+    #: Does that step contains more than a single value.
     is_ramped: bool
 
-    #:
+    #: Set value for step with a single set point.
     value: Optional[float]
 
-    #:
+    #: List of ramps configuration describing the set points of the step.
     ramps: Optional[List[RampConfig]]
+
+    #: Total number of set points for this step
+    points: int = field(init=False)
+
+    def __post_init__(self):
+        if not self.ramps:
+            return 1
+
+        points = 0
+        last_stop = None
+        for r in self.ramps:
+            dim += r.steps
+            # If the ramp is part of a separate measurement that was appended
+            # reset the last stop.
+            if r.new_log:
+                last_stop = None
+            # For multiple ramps whose the start match the previous stop Labber
+            # saves a single point.
+            if last_stop is not None and r.start == last_stop:
+                dim -= 1
+            last_stop = r.stop
+        return points
 
 
 @dataclass
 class LogEntry:
+    """Description of a log entry."""
 
-    #:
+    #: Name of the entry in the dataset
     name: str
 
-    #:
+    #: Are the data stored in that entry vectorial
     is_vector: bool = False
 
-    #:
+    #: Are the data stored in that entry complex
+    is_complex: bool = False
+
+    #: Name of the x axis for vectorial data with a provided x.
     x_name: str = ""
 
+
+@dataclass
 class LabberData:
     """Labber save data in HDF5 files and organize them by channel.
 
@@ -69,33 +111,35 @@ class LabberData:
 
     """
 
-    #:
+    #: Path to the HDF5 file containing the data.
     path: str
 
-    #:
-    filename: str
+    #: Name of the file (ie no directories)
+    filename: str = field(init=False)
+
+    #: Private
+    _file: Optional[File] = field(default=None, init=False)
 
     #:
-    _file: Optional[File]
+    _nested: List[Group] = field(default_factory=list, init=False)
 
     #:
-    _nested: List[Group]
+    _channel_names: Optional[List[str]] = field(default=None, init=False)
 
-    def __init__(self, path: str) -> None:
-        self.path = path
-        self.filename = path.rsplit(os.sep, 1)[-1]
-        self._file: Optional[File] = None
-        self._channel_names = None
-        self._axis_dimensions = None
-        self._nested = []
-        
-        self._steps = None
-        self._logs = None
+    #:
+    _axis_dimensions: Optional[tuple] = field(default=None, init=False)
+
+    #:
+    _steps: Optional[List[StepConfig]] = field(default=None, init=False)
+
+    #:
+    _logs: Optional[List[LogEntry]] = field(default=None, init=False)
+
+    def __post_init__(self) -> None:
+        self.filename = self.path.rsplit(os.sep, 1)[-1]
 
     def open(self) -> None:
-        """ Open the underlying HDF5 file.
-
-        """
+        """ Open the underlying HDF5 file."""
         self._file = File(self.path, "r")
 
         # Identify nested dataset
@@ -109,25 +153,122 @@ class LabberData:
             self._nested = nested
 
     def close(self) -> None:
-        """ Close the underlying HDF5 file.
-
-        """
+        """ Close the underlying HDF5 file and clean cached values."""
         if self._file:
             self._file.close()
         self._file = None
         self._channel_names = None
         self._axis_dimensions = None
         self._nested = []
+        self._steps = None
+        self._logs = None
+
+    def list_steps(self) -> List[StepConfig]:
+        """List the different steps of a measurement."""
+        if not self._file:
+            raise RuntimeError("No file currently opened")
+
+        if not self._steps:
+            steps = []
+            for (step, *_) in self._file["Step list"]:
+                configs = [
+                    f["Step config"][step]["Step items"]
+                    for f in [self._file] + self._nested
+                ]
+                is_ramped = (
+                    any(len(config) > 1 for config in configs)
+                    or any(bool(config[0][0]) for config in configs)
+                    or len({config[0][2] for config in configs}) > 1
+                )
+                steps.append(
+                    StepConfig(
+                        name=step,
+                        is_ramped=is_ramped,
+                        value=configs[0][0][2] if not is_ramped else None,
+                        ramps=[
+                            (
+                                RampConfig(
+                                    start=cfg[3],
+                                    stop=cfg[4],
+                                    steps=cfg[8],
+                                    new_log=bool(i == 0),
+                                )
+                                if cfg[0]
+                                else RampConfig(
+                                    start=cfg[2],
+                                    stop=cfg[2],
+                                    steps=1,
+                                    new_log=bool(i == 0),
+                                )
+                            )
+                            for config in configs
+                            for i, cfg in enumerate(config)
+                        ]
+                        if is_ramped
+                        else None,
+                    )
+                )
+            self._steps = steps
+        return self._steps
+
+    def list_logs(self) -> List[LogEntry]:
+        """List the existing log entries in the datafile."""
+        if not self._file:
+            raise RuntimeError("No file currently opened")
+
+        if not self._logs:
+            # Collect all logs names
+            names = [e[0] for e in self._file["Log list"]]
+
+            # Identify scalar complex data
+            complex_scalars = [
+                n for n, v in self._file["Data"]["Channel names"] if v == "Real"
+            ]
+
+            # Identify vector data
+            vectors = self._file.get("Traces", ())
+
+            logs = []
+            for n in names:
+                if n in vectors:
+                    logs.append(
+                        LogEntry(
+                            name=n,
+                            is_vector=True,
+                            is_complex=self._file["Traces"][n].attrs.get("complex"),
+                            x_name=self._file["Traces"][n].attrs.get("x, name"),
+                        )
+                    )
+                else:
+                    logs.append(LogEntry(name=n, is_complex=bool(n in complex_scalars)))
+            self._logs = logs
+
+        return self._logs
+
+    def list_channels(self):
+        """Identify the channel availables in the Labber file.
+
+        Channels data can be retieved using get_data.
+
+        """
+        if self._channel_names is None:
+            self._channel_names = [s.name for s in self.list_steps() if s.is_ramped] + [
+                l.name for l in self.list_logs()
+            ]
+            self._channels = [s for s in self.list_steps() if s.is_ramped] + [
+                l for l in self.list_logs()
+            ]
+
+        return self._channel_names
 
     def get_data(
         self,
         name_or_index: Union[str, int],
         filters: Optional[dict] = None,
         filter_precision: float = 1e-10,
-        get_x: bool = False
-        # XXX specify rather or not we want x data for vector
+        get_x: bool = False,
     ):
-        """ Retrieve data base on channel name or index
+        """Retrieve data base on channel name or index
 
         Parameters
         ----------
@@ -159,66 +300,45 @@ class LabberData:
             )
             raise RuntimeError(msg)
 
-        index = self.name_or_index_to_index(name_or_index)
-        
+        # Convert the name into a channel index.
+        index = self._name_or_index_to_index(name_or_index)
+
+        # Get the channel description that contains important details
+        # (is_vector, is_complex, )
         channel = self._channels[index]
-        
-        if isinstance(channel,LogEntry):
-            if channel.is_vector:
-                data = self._get_traces_data(channel.name,xdata=get_x)
-            else:
-                data = self._get_data_data(channel.name)
+
+        if isinstance(channel, LogEntry) and channel.is_vector:
+            data = self._get_traces_data(
+                channel.name, is_complex=channel.is_complex, xdata=get_x
+            )
         else:
-            data = self._get_data_data(channel.name)
-
-        # Copy the data to an array to get a more efficient masking.
-
-        if not filters:
-            return np.hstack([np.ravel(d) for d in data])
+            data = self._get_data_data(
+                channel.name, is_complex=getattr(channel, "is_complex", False)
+            )
 
         # Filter the data based on the provided filters.
-        datasets = [self._file] + self._nested[:]
-        results = []
-        for i, d in enumerate(datasets):
-            masks = []
-            for k, v in filters.items():
-                index = self.name_or_index_to_index(k)
-                mask = np.less(
-                    np.abs(d["Data"]["Data"][:, index] - v), filter_precision
-                )
-                masks.append(mask)
+        if filters:
+            datasets = [self._file] + self._nested[:]
+            results = []
+            for i, d in enumerate(datasets):
+                masks = []
+                for k, v in filters.items():
+                    index = self._name_or_index_to_index(k)
+                    mask = np.less(
+                        np.abs(d["Data"]["Data"][:, index] - v), filter_precision
+                    )
+                    masks.append(mask)
 
-            mask = masks.pop()
-            for m in masks:
-                np.logical_and(mask, m, mask)
+                mask = masks.pop()
+                for m in masks:
+                    np.logical_and(mask, m, mask)
 
-            results.append(data[i][mask])
+                results.append(data[i][mask])
 
         return np.hstack(results)
 
-    # XXX issue if axis are not in the order of the measurement
-    def compute_shape(self, sweeps_indexes_or_names):
-        """ Compute the expected shape of data based on sweep axis.
-
-        """
-        shape = []
-        for sw in sorted(
-            self.name_or_index_to_index(i) for i in sweeps_indexes_or_names
-        ):
-            shape.append(self.get_axis_dimension(sw))
-        return shape
-
-    # XXX issue if axis are not in the order of the measurement
-    def reshape_data(self, sweeps_indexes_or_names, data):
-        """ Reshape data based on the swept quantities during the acquisition.
-
-        """
-        return data.reshape(self.compute_shape(sweeps_indexes_or_names))
-
     def get_axis_dimension(self, name_or_index):
-        """ Get the dimension of sweeping channel.
-
-        """
+        """Get the dimension of sweeping channel."""
         if not self._axis_dimensions:
             data_attrs = self._file["Data"].attrs
             dims = {
@@ -237,19 +357,9 @@ class LabberData:
             raise ValueError(msg)
         return dims[index]
 
-    # XXX should be private
-    # XXX index in either data or traces
-    # XXX can return is_complex
-    # XXX track all complex field in data space
-    def name_or_index_to_index(self, name_or_index):
-        """Helper raising a nice error when a channel does not exist.
-
-        """
-        if self._channel_names is None:
-            self.list_channels()
-            #_ch_names = self._file["Data"]["Channel names"]
-            #self._channel_names = [n for (n, _) in list(_ch_names)]
-        ch_names = self._channel_names
+    def _name_or_index_to_index(self, name_or_index: Union[str, int]) -> int:
+        """Provide the index of a channel from its name."""
+        ch_names = self.list_channels()
 
         if isinstance(name_or_index, str):
             if name_or_index not in ch_names:
@@ -268,154 +378,78 @@ class LabberData:
         else:
             return name_or_index
 
-    def list_channels(self):
-        """Identify the channel availables in the Labber file.
+    def _get_traces_data(
+        self, channel_name: str, is_complex: bool = False, xdata: bool = False
+    ) -> np.ndarray:
+        """Get data stored as traces ie vector."""
+        if not self._file:
+            raise RuntimeError("No file currently opened")
 
-        """
-        if self._channel_names is None:
-            self._channel_names = [s.name for s in self.list_steps() if s.is_ramped] + [
-                l.name for l in self.list_logs()
-            ]
-            self._channels = [s for s in self.list_steps() if s.is_ramped] + [
-                l for l in self.list_logs()
-            ]
-            # XXX cache data data, vector data
-            # XXX cache complex data
-        return self._channel_names
-
-        # _ch_names = self._file["Data"]["Channel names"]
-        #  = [n for (n, _) in list(_ch_names)]
-
-    def _get_traces_data(self,channel_name,xdata=False):
-        #print('test',channel_name,list(self._file['Traces']))
-        #print('test',channel_name,list(self._file['Traces'][channel_name]))
-        if channel_name in self._file['Traces']:
-            data_info = dict(self._file['Traces'][channel_name].attrs)
-            if 'complex' in data_info and data_info['complex']:
-                # XXX assumes data has format index0=ydata real, index1=ydata imag, index2=xdata 
-                real = self._file['Traces'][channel_name][:,:,0]
-                imag = self._file['Traces'][channel_name][:,:,1]
-                data = real + 1j*imag
-                x = self._file['Traces'][channel_name][:,:,2]
+        if channel_name in self._file["Traces"]:
+            data_info = dict(self._file["Traces"][channel_name].attrs)
+            if "complex" in data_info and data_info["complex"]:
+                # XXX assumes data has format index0=ydata real, index1=ydata imag, index2=xdata
+                real = self._file["Traces"][channel_name][:, :, 0]
+                imag = self._file["Traces"][channel_name][:, :, 1]
+                data = real + 1j * imag
+                x = self._file["Traces"][channel_name][:, :, 2]
             else:
-                # XXX assumes data has format index0=ydata, index1=xdata 
-                data = self._file['Traces'][channel_name][:,:,0]
-                x = self._file['Traces'][channel_name][:,:,1]
+                # XXX assumes data has format index0=ydata, index1=xdata
+                data = self._file["Traces"][channel_name][:, :, 0]
+                x = self._file["Traces"][channel_name][:, :, 1]
             if xdata:
-                return np.array([x,data])
+                return np.array([x, data])
             else:
                 return data
         else:
-            # XXX handle case where channel_name not found
-            pass
-    
-    def _get_data_data(self,channel_name):
-        for i,ch in enumerate(self._file['Data']['Channel names']):
+            raise ValueError(f"Unknown traces data {channel_name}")
+
+    def _get_data_data(self, channel_name: str, is_complex: bool = False):
+        for i, ch in enumerate(self._file["Data"]["Channel names"]):
             ch_name, ch_type = ch
             if ch_name == channel_name:
-                if ch_type == 'Real' and i + 1 < len(self._file['Data']['Channel names']):
-                    ch_next_name, ch_next_type = self._file['Data']['Channel names'][i+1]
+                if ch_type == "Real" and i + 1 < len(
+                    self._file["Data"]["Channel names"]
+                ):
+                    ch_next_name, ch_next_type = self._file["Data"]["Channel names"][
+                        i + 1
+                    ]
                     real = self._pull_nested_data(i)
-                    imag = self._pull_nested_data(i+1)
-                    return real + 1j*imag
+                    imag = self._pull_nested_data(i + 1)
+                    return real + 1j * imag
                 else:
                     return self._pull_nested_data(i)
-    
-    def _pull_nested_data(self,index):
+
+    def _pull_nested_data(self, index: int) -> np.ndarray:
         data = [self._file["Data"]["Data"][:, index]]
         for internal in self._nested:
             data.append(internal["Data"]["Data"][:, index])
         return data
-    
-    def get_channel_info(self,name) -> Union[StepConfig,LogEntry]:
-        for step in self._steps:
-            if name == step.name:
-                return step
-        for log in self._logs:
-            if name == log.name:
-                return log
 
-    # XXX  document
-    def list_steps(self) -> List[StepConfig]:
-        """
-        """
-        if not self._file:
-            raise RuntimeError("No file currently opened")
-        if not self._steps:
-            steps = []
-            for (step, *_) in self._file["Step list"]:
-                config = self._file["Step config"][step]["Step items"]
-                is_ramped = len(config) > 1 or bool(config[0][0])
-                steps.append(
-                    StepConfig(
-                        name=step,
-                        is_ramped=is_ramped,
-                        value=config[0][2] if not is_ramped else None,
-                        ramps=[
-                            (
-                                RampConfig(start=cfg[3], stop=cfg[4], steps=cfg[8])
-                                if cfg[0]
-                                else RampConfig(start=cfg[2], stop=cfg[2], steps=1)
-                            )
-                            for cfg in config
-                        ]
-                        if is_ramped
-                        else None,
-                    )
-                )
-            self._steps = steps
-        return self._steps
-
-    # XXX provide more structure (in particular indicate vector data)
-    def list_logs(self) -> List[LogEntry]:
-        """
-        """
-        if not self._file:
-            raise RuntimeError("No file currently opened")
-        if not self._logs:
-            names = [e[0] for e in self._file["Log list"]]
-            if "Traces" in self._file:
-                for i, n in enumerate(names[:]):
-                    if n in self._file["Traces"]:
-                        names[i] = LogEntry(
-                            name=n,
-                            is_vector=True,
-                            x_name=self._file["Traces"][n].attrs["x, name"],
-                        )
-                    else:
-                        names[i] = LogEntry(name=n)
-                self._logs = names
-            else:    
-                self._logs = [LogEntry(name=e[0]) for e in self._file["Log list"]]
-        
-        return self._logs
-
-    def __enter__(self):
-        """ Open the underlying HDF5 file when used as a context manager.
-
-        """
+    def __enter__(self) -> "LabberData":
+        """ Open the underlying HDF5 file when used as a context manager."""
         self.open()
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
         """ Close the underlying HDF5 file when used as a context manager.
 
         """
         self.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    
-    FILE = '/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper/data/JS314_CD1_att60_007.hdf5'
+
+    FILE = "/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper/data/JS314_CD1_att60_007.hdf5"
 
     with LabberData(FILE) as ld:
         print(ld.list_channels())
         for ch in ld.list_channels():
             data = ld.get_data(ch)
-            print(ch,data.shape)
-        cdata = ld.get_data('VNA - S21')
-        
+            print(ch, data.shape)
+        cdata = ld.get_data("VNA - S21")
+
         plt.plot(np.absolute(cdata))
         plt.show()
 
