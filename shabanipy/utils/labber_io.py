@@ -11,7 +11,8 @@
 """
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, overload
+from typing_extensions import Literal
 
 import numpy as np
 
@@ -63,10 +64,10 @@ class StepConfig:
     ramps: Optional[List[RampConfig]]
 
     #: Total number of set points for this step
-    points: int = field(init=False)
+    points: int = field(default=0, init=False)
 
     #: Number of points per log file
-    points_per_log: Tuple[int, ...] = field(init=False)
+    points_per_log: Tuple[int, ...] = field(default=(0,), init=False)
 
     def __post_init__(self):
         if not self.ramps:
@@ -77,16 +78,18 @@ class StepConfig:
         last_stop = None
         for r in self.ramps:
             points += r.steps
-            # If the ramp is part of a separate measurement that was appended
-            # reset the last stop and store the number of points
-            if r.new_log:
-                last_stop = None
-                points_per_log.append(points)
-                points = 0
-            # For multiple ramps whose the start match the previous stop Labber
-            # saves a single point.
-            if last_stop is not None and r.start == last_stop:
-                points -= 1
+            if last_stop is not None:
+                # If this not the first ramp and the ramp is part of a separate
+                # measurement that was appended reset the last stop and store the
+                # number of points
+                if r.new_log:
+                    last_stop = None
+                    points_per_log.append(points)
+                    points = 0
+                # For multiple ramps whose the start match the previous stop Labber
+                # saves a single point.
+                if r.start == last_stop:
+                    points -= 1
             last_stop = r.stop
         points_per_log.append(points)
         self.points_per_log = tuple(points_per_log)
@@ -272,13 +275,29 @@ class LabberData:
 
         return self._channel_names
 
+    @overload
     def get_data(
         self,
         name_or_index: Union[str, int],
         filters: Optional[dict] = None,
         filter_precision: float = 1e-10,
-        get_x: bool = False,
-    ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+        get_x: Literal[False] = False,
+    ) -> np.ndarray:
+        pass
+
+    @overload
+    def get_data(
+        self,
+        name_or_index: Union[str, int],
+        filters: Optional[dict] = None,
+        filter_precision: float = 1e-10,
+        get_x: Literal[True] = True,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        pass
+
+    def get_data(
+        self, name_or_index, filters=None, filter_precision=1e-10, get_x=False
+    ):
         """Retrieve data base on channel name or index
 
         Parameters
@@ -381,7 +400,9 @@ class LabberData:
 
         # Identify the ramped steps not used for filtering
         steps_points = [
-            s.points_per_log for s in self.list_steps() if s.name not in filters
+            s.points_per_log
+            for s in self.list_steps()
+            if s.is_ramped and s.name not in filters
         ]
 
         if vectorial_data:
@@ -391,12 +412,12 @@ class LabberData:
         shape_per_logs = np.array(steps_points).T
         shaped_results = []
         shaped_x = []
-        for i, shape in shape_per_logs:
+        for i, shape in enumerate(shape_per_logs):
             # If the filtering produced an empty array skip it
             if results[i].shape == (0,):
                 continue
 
-            padding = len(results[i]) % np.prod(shape[:-1])
+            padding = np.prod(results[i].shape) % np.prod(shape[:-1])
             # Pad the data to ensure that only the last axis shrinks
             if padding:
                 results[i] = np.concatenate(
@@ -406,14 +427,15 @@ class LabberData:
                     x_results[i] = np.concatenate(
                         (x_results[i], np.nan * np.ones(padding)), None
                     )
-            shaped_results.append(results[i].reshape(shape[:-1] + (-1,)))
+            aux = tuple(shape)[:-1] + (-1,)
+            shaped_results.append(results[i].reshape(tuple(shape)[:-1] + (-1,)))
             if vectorial_data and get_x:
-                shaped_x.append(x_results[i].reshape(shape[:-1] + (-1,)))
+                shaped_x.append(x_results[i].reshape(tuple(shape)[:-1] + (-1,)))
 
         # Create the complete data
-        full_data = np.concatenate(results, axis=-1)
+        full_data = np.concatenate(shaped_results, axis=-1)
         if vectorial_data and get_x:
-            full_x = np.concatenate(x_results, axis=-1)
+            full_x = np.concatenate(shaped_x, axis=-1)
 
         # Transpose the axis so that the inner most loops occupy the last dimensions
         full_data = np.transpose(full_data)
@@ -479,7 +501,7 @@ class LabberData:
         if not self._file:
             raise RuntimeError("No file currently opened")
 
-        names = list(self._file["Data"]["Channel names"])
+        names = [n for n, _ in self._file["Data"]["Channel names"]]
         if is_complex:
             re_index = names.index(channel_name + " - Real")
             im_index = names.index(channel_name + " - Imag")
@@ -513,14 +535,10 @@ class LabberData:
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    FILE = "/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper/data/JS314_CD1_att60_007.hdf5"
+    FILE = "/Users/mdartiailh/Downloads/JS314_CD1_att40_006.hdf5"
 
     with LabberData(FILE) as ld:
         print(ld.list_channels())
         for ch in ld.list_channels():
             data = ld.get_data(ch)
             print(ch, data.shape)
-        cdata = ld.get_data("VNA - S21")
-
-        plt.plot(np.absolute(cdata))
-        plt.show()
