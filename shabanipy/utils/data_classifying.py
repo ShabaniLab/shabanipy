@@ -35,33 +35,43 @@ from .labber_io import LabberData, LogEntry, StepConfig
 
 logger = logging.getLogger(__name__)
 
+# XXX allow to make pattern strict (match all conditions) or tolerant (match one condition)
+
 
 class Classifier(NamedTuple):
-    """
+    """Column identified as a classifying value for the collected data
+
     """
 
-    #:
+    #: Name of the column in the dataset if relevant (classifiers based on measurement
+    #: names do not set this value)
     column_name: Optional[str]
 
-    #:
+    #: Classifying values identified in the data.
     values: tuple
 
-    #:
+    #: Whether this classifier requires to pass a filter value to get_data (ie is
+    #: associated with a step that contains ramps rather than setting a unique value).
     requires_filtering: bool = False
 
 
 @dataclass
 class NamePattern:
-    """[summary]
+    """Pattern use to match on a name (str).
+
     """
 
-    #:
+    #: List of names that can be matched
+    # (allow to aggregate similar data acquired using a different instrument).
     names: Optional[List[str]] = None
 
-    #:
+    #: Regular expression that the name should match.
     regex: Optional[str] = None
 
     def match(self, name: str) -> bool:
+        """Match a name against the names and regex of the pattern.
+
+        """
         match = False
         if self.names is not None:
             match |= name in self.names
@@ -73,29 +83,27 @@ class NamePattern:
 
 @dataclass
 class FilenamePattern(NamePattern):
-    """[summary]
+    """Name pattern allowing to extract information from a measurement name.
+
     """
 
-    #:
+    #: Should the extracted information be used to classify the data.
     use_in_classification: bool = False
 
-    #:
+    #: Name of the classifier if a single value is extracted for classification.
+    #: If multiple classifiers must be extracted use named fields in the regular
+    #: expression.
+    #: "^.+-(?P<sample>JJ-100nm-2)-.+$" will capture JJ-100nm-2 under sample.
     classifier_name: str = ""
 
-    #:
+    #: Level of the classifier  if used for classification.
     classifier_level: int = 0
 
-    def match(self, name: str) -> bool:
-        match = False
-        if self.names is not None:
-            match |= name in self.names
-        if self.regex is not None:
-            match |= bool(re.match(self.regex, name))
-
-        return match
-
     def extract(self, name: str) -> Optional[Dict[str, Classifier]]:
-        """
+        """Extract classification information from the name.
+
+        This requires to use a regular expression.
+
         """
         if self.regex is None:
             return None
@@ -116,22 +124,25 @@ class FilenamePattern(NamePattern):
 
 @dataclass(init=True)
 class ValuePattern:
-    """
+    """Pattern matching against a scalar value.
+
+    If any condition is true the match will be valid.
+
     """
 
-    #:
+    #: Value against which to match.
     value: Optional[float] = None
 
-    #:
+    #: Set of possible values.
     value_set: Optional[Set[float]] = None
 
-    #:
+    #: Minimal value of the scalar.
     greater: Optional[float] = None
 
-    #:
+    #: Maximal value of the scalar.
     smaller: Optional[float] = None
 
-    #:
+    #: Should comparison be strict (<) or not (<=)
     strict_comparisons: bool = False
 
     def __post_init__(self):
@@ -139,6 +150,11 @@ class ValuePattern:
             raise ValueError("At least one field of ValuePattern has to be non None")
 
     def match(self, value: float) -> bool:
+        """Match the pattern against a scalar.
+
+        If any condition is met the pattern is considered matched.
+
+        """
         match = False
         if self.value:
             match |= value == self.value
@@ -161,20 +177,22 @@ class ValuePattern:
 
 @dataclass(init=True)
 class RampPattern:
-    """[summary]
+    """Pattern used to identify a ramp.
+
+    Note that Labber can have multiple ramps for a single step.
 
     """
 
-    #:
+    #: Value pattern for the starting point of the ramp.
     start: Optional[ValuePattern] = None
 
-    #:
+    #: Value pattern for the end point of the ramp.
     stop: Optional[ValuePattern] = None
 
-    #:
+    #: Value pattern for the span of the ramp.
     span: Optional[ValuePattern] = None
 
-    #:
+    #: Value pattern for the number of points of the ramp.
     points: Optional[ValuePattern] = None
 
     def __post_init__(self):
@@ -186,12 +204,11 @@ class RampPattern:
 
     @property
     def is_generic(self):
-        """ """
+        """A ramp is considered generic if no specific pattern are provided."""
         return not any(getattr(self, f.name) for f in fields(self))
 
     def match(self, start: float, stop: float, points: int) -> bool:
-        """
-        """
+        """Determine if a ramp match the pattern."""
         # Allow to match against any ramp.
         if self.is_generic:
             return True
@@ -210,22 +227,21 @@ class RampPattern:
 
 @dataclass(init=True)
 class StepPattern:
-    """[summary]
-    """
+    """Pattern use to identify a particular step configuration in Labber."""
 
-    #:
+    #: Name of the step to use when retrieving data or classifying using that step
     name: str
 
-    #:
+    #: Name pattern for the step or index of the step.
     name_pattern: Union[NamePattern, int]
 
-    #:
+    #: List of ramp pattern for the step.
     ramps: Optional[List[RampPattern]] = None
 
-    #:
+    #: Should this step be used to classify datasets.
     use_in_classification: bool = False
 
-    #:
+    #: Level of the classifier.
     classifier_level: int = 0
 
     def __post_init__(self):
@@ -235,8 +251,7 @@ class StepPattern:
             self.ramps = NamePattern(**self.name)
 
     def match(self, index: int, config: StepConfig) -> bool:
-        """
-        """
+        """Match a step that meet all the specify pattern."""
         if isinstance(self.name_pattern, int) and self.name_pattern != index:
             return False
         elif isinstance(self.name_pattern, NamePattern) and not self.name_pattern.match(
@@ -263,8 +278,7 @@ class StepPattern:
         return True
 
     def extract(self, config: StepConfig) -> tuple:
-        """
-        """
+        """Extract the classification values associated with that step."""
         if self.ramps and not config.is_ramped:
             raise ValueError(
                 "Step is ramped but pattern does not expect a ramp."
@@ -280,13 +294,12 @@ class StepPattern:
 
 @dataclass(init=True)
 class LogPattern:
-    """[summary]
-    """
+    """Pattern used to identify a log entry."""
 
-    #:
+    #: Name to use when extracting the data.
     name: str
 
-    #:
+    #: Name pattern or index in the log list entries
     # XXX The index refers to the index in the log list not in the channels
     pattern: Union[NamePattern, int]
 
