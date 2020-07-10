@@ -349,10 +349,11 @@ class LabberData:
             aux = self._get_traces_data(
                 channel.name, is_complex=channel.is_complex, get_x=get_x  # type: ignore
             )
+            # Always transpose vector to be able to properly filter them
             if not get_x:
-                data = aux[0]
+                data = [a.T for a in aux[0]]
             else:
-                x_data, data = aux
+                x_data, data = [a.T for a in aux[0]], [a.T for a in aux[1]]
             vec_dim = data[0].shape[0]
         else:
             data = self._get_data_data(
@@ -361,6 +362,8 @@ class LabberData:
 
         # Filter the data based on the provided filters.
         filters = filters if filters is not None else {}
+        # Only use positive indexes to describe filtering
+        filters = {self._name_or_index_to_index(k): v for k, v in filters.items()}
         if filters:
             datasets = [self._file] + self._nested[:]
             results = []
@@ -381,6 +384,8 @@ class LabberData:
                 mask = masks.pop()
                 for m in masks:
                     np.logical_and(mask, m, mask)
+                if vectorial_data:
+                    mask = np.ravel(mask)
 
                 # Filter
                 results.append(data[i][mask])
@@ -401,12 +406,12 @@ class LabberData:
         # Identify the ramped steps not used for filtering
         steps_points = [
             s.points_per_log
-            for s in self.list_steps()
-            if s.is_ramped and s.name not in filters
+            for i, s in enumerate(self.list_steps())
+            if s.is_ramped and i not in filters
         ]
 
         if vectorial_data:
-            steps_points.insert(0, (vec_dim,) * len(steps_points[0]))
+            steps_points.append((vec_dim,) * len(steps_points[0]))
 
         # Get expected shape per log
         shape_per_logs = np.array(steps_points).T
@@ -427,7 +432,7 @@ class LabberData:
                     x_results[i] = np.concatenate(
                         (x_results[i], np.nan * np.ones(padding)), None
                     )
-            aux = tuple(shape)[:-1] + (-1,)
+
             shaped_results.append(results[i].reshape(tuple(shape)[:-1] + (-1,)))
             if vectorial_data and get_x:
                 shaped_x.append(x_results[i].reshape(tuple(shape)[:-1] + (-1,)))
@@ -439,8 +444,13 @@ class LabberData:
 
         # Transpose the axis so that the inner most loops occupy the last dimensions
         full_data = np.transpose(full_data)
+
+        # Due to the earlier manipulation to allow filtering we need to move
+        # the now first axis to last position
+        if vectorial_data:
+            full_data = np.moveaxis(full_data, 0, -1)
         if vectorial_data and get_x:
-            full_x = np.transpose(full_x)
+            full_x = np.moveaxis(np.transpose(full_x), 0, -1)
             return full_x, full_data
         else:
             return full_data
@@ -540,5 +550,13 @@ if __name__ == "__main__":
     with LabberData(FILE) as ld:
         print(ld.list_channels())
         for ch in ld.list_channels():
-            data = ld.get_data(ch)
-            print(ch, data.shape)
+            data = ld.get_data(ch, filters={0: 0}, get_x=True)
+            print(
+                ch,
+                data.shape
+                if isinstance(data, np.ndarray)
+                else (data[0].shape, data[1].shape),
+            )
+
+        # plt.plot(np.absolute(cdata))
+        # plt.show()
