@@ -125,22 +125,24 @@ class LabberData:
     #: Name of the file (ie no directories)
     filename: str = field(init=False)
 
-    #: Private
+    #: Private reference to the underlying HDF5 file in which the data are stored
     _file: Optional[File] = field(default=None, init=False)
 
-    #:
+    #: Groups in which the data of appended measurements are stored.
     _nested: List[Group] = field(default_factory=list, init=False)
 
-    #:
+    #: Names of the channels accessible in the Data or Traces segments of the file
     _channel_names: Optional[List[str]] = field(default=None, init=False)
 
-    #:
-    _axis_dimensions: Optional[tuple] = field(default=None, init=False)
+    #: Detailed informations about the channels.
+    _channels: Optional[List[Union[LogEntry, StepConfig]]] = field(
+        default=None, init=False
+    )
 
-    #:
+    #: Steps performed in the measurement.
     _steps: Optional[List[StepConfig]] = field(default=None, init=False)
 
-    #:
+    #: Log entries of the measurement.
     _logs: Optional[List[LogEntry]] = field(default=None, init=False)
 
     def __post_init__(self) -> None:
@@ -166,6 +168,7 @@ class LabberData:
             self._file.close()
         self._file = None
         self._channel_names = None
+        self._channels = None
         self._axis_dimensions = None
         self._nested = []
         self._steps = None
@@ -275,7 +278,7 @@ class LabberData:
         filters: Optional[dict] = None,
         filter_precision: float = 1e-10,
         get_x: bool = False,
-    ):
+    ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
         """Retrieve data base on channel name or index
 
         Parameters
@@ -297,8 +300,11 @@ class LabberData:
 
         Returns
         -------
-        data : np.ndarray
-            1D numpy array containing the requested data.
+        data : Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]
+            Requested data (or x and requested data for vector data when x is required).
+            The data are formatted such as the last axis corresponds the the most inner
+            loop of the measurement and the shape match the non filtered steps of the
+            measurement.
 
         """
         if not self._file:
@@ -313,14 +319,16 @@ class LabberData:
 
         # Get the channel description that contains important details
         # (is_vector, is_complex, )
-        channel = self._channels[index]
+        if self._channels is None:
+            self.list_channels()
+        channel = self._channels[index]  # type: ignore
 
         x_data: List[np.ndarray] = []
         vectorial_data = bool(isinstance(channel, LogEntry) and channel.is_vector)
         vec_dim = 0
         if vectorial_data:
             aux = self._get_traces_data(
-                channel.name, is_complex=channel.is_complex, get_x=get_x
+                channel.name, is_complex=channel.is_complex, get_x=get_x  # type: ignore
             )
             if not get_x:
                 data = aux[0]
