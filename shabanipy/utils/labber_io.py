@@ -165,7 +165,7 @@ class LabberData:
         
         if isinstance(channel,LogEntry):
             if channel.is_vector:
-                data = self._get_traces_data(channel.name)
+                data = self._get_traces_data(channel.name,xdata=get_x)
             else:
                 data = self._get_data_data(channel.name)
         else:
@@ -286,22 +286,23 @@ class LabberData:
         # _ch_names = self._file["Data"]["Channel names"]
         #  = [n for (n, _) in list(_ch_names)]
 
-    def _get_traces_data(self,channel_name,x_data=False):
-        print('test',channel_name,list(self._file['Traces']))
+    def _get_traces_data(self,channel_name,xdata=False):
+        #print('test',channel_name,list(self._file['Traces']))
+        #print('test',channel_name,list(self._file['Traces'][channel_name]))
         if channel_name in self._file['Traces']:
             data_info = dict(self._file['Traces'][channel_name].attrs)
             if 'complex' in data_info and data_info['complex']:
                 # XXX assumes data has format index0=ydata real, index1=ydata imag, index2=xdata 
-                real = self._file['Traces'][channel_name][0]
-                imag = self._file['Traces'][channel_name][1]
+                real = self._file['Traces'][channel_name][:,:,0]
+                imag = self._file['Traces'][channel_name][:,:,1]
                 data = real + 1j*imag
-                x = self._file['Traces'][channel_name][2]
+                x = self._file['Traces'][channel_name][:,:,2]
             else:
                 # XXX assumes data has format index0=ydata, index1=xdata 
-                data = self._file['Traces'][channel_name][0]
-                x = self._file['Traces'][channel_name][1]
-            if x_data:
-                return x,data
+                data = self._file['Traces'][channel_name][:,:,0]
+                x = self._file['Traces'][channel_name][:,:,1]
+            if xdata:
+                return np.array([x,data])
             else:
                 return data
         else:
@@ -404,9 +405,17 @@ class LabberData:
 
 
 if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+    
     FILE = '/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper/data/JS314_CD1_att60_007.hdf5'
 
     with LabberData(FILE) as ld:
+        print(ld.list_channels())
         for ch in ld.list_channels():
-            print(ch,ld.get_data(ch))
+            data = ld.get_data(ch)
+            print(ch,data.shape)
+        cdata = ld.get_data('VNA - S21')
+        
+        plt.plot(np.absolute(cdata))
+        plt.show()
 
