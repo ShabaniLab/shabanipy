@@ -15,10 +15,20 @@ import re
 from collections import defaultdict, namedtuple
 from dataclasses import astuple, dataclass, field, fields
 from itertools import product
-from typing import Dict, List, NamedTuple, Optional, Sequence, Set, Tuple, Union
+from typing import (
+    Any,
+    Dict,
+    Iterator,
+    List,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Union,
+)
 
 import numpy as np
-
 from h5py import File, Group
 
 from .labber_io import LabberData, LogEntry, StepConfig
@@ -547,7 +557,8 @@ class DataClassifier:
             f.update(
                 dict(
                     zip(
-                        column_names,
+                        # oddly bad inference from Mypy
+                        column_names,  # type: ignore
                         [v for i, v in enumerate(values) if require_filtering[i]],
                     )
                 )
@@ -569,6 +580,10 @@ class DataClassifier:
         step_dims = []
         vector_data_names = []
         to_store = {}
+
+        # XXX enforce that the fast scan occurs on the last axis.
+        # XXX can be done using np.transpose
+
         with LabberData(path) as f:
             # Find and exctract the relevant step channels (ie not used in classifying)
             for i, stepcf in [
@@ -659,3 +674,141 @@ class DataClassifier:
                     storage.create_dataset(n, data=d.reshape(step_dims + [-1]))
                 else:
                     storage.create_dataset(n, data=d.reshape(step_dims))
+
+
+@dataclass
+class DataExplorer:
+    """
+    """
+
+    #:
+    path: str
+
+    #:
+    allow_edits: bool = False
+
+    #:
+    create_new: bool = False
+
+    def open(self) -> None:
+        """ Open the underlying HDF5 file.
+
+        """
+        mode = "w" if self.create_new else ("r+" if self.allow_edits else "r")
+        self._file = File(self.path, mode)
+
+    def close(self) -> None:
+        """ Close the underlying HDF5 file.
+
+        """
+        if self._file:
+            self._file.close()
+        self._file = None
+
+    def __enter__(self):
+        """ Open the underlying HDF5 file when used as a context manager.
+
+        """
+        self.open()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """ Close the underlying HDF5 file when used as a context manager.
+
+        """
+        self.close()
+
+    def list_measurements(self) -> List[str]:
+        """
+
+        """
+        if not self._file:
+            raise RuntimeError("No opened datafile")
+        return list(self._file.keys())
+
+    def list_classifiers(self, measurement) -> Dict[int, List[str]]:
+        """
+
+        """
+        if not self._file:
+            raise RuntimeError("No opened datafile")
+        if measurement not in self._file:
+            raise ValueError(
+                f"No measurement {measurement} in opened datafile, "
+                f"existing measurements are {self.list_measurements()}"
+            )
+
+        def extract_classifiers(
+            group: Group, classifiers: Dict[int, List[str]], level: int
+        ) -> Dict[int, List[str]]:
+            # By construction the classifiers are the same on each level
+            # so we only visit one level of each
+            for entry in group:
+                if isinstance(entry, Group):
+                    classifiers[level] = list(entry.attrs)
+                    extract_classifiers(entry, classifiers, level + 1)
+                    break
+            return classifiers
+
+        return extract_classifiers(self._file[measurement], dict(), 0)
+
+    def walk_data(
+        self, measurement: str
+    ) -> Iterator[Tuple[Dict[int, Dict[str, Any]], Group]]:
+        """
+
+        """
+        # Maximal depth of classifiers
+        max_depth = len(self.list_classifiers(measurement))
+
+        def yield_classifier_and_data(
+            group: Group, depth: int, classifiers: Dict[int, Dict[str, Any]]
+        ) -> Iterator[Tuple[Dict[int, Dict[str, Any]], Group]]:
+            if depth == max_depth - 1:
+                for g in group:
+                    clfs = classifiers.copy()
+                    clfs[depth] = dict(g.attrs)
+                    yield clfs, g
+            else:
+                for g in group:
+                    clfs = classifiers.copy()
+                    clfs[depth] = dict(g.attrs)
+                    yield from yield_classifier_and_data(g, depth + 1, clfs)
+
+        yield from yield_classifier_and_data(self._file[measurement], 0, dict())
+
+    def get_data(
+        self, measurement: str, classifiers: Dict[int, Dict[str, Any]]
+    ) -> Group:
+        """
+        """
+        known = self.list_classifiers(measurement)
+        if not {k: list(v) for k, v in classifiers.items()} == known:
+            raise ValueError(
+                f"Unknown classifiers used ({classifiers}),"
+                f" known classifiers are {known}"
+            )
+
+        group = self._file[measurement]
+        for level, values in classifiers.items():
+            key = "&".join(f"{k}::{values[k]}" for k in sorted(values))
+            if key not in group:
+                raise ValueError(
+                    f"No entry of level {level} found for {values}, "
+                    f"at this level known entries are {[dict(g.attrs) for g in group]}."
+                )
+            group = group[key]
+
+        return group
+
+    def create_group(
+        self, measurement: str, classifiers: Dict[int, Dict[str, Any]]
+    ) -> Group:
+        """
+        """
+        group = self._file.require_group(measurement)
+        for level, values in classifiers.items():
+            key = "&".join(f"{k}::{values[k]}" for k in sorted(values))
+            group = group.require_group(key)
+
+        return group
