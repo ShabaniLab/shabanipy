@@ -38,3 +38,4 @@ B = beta * PHI0 / (2*np.pi * d)  # T
 ic2 = produce_fraunhofer_fast(B, a, np.array([2*np.pi*d/PHI0]*len(jx)), jx, 1 +
         2**7)
 theta = extract_theta(B, ic2)
+x2, jx2 = extract_current_distribution(B, ic2, 2*np.pi*d/PHI0, a, 100)

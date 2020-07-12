@@ -120,11 +120,15 @@ def extract_theta(
         if n_points is None:
             # Need 2**n + 1 for romb integration
             n_points = 2 ** (int(np.log2(len(fields))) + 1) + 1
+
         if not is_compatible_with_romberg(fields.shape[-1]):
             fine_fields, fine_ics = generate_finer_data(
                 fields, ics, interpolation_kind, n_points
             )
-            log_fine_ics = np.log(fine_ics)
+        else:
+            fine_fields, fine_ics = fields, ics
+
+        log_fine_ics = np.log(fine_ics)
     else:
         # If the data are properly sampled use romb even if we did not interpolate.
         use_romb = is_compatible_with_romberg(n_points)
@@ -162,7 +166,7 @@ def extract_current_distribution(
     jj_points: int,
     use_interpolation: bool = True,
     interpolation_kind: str = "cubic",
-    interpolation_points: Optional[int] = None,
+    n_points: Optional[int] = None,
 ) -> np.ndarray:
     """Extract the current distribution from Ic(B).
 
@@ -189,7 +193,7 @@ def extract_current_distribution(
     interpolation_kind : str, optional
         Order of the spline use in the interpolation (see `interp1d` for
         details), by default "cubic"
-    interpolation_points : Optional[int], optional
+    n_points : Optional[int], optional
         Number of points to generate using the interpolation, by default None
 
     Returns
@@ -205,7 +209,7 @@ def extract_current_distribution(
         use_romb = use_interpolation
         if n_points is None:
             # Need 2**n + 1 for romb integration
-            n_points = 2 ** (int(np.log(len(fields), 2)) + 1) + 1
+            n_points = 2 ** (int(np.log2(len(fields))) + 1) + 1
         if not is_compatible_with_romberg(fields.shape[-1]):
             fine_fields, fine_ics = generate_finer_data(
                 fields, ics, interpolation_kind, n_points
@@ -213,38 +217,21 @@ def extract_current_distribution(
             log_fine_ics = np.log(fine_ics)
     else:
         # If the data are properly sampled use romb even if we did not interpolate.
-        use_romb = n_points - 1 > 0 and not (n_points - 1 & (n_points - 2))
+        use_romb = is_compatible_with_romberg(n_points)
         fine_fields = fields
         log_fine_ics = ics
 
     # First compute the Hilbert transform of Ic
     theta = extract_theta(fine_fields, fine_ics)
 
-    xs = np.linspace(
-        -jj_size * 1.25 / 2, jj_size * 1.25 / 2, jj_points + (jj_points - 1) // 4
-    )
+    xs = np.linspace(-jj_size * 1.25 / 2, jj_size * 1.25 / 2,
+                     int(jj_points*5/4))
     step = xs[1] - xs[0]
-    j = np.empty(fields.shape[:-1] + (len(xs),))
-
-    with np.nditer(
-        (fields, ics, theta, j),
-        flags=["external_loop"],
-        op_flags=["readonly", "readonly", "readonly", "writeonly"],
-    ) as it:
-        for inner_fields, inner_ics, inner_theta, inner_j in it:
-            for i, x in enumerate(xs):
-                inner_j[i] = romb(
-                    inner_ics
-                    * np.exp(
-                        1j
-                        * (
-                            inner_theta
-                            - conversion_factor
-                            * inner_fields
-                            * (x + jj_size * 1.25 / 2)
-                        )
-                    ),
-                    step,
-                )
+    j = np.empty(xs.shape)
+    for i, x in enumerate(xs):
+        j[i] = romb(fine_ics*np.exp(1j*(theta
+                                    - conversion_factor
+                                    * fine_fields * x)),
+                    step)
 
     return xs, j
