@@ -9,7 +9,9 @@
 """Unit tests for shabanipy.utils.integrate module."""
 import unittest
 
-from shabanipy.utils.integrate import can_romberg
+import numpy as np
+
+from shabanipy.utils.integrate import can_romberg, resample_data
 
 
 class TestCanRomberg(unittest.TestCase):
@@ -25,6 +27,42 @@ class TestCanRomberg(unittest.TestCase):
         """Numbers less than 2 return false."""
         result = [n for n in range(-1025, 2) if can_romberg(n)]
         self.assertFalse(result)
+
+
+class TestResampleData(unittest.TestCase):
+    """Unit tests for resample_data function."""
+
+    def setUp(self):
+        """Set up test data."""
+        self.x = np.linspace(0, 2*np.pi, 101)
+        self.y = self._signal(self.x)
+
+    def _signal(self, x):
+        """Use y(x) = sin(x) + 2 to generate test data."""
+        return np.sin(x) + 2
+
+    def test_same_n_points(self):
+        """Samples are (roughly) unchanged if sampled at same rate."""
+        n_points = len(self.x)
+        x, y = resample_data(self.x, self.y, n_points)
+        np.testing.assert_array_equal(x, self.x)
+        np.testing.assert_allclose(y, self.y)
+
+    def test_half_n_points(self):
+        """Every other sample is dropped if (odd) n_points is ~halved."""
+        n_points = len(self.x) // 2 + 1
+        x, y = resample_data(self.x, self.y, n_points)
+        np.testing.assert_array_equal(x, self.x[::2])
+        np.testing.assert_allclose(y, self.y[::2])
+
+    def test_double_n_points(self):
+        """Samples are correctly interpolated when n_points is ~doubled."""
+        n_points = len(self.x) * 2 - 1
+        x, y = resample_data(self.x, self.y, n_points)
+        x_expected = np.linspace(self.x[0], self.x[-1], n_points)
+        y_expected = self._signal(x_expected)
+        np.testing.assert_array_equal(x, x_expected)
+        np.testing.assert_allclose(y, y_expected)
 
 
 if __name__ == '__main__':
