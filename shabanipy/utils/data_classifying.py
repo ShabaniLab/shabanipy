@@ -29,6 +29,7 @@ from typing import (
 )
 
 import numpy as np
+import toml
 from h5py import File, Group
 
 from .labber_io import LabberData, LogEntry, StepConfig
@@ -66,6 +67,7 @@ class NamePattern:
     names: Optional[List[str]] = None
 
     #: Regular expression that the name should match.
+    # XXX allow for multiple regexes
     regex: Optional[str] = None
 
     def match(self, name: str) -> bool:
@@ -239,6 +241,8 @@ class StepPattern:
     ramps: Optional[List[RampPattern]] = None
 
     #: Should this step be used to classify datasets.
+    #: Steps used for classification should not contain overlapping ramps (both forward
+    #: and backward ramp).
     use_in_classification: bool = False
 
     #: Level of the classifier.
@@ -277,7 +281,7 @@ class StepPattern:
 
         return True
 
-    def extract(self, config: StepConfig) -> tuple:
+    def extract(self, dataset: LabberData, config: StepConfig) -> tuple:
         """Extract the classification values associated with that step."""
         if self.ramps and not config.is_ramped:
             raise ValueError(
@@ -285,9 +289,10 @@ class StepPattern:
                 f"Step: {config}, pattern: {self}"
             )
         if config.ramps:
-            return tuple(
-                np.hstack([np.linspace(*astuple(ramp)) for ramp in config.ramps])
-            )
+            # Retrieve the classifier data directly from the log file to avoid
+            # considering values that were not acquired because the measurement
+            # was stopped.
+            return np.unique(dataset.get_data(config.name))
         else:
             return (config.value,)
 
@@ -300,10 +305,9 @@ class LogPattern:
     name: str
 
     #: Name pattern or index in the log list entries
-    # XXX The index refers to the index in the log list not in the channels
     pattern: Union[NamePattern, int]
 
-    #:
+    #: Name to use for storing the x data of vector data.
     x_name: Optional[str] = None
 
     def __post_init__(self):
@@ -311,7 +315,10 @@ class LogPattern:
             self.pattern = NamePattern(**self.pattern)
 
     def match(self, index: int, entry: LogEntry) -> bool:
-        """
+        """Match a log entry on its index or name.
+
+        If a x_name is specified the data have to be vectorial.
+
         """
         if isinstance(self.name, int) and self.name != index:
             return False
@@ -326,19 +333,18 @@ class LogPattern:
 
 @dataclass(init=True)
 class MeasurementPattern:
-    """[summary]
-    """
+    """Pattern used to identify relevant measurements."""
 
-    #:
+    #: Name used to identify this kind of measurement. Used in post-processing.
     name: str
 
-    #:
+    #: Pattern that the filename of the measurement must match.
     filename_pattern: Optional[FilenamePattern] = None
 
-    #:
+    #: Steps that should be present in the measurement.
     steps: List[StepPattern] = field(default_factory=list)
 
-    #:
+    #: Logs channels that should be present in the measurement.
     logs: List[LogPattern] = field(default_factory=list)
 
     def __post_init__(self) -> None:
@@ -355,9 +361,8 @@ class MeasurementPattern:
             )
 
     def match(self, dataset: LabberData) -> bool:
-        """
+        """Determine if a given Labber file match the specified pattern."""
 
-        """
         # Check the filename and exit early if it fails
         if self.filename_pattern and not self.filename_pattern.match(dataset.filename):
             return False
@@ -379,9 +384,7 @@ class MeasurementPattern:
     def extract_classifiers(
         self, dataset: LabberData
     ) -> Dict[int, Dict[str, Classifier]]:
-        """
-
-        """
+        """Extract the relevant quantities to classify the data."""
         # Classifiers are stored by level, and each classifier can have multiple
         # values associated.
         classifiers: Dict[int, Dict[str, Classifier]] = defaultdict(dict)
@@ -398,7 +401,7 @@ class MeasurementPattern:
             for i, step in enumerate(dataset.list_steps()):
                 if pattern.match(i, step):
                     classifiers[pattern.classifier_level][pattern.name] = Classifier(
-                        step.name, pattern.extract(step), bool(step.ramps)
+                        step.name, pattern.extract(dataset, step), bool(step.ramps)
                     )
                     continue
 
@@ -407,21 +410,37 @@ class MeasurementPattern:
 
 @dataclass(init=True)
 class DataClassifier:
-    """[summary]
+    """Object used to identify and consolidate measurements in a single location.
+
+    Measurements are identified using patterns matching on the filename, the steps
+    involved in the measurement, the logged channels. In order to consolidate the data
+    we first classify the data based on values extracted from the filename and some
+    of the steps. Classifiers can have different levels, allowing for example to
+    distinguish first by sample and then by gate voltage. It is also possible to
+    do the contrary and have both those information on the same level. This becomes
+    relevant for data analysis.
+    Finally we can rewrite all the relevant data into the single HDF5 file. The file
+    has a nested structure with the first level being the kind of measurement and
+    each lower level corresponding to a classifier level. The resulting files can easily
+    be explored and used through the `data_exploring.DataExplorer` class
+
     """
 
+    #: List of measurement patterns to identify. Having more than one can allow to
+    #: group together characterization measurement with the measurements of interest.
     patterns: List[MeasurementPattern]
 
+    #: Identified dataset as a list of path for each measurement pattern.
     _datasets: Dict[str, List[str]] = field(init=False)
 
-    #:
+    #: Classifiers found for each dataset previously identified. Organized per
+    #: measurement pattern/dataset path/classifier level
     _classified_datasets: Dict[
         str, Dict[str, Dict[int, Dict[str, Classifier]]]
     ] = field(init=False)
 
     def identify_datasets(self, folder):
-        """
-        """
+        """Identify the relevant datasets by scanning the content of a folder."""
         datasets = {p.name: [] for p in self.patterns}
         logger.debug(f"Walking {folder}")
         for root, dirs, files in os.walk(folder):
@@ -440,37 +459,48 @@ class DataClassifier:
 
         self._datasets = datasets
 
-    # XXX debugging utility
-    def match_dataset(self, path):
-        """
+    def match_dataset(self, path: str) -> Optional[MeasurementPattern]:
+        """Match a single file and return the pattern.
+
+        This function is mostly included for debugging purposes.
+
         """
         with LabberData(path) as f:
             for p in self.patterns:
                 if p.match(f):
-                    return True
+                    return p
             else:
-                return False
+                return None
 
-    def prune_identified_datasets(self, black_list: Set[str]):
-        """
-        """
+    def prune_identified_datasets(self, deny_list: List[str]) -> None:
+        """Prune the identified datasets from bad values."""
         for p in list(self._datasets):
-            if p.rsplit(os.sep, 1)[-1] in black_list:
+            if p.rsplit(os.sep, 1)[-1] in deny_list:
                 del self._datasets[p]
 
-    def dump_dataset_list(self):
-        """
-        """
-        pass
+    def dump_dataset_list(self, path: str) -> None:
+        """Dump the list of identified files into a TOML file."""
+        with open(path, "w") as f:
+            toml.dump(self._datasets, f)
 
-    def load_dataset_list(self):
+    def load_dataset_list(self, path: str) -> None:
+        """Load a list of identified files from a TOML file.
+
+        The measurement names are validated but the files are not matched.
+
         """
-        """
-        pass
+        d = toml.load(path)
+        m_names = [m.name for m in self.patterns]
+        for k in d:
+            if k not in m_names:
+                raise ValueError(
+                    f"Loaded file contains pattern for {k} which is unknown. "
+                    f"Known values are {m_names}"
+                )
+        self._datasets = d  # type: ignore
 
     def classify_datasets(self):
-        """
-        """
+        """Find the classifiers values in each identified dataset."""
         if not self._datasets:
             raise RuntimeError(
                 "No identified datasets to work on. Run `identify_datasets` or"
@@ -496,16 +526,15 @@ class DataClassifier:
     def dump_dataset_classification(self):
         """
         """
-        pass
+        raise NotImplementedError
 
     def load_dataset_classification(self):
         """
         """
-        pass
+        raise NotImplementedError
 
     def consolidate_dataset(self, path: str) -> None:
-        """
-        """
+        """Consolidate all teh relevant data into a single file."""
         if not self._classified_datasets:
             raise RuntimeError(
                 "No classified datasets to work on. Run `classify_datasets` or"
@@ -534,8 +563,10 @@ class DataClassifier:
         classifiers: List[Dict[str, Classifier]],
         filters: Optional[Dict[str, float]] = None,
     ) -> None:
-        """
-        """
+        """Create group for each level of classifiers and each values."""
+
+        # If we exhausted the classifiers we are ready to pull the data we care about
+        # and store them.
         if not classifiers:
             assert filters is not None
             self._extract_datasets(storage, path, meas_pattern, filters)
@@ -558,9 +589,12 @@ class DataClassifier:
         # different classifiers, :: separates the classifier name from the value
         fmt_str = "&".join(f"{c_name}" "::{}" for c_name in names)
 
+        # This assumes that all combination of classifiers exist which may not be true
+        # if the measurement was interrupted.
         for values in product(*all_values):
             # Create a new group and store classifiers values on attrs
-            group = storage.require_group(fmt_str.format(*values))
+            group_name = fmt_str.format(*values)
+            group = storage.require_group(group_name)
             group.attrs.update(dict(zip(names, values)))
 
             # Update the filters to allow extraction of the data
@@ -580,6 +614,12 @@ class DataClassifier:
             # We do a recursive call passing one less level of classifiers
             self._create_entries(group, path, meas_pattern, classifiers[1:], f)
 
+            # If we did not create any content and the group is empty (no group or
+            # dataset), meaning that this combination of classifiers is invalid due
+            # to the measurement being interrupted we delete the group.
+            if not group.keys():
+                del storage[group]
+
     def _extract_datasets(
         self,
         storage: Group,
@@ -587,10 +627,7 @@ class DataClassifier:
         meas_pattern: MeasurementPattern,
         filters: Dict[str, float],
     ):
-        """
-
-        """
-        step_dims = []
+        """Extract the data corresponding to the specified filters."""
         vector_data_names = []
         to_store = {}
 
@@ -620,18 +657,8 @@ class DataClassifier:
                 if should_skip:
                     continue
 
-                # Determine the number of points for this step
-                last_stop = None
-                dim = 0
-                for r in stepcf.ramps:
-                    dim += r.steps
-                    # For multiple ramps whose the start match the previous stop Labber
-                    # saves a single point.
-                    if last_stop and r.start == last_stop:
-                        dim -= 1
-                    last_stop = r.stop
-
-                step_dims.append(dim)
+                # Get the data which are already in a meaningful shape (see
+                # LabberData.get_data)
                 to_store[name] = f.get_data(stepcf.name, filters=filters)
 
             # Find and exctract the relevant log channels
@@ -653,175 +680,32 @@ class DataClassifier:
                 if should_skip:
                     continue
 
-                data = f.get_data(entry.name, filters=filters, get_x=x_name is not None)
+                data = f.get_data(entry.name, filters=filters, get_x=x_name is not None)  # type: ignore
                 if x_name:
                     vector_data_names.append(name)
                     to_store[x_name] = data[0]
                     to_store[name] = data[1]
                 else:
                     to_store[name] = data
-                log_sizes = len(to_store[name])
 
             # In the presence of vector data do the following
             # - one vector, add a dummy dimension to all data sets to get something
             #   reminiscent of a normal scan
             # - two vector of more, do not do anything special
-            has_many_vec = len(vector_data_names) > 1
             if len(vector_data_names) == 1:
-                vec_dim = (
-                    to_store[vector_data_names[0]].reshape(step_dims + [-1]).shape[0]
-                )
-                step_dims += [vec_dim]
+                vec_dim = to_store[vector_data_names[0]].shape[-1]
+
                 for n, d in list(to_store.items()):
                     if n not in vector_data_names:
-                        new_data = np.empty(step_dims, dtype=d.dtype)
+                        # Create a new array with an extra dimension
+                        new_data = np.empty(list(d.shape) + [vec_dim], dtype=d.dtype)
+                        # Create a view allowing to easily assign the same value
+                        # on all elements of the last dimension.
                         v = np.moveaxis(new_data, -1, 0)
                         v[:] = d
+                        # Store the original data
                         to_store[n] = new_data
 
-            # Store the data in the most relevant shape
-            # If no vector data or a single vector, step_dims has the right shape
-            # If there is more than one vector, add a -1 to vector data shape
+            # Store the data
             for n, d in to_store.items():
-                if has_many_vec and n in vector_data_names:
-                    storage.create_dataset(n, data=d.reshape(step_dims + [-1]))
-                else:
-                    storage.create_dataset(n, data=d.reshape(step_dims))
-
-
-@dataclass
-class DataExplorer:
-    """
-    """
-
-    #:
-    path: str
-
-    #:
-    allow_edits: bool = False
-
-    #:
-    create_new: bool = False
-
-    def open(self) -> None:
-        """ Open the underlying HDF5 file.
-
-        """
-        mode = "w" if self.create_new else ("r+" if self.allow_edits else "r")
-        self._file = File(self.path, mode)
-
-    def close(self) -> None:
-        """ Close the underlying HDF5 file.
-
-        """
-        if self._file:
-            self._file.close()
-        self._file = None
-
-    def __enter__(self):
-        """ Open the underlying HDF5 file when used as a context manager.
-
-        """
-        self.open()
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        """ Close the underlying HDF5 file when used as a context manager.
-
-        """
-        self.close()
-
-    def list_measurements(self) -> List[str]:
-        """
-
-        """
-        if not self._file:
-            raise RuntimeError("No opened datafile")
-        return list(self._file.keys())
-
-    def list_classifiers(self, measurement) -> Dict[int, List[str]]:
-        """
-
-        """
-        if not self._file:
-            raise RuntimeError("No opened datafile")
-        if measurement not in self._file:
-            raise ValueError(
-                f"No measurement {measurement} in opened datafile, "
-                f"existing measurements are {self.list_measurements()}"
-            )
-
-        def extract_classifiers(
-            group: Group, classifiers: Dict[int, List[str]], level: int
-        ) -> Dict[int, List[str]]:
-            # By construction the classifiers are the same on each level
-            # so we only visit one level of each
-            for entry in group:
-                if isinstance(entry, Group):
-                    classifiers[level] = list(entry.attrs)
-                    extract_classifiers(entry, classifiers, level + 1)
-                    break
-            return classifiers
-
-        return extract_classifiers(self._file[measurement], dict(), 0)
-
-    def walk_data(
-        self, measurement: str
-    ) -> Iterator[Tuple[Dict[int, Dict[str, Any]], Group]]:
-        """
-
-        """
-        # Maximal depth of classifiers
-        max_depth = len(self.list_classifiers(measurement))
-
-        def yield_classifier_and_data(
-            group: Group, depth: int, classifiers: Dict[int, Dict[str, Any]]
-        ) -> Iterator[Tuple[Dict[int, Dict[str, Any]], Group]]:
-            if depth == max_depth - 1:
-                for g in group:
-                    clfs = classifiers.copy()
-                    clfs[depth] = dict(g.attrs)
-                    yield clfs, g
-            else:
-                for g in group:
-                    clfs = classifiers.copy()
-                    clfs[depth] = dict(g.attrs)
-                    yield from yield_classifier_and_data(g, depth + 1, clfs)
-
-        yield from yield_classifier_and_data(self._file[measurement], 0, dict())
-
-    def get_data(
-        self, measurement: str, classifiers: Dict[int, Dict[str, Any]]
-    ) -> Group:
-        """
-        """
-        known = self.list_classifiers(measurement)
-        if not {k: list(v) for k, v in classifiers.items()} == known:
-            raise ValueError(
-                f"Unknown classifiers used ({classifiers}),"
-                f" known classifiers are {known}"
-            )
-
-        group = self._file[measurement]
-        for level, values in classifiers.items():
-            key = "&".join(f"{k}::{values[k]}" for k in sorted(values))
-            if key not in group:
-                raise ValueError(
-                    f"No entry of level {level} found for {values}, "
-                    f"at this level known entries are {[dict(g.attrs) for g in group]}."
-                )
-            group = group[key]
-
-        return group
-
-    def create_group(
-        self, measurement: str, classifiers: Dict[int, Dict[str, Any]]
-    ) -> Group:
-        """
-        """
-        group = self._file.require_group(measurement)
-        for level, values in classifiers.items():
-            key = "&".join(f"{k}::{values[k]}" for k in sorted(values))
-            group = group.require_group(key)
-
-        return group
+                storage.create_dataset(n, data=d)
