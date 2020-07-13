@@ -22,57 +22,12 @@ in non-symmetric current distributions.
 """
 import warnings
 from math import pi
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
-from scipy.interpolate import interp1d
 from scipy.integrate import romb, simps
 
-from shabanipy.utils.integrate import can_romberg
-
-
-# TODO does this duplicate resample_distribution() generate_pattern.py?
-def generate_finer_data(
-    fields: np.ndarray,
-    ics: np.ndarray,
-    interpolation_kind: str = "cubic",
-    n_points: Optional[int] = None,
-) -> Tuple[np.ndarray, np.ndarray]:
-    """Generate finer data for fields and ics with 2**n + 1.
-
-    Parameters
-    ----------
-    fields : np.ndarray
-        Magnetic field at which the critical current was measured. For ND input
-        the sweep should occur on the last axis.
-    ics : np.ndarray
-        Measured value of the critical current. For ND input the sweep should
-        occur on the last axis.
-    interpolation_kind : str, optional
-        Order of the spline use in the interpolation (see `interp1d` for
-        details), by default "cubic"
-    n_points : Optional[int], optional
-        Number of points to generate using the interpolation, by default None
-
-    Returns
-    -------
-    np.ndarray
-        Fields interpolated to have n_points on the last axis.
-    np.ndarray
-        Critical currents interpolated to have n_points on the last axis.
-
-    """
-    if not can_romberg(n_points):
-        raise ValueError("n_points should of the form 2**n + 1")
-
-    # Create a finer ic and field to use in the integration
-    fine_fields = np.linspace(fields[0], fields[-1], n_points)
-    fine_ics = np.empty_like(fine_fields)
-    ic_func = interp1d(fields, ics, interpolation_kind)
-    step = abs(fine_fields[0] - fine_fields[1])
-    fine_ics[:] = ic_func(fine_fields)
-
-    return fine_fields, fine_ics
+from shabanipy.utils.integrate import can_romberg, resample_data
 
 
 def extract_theta(
@@ -115,9 +70,8 @@ def extract_theta(
             n_points = 2 ** (int(np.log2(len(fields))) + 1) + 1
 
         if not can_romberg(fields.shape[-1]):
-            fine_fields, fine_ics = generate_finer_data(
-                fields, ics, interpolation_kind, n_points
-            )
+            fine_fields, fine_ics = resample_data(fields, ics, n_points,
+                                                  interpolation_kind)
         else:
             fine_fields, fine_ics = fields, ics
 
@@ -204,9 +158,8 @@ def extract_current_distribution(
             # Need 2**n + 1 for romb integration
             n_points = 2 ** (int(np.log2(len(fields))) + 1) + 1
         if not can_romberg(fields.shape[-1]):
-            fine_fields, fine_ics = generate_finer_data(
-                fields, ics, interpolation_kind, n_points
-            )
+            fine_fields, fine_ics = resample_data(fields, ics, n_points,
+                                                  interpolation_kind)
             log_fine_ics = np.log(fine_ics)
     else:
         # If the data are properly sampled use romb even if we did not interpolate.

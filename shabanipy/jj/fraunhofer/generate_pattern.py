@@ -19,6 +19,8 @@ from scipy import LowLevelCallable
 from scipy.integrate import quad, romb, IntegrationWarning
 from typing_extensions import Literal
 
+from shabanipy.utils.integrate import resample_data
+
 warnings.filterwarnings("ignore", category=IntegrationWarning)
 
 
@@ -161,53 +163,10 @@ def produce_fraunhofer(
 
 
 #@njit(cache=True, fastmath=True)
-def resample_distribution(
-    n_points: int,
-    jj_size: float,
-    field_to_k_factor: np.ndarray,
-    current_distribution: np.ndarray,
-) -> Tuple[np.ndarray, np.ndarray]:
-    """Sample the integrands using n_points to use romb to integrate.
-
-    Parameters
-    ----------
-    n_points : int
-        Number of points to use to represent the junction in real space.
-    jj_size : float
-        Size of the junction (in whatever unit).
-    field_to_k_factor : np.ndarray
-        Local field to wavevector conversion factor. B = k ϕ_0 /(2π L_eff)
-    current_distribution : np.ndarray
-        Density of current in the junction.
-
-    Returns
-    -------
-    (np.ndarray, np.ndarray)
-        Resampled field to wavevector and current distribution to match the
-        number of points.
-
-    """
-    # Convert the position in indexes to access the current and the local
-    # field to wavevector conversion ie local penetration length acounting for
-    # flux focusing.
-    step = jj_size / len(current_distribution)
-    pos = np.linspace(0, jj_size, n_points)
-    indexes = (pos // step).astype(np.int64)
-
-    # Resample the current and field conversion to match the position.
-    cd, f2k = np.empty_like(pos), np.empty_like(pos)
-    for i, x in enumerate(indexes):
-        cd[i] = current_distribution[x]
-        f2k[i] = field_to_k_factor[x]
-
-    return cd, f2k
-
-
-#@njit(cache=True, fastmath=True)
 def produce_fraunhofer_fast(
     magnetic_field: np.ndarray,
     jj_size: float,
-    field_to_k_conversion: np.ndarray,
+    f2k: float, # field-to-wavevector conversion factor
     current_distribution: np.ndarray,
     n_points: int,
 ) -> np.ndarray:
@@ -216,19 +175,16 @@ def produce_fraunhofer_fast(
     """
     current = np.empty_like(magnetic_field)
     step_size = jj_size / (n_points - 1)
+    pos = np.arange(len(current_distribution)) * step_size
     if len(current_distribution) != n_points:
-        cd, f2k = resample_distribution(
-            n_points, jj_size, field_to_k_conversion, current_distribution
-        )
+        xs, cd = resample_data(pos, current_distribution, n_points)
     else:
-        cd, f2k = current_distribution, field_to_k_conversion
-
-    pos = np.arange(len(cd)) * step_size
+        xs, cd = pos, current_distribution
 
     for i, field in enumerate(magnetic_field):
         current[i] = np.abs(
-            romb_1d(cd * np.cos(f2k * pos * field), step_size)
-            + 1j * romb_1d(cd * np.sin(f2k * pos * field), step_size)
+            romb_1d(cd * np.cos(f2k * xs * field), step_size)
+            + 1j * romb_1d(cd * np.sin(f2k * xs * field), step_size)
         )
 
     return current / jj_size
