@@ -26,7 +26,7 @@ def resample_data(x: np.ndarray,
                   n_points: int,
                   interp_kind: Optional[str] = 'cubic'
                   ) -> Tuple[np.ndarray, np.ndarray]:
-    """Resample data y(x) using interpolation.
+    """Generate `n_points` evenly-spaced samples of y(x) by interpolation.
 
     Parameters
     ----------
@@ -35,7 +35,7 @@ def resample_data(x: np.ndarray,
     y : np.ndarray
         Values of the dependent variable y(x) corresponding to `x`.
     n_points : int
-        Number of samples to generate.
+        Number of evenly-spaced samples to generate.
     interp_kind : str, optional
         Kind of interpolator to use. See `interp1d` for details.
 

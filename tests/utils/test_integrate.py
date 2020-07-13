@@ -64,6 +64,14 @@ class TestResampleData(unittest.TestCase):
         np.testing.assert_array_equal(x, x_expected)
         np.testing.assert_allclose(y, y_expected)
 
+    def test_evenly_spaced(self):
+        """Unevenly spaced input generates evenly spaced output."""
+        x_uneven = np.logspace(1, 2, 100)
+        x_even, _ = resample_data(x_uneven, np.zeros_like(x_uneven),
+                                  len(x_uneven))
+        dx = np.diff(x_even)
+        np.testing.assert_allclose(dx, dx[0])
+
 
 if __name__ == '__main__':
     unittest.main()
