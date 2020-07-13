@@ -28,14 +28,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 from scipy.integrate import romb, simps
 
-
-def is_compatible_with_romberg(n_points: int) -> bool:
-    """Determine if a number of points is of the form 2**n + 1
-
-    We need that kind of number for intergrating using the Romberg method.
-
-    """
-    return n_points - 1 > 0 and not (n_points - 1 & (n_points - 2))
+from shabanipy.utils.integrate import can_romberg
 
 
 # TODO does this duplicate resample_distribution() generate_pattern.py?
@@ -69,7 +62,7 @@ def generate_finer_data(
         Critical currents interpolated to have n_points on the last axis.
 
     """
-    if not is_compatible_with_romberg(n_points):
+    if not can_romberg(n_points):
         raise ValueError("n_points should of the form 2**n + 1")
 
     # Create a finer ic and field to use in the integration
@@ -121,7 +114,7 @@ def extract_theta(
             # Need 2**n + 1 for romb integration
             n_points = 2 ** (int(np.log2(len(fields))) + 1) + 1
 
-        if not is_compatible_with_romberg(fields.shape[-1]):
+        if not can_romberg(fields.shape[-1]):
             fine_fields, fine_ics = generate_finer_data(
                 fields, ics, interpolation_kind, n_points
             )
@@ -131,7 +124,7 @@ def extract_theta(
         log_fine_ics = np.log(fine_ics)
     else:
         # If the data are properly sampled use romb even if we did not interpolate.
-        use_romb = is_compatible_with_romberg(n_points)
+        use_romb = can_romberg(n_points)
         fine_fields = fields
         log_fine_ics = np.log(ics)
 
@@ -210,14 +203,14 @@ def extract_current_distribution(
         if n_points is None:
             # Need 2**n + 1 for romb integration
             n_points = 2 ** (int(np.log2(len(fields))) + 1) + 1
-        if not is_compatible_with_romberg(fields.shape[-1]):
+        if not can_romberg(fields.shape[-1]):
             fine_fields, fine_ics = generate_finer_data(
                 fields, ics, interpolation_kind, n_points
             )
             log_fine_ics = np.log(fine_ics)
     else:
         # If the data are properly sampled use romb even if we did not interpolate.
-        use_romb = is_compatible_with_romberg(n_points)
+        use_romb = can_romberg(n_points)
         fine_fields = fields
         log_fine_ics = ics
 
