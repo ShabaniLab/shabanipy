@@ -173,7 +173,7 @@ def extract_current_distribution(
     xs = np.linspace(-jj_size * 1.25 / 2, jj_size * 1.25 / 2,
                      int(jj_points*5/4))
     step = xs[1] - xs[0]
-    j = np.empty(xs.shape)
+    j = np.empty(xs.shape, dtype=complex)
     for i, x in enumerate(xs):
         j[i] = romb(fine_ics*np.exp(1j*(theta
                                     - conversion_factor
