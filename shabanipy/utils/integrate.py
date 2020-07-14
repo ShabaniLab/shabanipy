@@ -21,7 +21,7 @@ def can_romberg(n_points: int) -> bool:
     return n_points > 1 and not (n_points - 1) & (n_points - 2)
 
 
-def resample_data(x: np.ndarray,
+def resample_evenly(x: np.ndarray,
                   y: np.ndarray,
                   n_points: int,
                   interp_kind: Optional[str] = 'cubic'

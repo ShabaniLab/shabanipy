@@ -19,7 +19,7 @@ from scipy import LowLevelCallable
 from scipy.integrate import quad, romb, IntegrationWarning
 from typing_extensions import Literal
 
-from shabanipy.utils.integrate import resample_data
+from shabanipy.utils.integrate import resample_evenly
 
 warnings.filterwarnings("ignore", category=IntegrationWarning)
 
@@ -177,7 +177,7 @@ def produce_fraunhofer_fast(
     step_size = jj_size / (n_points - 1)
     pos = np.arange(len(current_distribution)) * step_size
     if len(current_distribution) != n_points:
-        xs, cd = resample_data(pos, current_distribution, n_points)
+        xs, cd = resample_evenly(pos, current_distribution, n_points)
     else:
         xs, cd = pos, current_distribution
 

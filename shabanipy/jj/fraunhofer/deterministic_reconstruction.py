@@ -27,7 +27,7 @@ from typing import Optional
 import numpy as np
 from scipy.integrate import romb, simps
 
-from shabanipy.utils.integrate import can_romberg, resample_data
+from shabanipy.utils.integrate import can_romberg, resample_evenly
 
 
 def extract_theta(
@@ -70,7 +70,7 @@ def extract_theta(
             n_points = 2 ** (int(np.log2(len(fields))) + 1) + 1
 
         if not can_romberg(fields.shape[-1]):
-            fine_fields, fine_ics = resample_data(fields, ics, n_points,
+            fine_fields, fine_ics = resample_evenly(fields, ics, n_points,
                                                   interpolation_kind)
         else:
             fine_fields, fine_ics = fields, ics
@@ -158,7 +158,7 @@ def extract_current_distribution(
             # Need 2**n + 1 for romb integration
             n_points = 2 ** (int(np.log2(len(fields))) + 1) + 1
         if not can_romberg(fields.shape[-1]):
-            fine_fields, fine_ics = resample_data(fields, ics, n_points,
+            fine_fields, fine_ics = resample_evenly(fields, ics, n_points,
                                                   interpolation_kind)
             log_fine_ics = np.log(fine_ics)
     else:
