@@ -17,16 +17,22 @@ from shabanipy.utils.integrate import can_romberg, resample_evenly
 class TestCanRomberg(unittest.TestCase):
     """Unit tests for can_romberg function."""
 
-    def test_is_1_plus_power_of_2(self):
-        """Numbers like 2**n + 1 return true."""
-        result = [n for n in range(1026) if can_romberg(n)]
+    def test_length_is_1_plus_power_of_2(self):
+        """Lengths like 2**n + 1 return true."""
+        result = [n for n in range(1026) if can_romberg(np.arange(n))]
         expected = [2, 3, 5, 9, 17, 33, 65, 129, 257, 513, 1025]
         self.assertEqual(result, expected)
 
-    def test_is_greater_than_1(self):
-        """Numbers less than 2 return false."""
-        result = [n for n in range(-1025, 2) if can_romberg(n)]
-        self.assertFalse(result)
+    def test_length_less_than_2(self):
+        """Lengths less than 2 return false."""
+        self.assertFalse(can_romberg([]))
+        self.assertFalse(can_romberg([1]))
+
+    def test_unevenly_spaced(self):
+        x = np.arange(5)  # length is good
+        self.assertTrue(can_romberg(x))
+        x[-1] = 6  # spacing is bad
+        self.assertFalse(can_romberg(x))
 
 
 class TestResampleData(unittest.TestCase):

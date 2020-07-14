@@ -69,7 +69,7 @@ def extract_theta(
             # Need 2**n + 1 for romb integration
             n_points = 2 ** (int(np.log2(len(fields))) + 1) + 1
 
-        if not can_romberg(fields.shape[-1]):
+        if not can_romberg(fields):
             fine_fields, fine_ics = resample_evenly(fields, ics, n_points,
                                                   interpolation_kind)
         else:
@@ -78,7 +78,7 @@ def extract_theta(
         log_fine_ics = np.log(fine_ics)
     else:
         # If the data are properly sampled use romb even if we did not interpolate.
-        use_romb = can_romberg(n_points)
+        use_romb = can_romberg(fields)
         fine_fields = fields
         log_fine_ics = np.log(ics)
 
@@ -157,13 +157,13 @@ def extract_current_distribution(
         if n_points is None:
             # Need 2**n + 1 for romb integration
             n_points = 2 ** (int(np.log2(len(fields))) + 1) + 1
-        if not can_romberg(fields.shape[-1]):
+        if not can_romberg(fields):
             fine_fields, fine_ics = resample_evenly(fields, ics, n_points,
                                                   interpolation_kind)
             log_fine_ics = np.log(fine_ics)
     else:
         # If the data are properly sampled use romb even if we did not interpolate.
-        use_romb = can_romberg(n_points)
+        use_romb = can_romberg(fields)
         fine_fields = fields
         log_fine_ics = ics
 

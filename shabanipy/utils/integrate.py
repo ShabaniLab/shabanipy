@@ -13,12 +13,15 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 
-def can_romberg(n_points: int) -> bool:
-    """Determine if n_points is of the form 2**n + 1.
+def can_romberg(x: np.ndarray) -> bool:
+    """Determine if data over domain `x` can be Romberg integrated.
 
-    Romberg integration requires 2**n + 1 samples.
+    Data over domain `x` can be Romberg integrated if:
+    1) There are 2**k + 1 values of `x` for some nonnegative integer k.
+    2) The values of `x` are evenly spaced.
     """
-    return n_points > 1 and not (n_points - 1) & (n_points - 2)
+    return (len(x) > 1 and not (len(x) - 1) & (len(x) - 2)
+            and np.allclose(dx := np.diff(x), dx[0]))
 
 
 def resample_evenly(x: np.ndarray,
