@@ -178,4 +178,4 @@ def analyse_vi_curve(
         ie_c[m_index] = cold_value(iexe_p, iexe_n)
         ie_h[m_index] = hot_value(iexe_p, iexe_n)
 
-    return (rn_c, rn_n, ic_c, ic_h, ie_c, ie_h)
+    return (rn_c, rn_h, ic_c, ic_h, ie_c, ie_h)

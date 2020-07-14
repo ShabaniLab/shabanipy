@@ -165,7 +165,7 @@ def plot_shapiro_histogram(
     if mark_steps:
         lims = [power[0], power[-1]]
         if mark_steps_limit:
-            lims[1] = power[0] + mark_steps_limit * (power[1] - power[0])
+            lims[1] = power[0] + mark_steps_limit * (power[-1] - power[0])
         if transpose:
             m_ax.hlines(mark_steps, *lims, linestyles="dashed")
         else:
@@ -221,7 +221,7 @@ def plot_step_weights(
         rn = np.average(rn)
 
     # Extract the steps we want to plot and normalize by the critical current
-    weights = [extract_step_weight(voltage, counts, i) for i in steps]
+    weights = [extract_step_weight(voltage, counts, i) / ic for i in steps]
 
     # Normalize the power by rn*ic**2 which should be the right scaling
     p = power[:, 0] - 10 * np.log10(rn * ic ** 2)
