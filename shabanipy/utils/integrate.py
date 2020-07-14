@@ -11,6 +11,7 @@ from typing import Optional, Tuple
 
 from numba import njit
 import numpy as np
+import scipy
 from scipy.interpolate import interp1d
 
 
@@ -59,7 +60,8 @@ def resample_evenly(x: np.ndarray,
 def romb(x: np.ndarray, y: np.ndarray) -> np.float64:
     """1D Romberg integration of any number of samples.
 
-    This is a wrapper around `_romb_1d` that resamples the data if necessary.
+    This is a wrapper around `scipy.integrate.romb` that resamples the data if
+    necessary.
 
     TODO: Instead of resampling, consider passing the interpolating function
     output from `scipy.interpolate.interp1d` directly to
@@ -79,7 +81,7 @@ def romb(x: np.ndarray, y: np.ndarray) -> np.float64:
     """
     if not can_romberg(x):
         x, y = resample_evenly(x, y, 2**(int(np.log2(len(x))) + 1))
-    return _romb_1d(y, abs(x[0] - x[1]))
+    return scipy.integrate.romb(y, abs(x[0] - x[1]))
 
 
 @njit(cache=True, fastmath=True)
