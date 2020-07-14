@@ -372,13 +372,13 @@ class LabberData:
                 masks = []
                 for k, v in filters.items():
                     index = self._name_or_index_to_index(k)
-                    d = d["Data"]["Data"][:, index]
+                    filter_data = d["Data"]["Data"][:, index]
                     # Create the mask filtering the data
-                    mask = np.less(np.abs(d - v), filter_precision)
+                    mask = np.less(np.abs(filter_data - v), filter_precision)
                     # If the mask is not empty, ensure we do not eliminate nans
-                    # added by labber to have complete sweeps
+                    # added by Labber to have complete sweeps
                     if np.any(mask):
-                        np.logical_or(mask, np.isnan(d), mask)
+                        np.logical_or(mask, np.isnan(filter_data), mask)
                     masks.append(mask)
 
                 mask = masks.pop()
@@ -515,8 +515,8 @@ class LabberData:
 
         names = [n for n, _ in self._file["Data"]["Channel names"]]
         if is_complex:
-            re_index = names.index(channel_name + " - Real")
-            im_index = names.index(channel_name + " - Imag")
+            re_index = names.index(channel_name)
+            im_index = re_index + 1
             real = self._pull_nested_data(re_index)
             imag = self._pull_nested_data(im_index)
             return [r + 1j * i for r, i in zip(real, imag)]
