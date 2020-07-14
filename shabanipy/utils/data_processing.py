@@ -255,6 +255,7 @@ class ProcessCoordinator:
     def run_preprocess(self, debug: bool = False) -> None:
         """Run the pre-processing steps."""
         # Duplicate the data to avoid corrupting the original dataset
+        LOGGER.debug(f"Copying {self.archive_path} to {self.duplicate_path}")
         shutil.copyfile(self.archive_path, self.duplicate_path)
         LOGGER.debug(f"Copied {self.archive_path} to {self.duplicate_path}")
 

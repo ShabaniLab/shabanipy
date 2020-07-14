@@ -57,4 +57,5 @@ def add_title_and_save(
         figure.savefig(os.path.join(pdf_dir, filename + ".pdf"))
         with open(os.path.join(pickle_dir, filename + ".pickle"), "wb") as f:
             dump(figure, f)
+        f.close()
 
