@@ -237,6 +237,9 @@ class StepPattern:
     #: Name pattern for the step or index of the step.
     name_pattern: Union[NamePattern, int]
 
+    #: Single value of the step.
+    value: Optional[ValuePattern] = None
+
     #: List of ramp pattern for the step.
     ramps: Optional[List[RampPattern]] = None
 
@@ -252,7 +255,9 @@ class StepPattern:
         if isinstance(self.ramps, list) and isinstance(self.ramps[0], dict):
             self.ramps = [RampPattern(**rp) for rp in self.ramps]
         if isinstance(self.name, dict):
-            self.ramps = NamePattern(**self.name)
+            self.name = NamePattern(**self.name)
+        if isinstance(self.value, dict):
+            self.value = ValuePattern(**self.value)
 
     def match(self, index: int, config: StepConfig) -> bool:
         """Match a step that meet all the specify pattern."""
@@ -260,6 +265,14 @@ class StepPattern:
             return False
         elif isinstance(self.name_pattern, NamePattern) and not self.name_pattern.match(
             config.name
+        ):
+            return False
+
+        # Check for a single value.
+        if (
+            self.value
+            and config.value is not None
+            and not self.value.match(config.value)
         ):
             return False
 
@@ -316,6 +329,11 @@ class LogPattern:
     def __post_init__(self):
         if isinstance(self.pattern, dict):
             self.pattern = NamePattern(**self.pattern)
+        if not isinstance(self.pattern, (int, NamePattern)):
+            raise ValueError(
+                "The pattern of a Logpattern should be int or NamePattern got:"
+                f" {self.pattern, type(self.pattern)}"
+            )
 
     def match(self, index: int, entry: LogEntry) -> bool:
         """Match a log entry on its index or name.
@@ -447,8 +465,8 @@ class DataClassifier:
     def identify_datasets(self, folders):
         """Identify the relevant datasets by scanning the content of a folder."""
         datasets = {p.name: [] for p in self.patterns}
-        logger.debug(f"Walking {folder}")
         for folder in folders:
+            logger.debug(f"Walking {folder}")
             for root, dirs, files in os.walk(folder):
                 for datafile in (f for f in files if f.endswith(".hdf5")):
                     path = os.path.join(root, datafile)
@@ -702,7 +720,7 @@ class DataClassifier:
                     to_store[name] = data
 
             if n_matched_logs > len(meas_pattern.logs):
-                log_names = [e.name for e in f.list_logs()]
+                log_names = [log.name for log in meas_pattern.logs]
                 raise RuntimeError(
                     "More logs were matched than there is log patterns. "
                     f"The matched logs are {[l for l in to_store if l in log_names]}"
@@ -749,7 +767,9 @@ class DataClassifier:
                             )
                     elif dset.shape[1:] == d.shape[1:]:
                         if dset.shape[0] < d.shape[0]:
-                            dset = storage[n] = d
+                            # Delete the existing dataset and use teh more complete one.
+                            del storage[n]
+                            dset = storage.create_dataset(n, data=d)
                         else:
                             logger.info(
                                 f"Ignoring {n} in {path} since more complete"
