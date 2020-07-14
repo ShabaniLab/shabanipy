@@ -275,7 +275,8 @@ class StepPattern:
             if len(config.ramps) != len(self.ramps):
                 return False
             if any(
-                not rp.match(*astuple(rc)) for rc, rp in zip(config.ramps, self.ramps)
+                not rp.match(*(rc.start, rc.stop, rc.steps))
+                for rc, rp in zip(config.ramps, self.ramps)
             ):
                 return False
 
@@ -292,7 +293,9 @@ class StepPattern:
             # Retrieve the classifier data directly from the log file to avoid
             # considering values that were not acquired because the measurement
             # was stopped.
-            return np.unique(dataset.get_data(config.name))
+            data = np.unique(dataset.get_data(config.name))
+            # Remove nan
+            return tuple(data[~np.isnan(data)])
         else:
             return (config.value,)
 
@@ -320,9 +323,11 @@ class LogPattern:
         If a x_name is specified the data have to be vectorial.
 
         """
-        if isinstance(self.name, int) and self.name != index:
+        if isinstance(self.pattern, int) and self.pattern != index:
             return False
-        elif isinstance(self.name, NamePattern) and not self.name.match(entry.name):
+        elif isinstance(self.pattern, NamePattern) and not self.pattern.match(
+            entry.name
+        ):
             return False
 
         if self.x_name and (not entry.is_vector):
@@ -439,23 +444,24 @@ class DataClassifier:
         str, Dict[str, Dict[int, Dict[str, Classifier]]]
     ] = field(init=False)
 
-    def identify_datasets(self, folder):
+    def identify_datasets(self, folders):
         """Identify the relevant datasets by scanning the content of a folder."""
         datasets = {p.name: [] for p in self.patterns}
         logger.debug(f"Walking {folder}")
-        for root, dirs, files in os.walk(folder):
-            for datafile in (f for f in files if f.endswith(".hdf5")):
-                path = os.path.join(root, datafile)
-                with LabberData(path) as f:
-                    for p in self.patterns:
-                        if p.match(f):
-                            datasets[p.name].append(path)
-                            logger.debug(
-                                f"Accepted {datafile} for measurement pattern {p.name}"
-                            )
-                            break
-                    else:
-                        logger.debug(f"Rejected {datafile} for all patterns")
+        for folder in folders:
+            for root, dirs, files in os.walk(folder):
+                for datafile in (f for f in files if f.endswith(".hdf5")):
+                    path = os.path.join(root, datafile)
+                    with LabberData(path) as f:
+                        for p in self.patterns:
+                            if p.match(f):
+                                datasets[p.name].append(path)
+                                logger.debug(
+                                    f"Accepted {datafile} for measurement pattern {p.name}"
+                                )
+                                break
+                        else:
+                            logger.debug(f"Rejected {datafile} for all patterns")
 
         self._datasets = datasets
 
@@ -507,11 +513,14 @@ class DataClassifier:
                 " load an existing list of datasets using `load_dataset_list`."
             )
 
+        logger.debug(f"Classifying datasets")
         classified_datasets = {p.name: {} for p in self.patterns}
         patterns = {p.name: p for p in self.patterns}
         for name, datafiles in self._datasets.items():
+            logger.debug(f"  Processing measurements under: {name}")
             classified = classified_datasets[name]
             for path in datafiles:
+                logger.debug(f"    Processing: {path}")
                 with LabberData(path) as f:
                     classifiers = patterns[name].extract_classifiers(f)
                 classified[path] = classifiers
@@ -542,16 +551,20 @@ class DataClassifier:
                 "`load_dataset_classification`."
             )
 
+        logger.debug(f"Consolidating data into {path}")
         with File(path, "w") as f:
 
             for name, classified in self._classified_datasets.items():
+                logger.debug(f"  Processing measurements under: {name}")
 
                 # Create a group for that kind of measurement
                 group = f.create_group(name)
+                group.attrs["files"] = self._datasets[name]
                 # Extract the measurement pattern
                 meas_pattern = [p for p in self.patterns if p.name == name][0]
 
                 for path, classifiers in classified.items():
+                    logger.debug(f"    Processing: {path}")
                     clfs = [classifiers[k] for k in sorted(classifiers)]
                     self._create_entries(group, path, meas_pattern, clfs)
 
@@ -631,9 +644,6 @@ class DataClassifier:
         vector_data_names = []
         to_store = {}
 
-        # XXX enforce that the fast scan occurs on the last axis.
-        # XXX can be done using np.transpose
-
         with LabberData(path) as f:
             # Find and exctract the relevant step channels (ie not used in classifying)
             for i, stepcf in [
@@ -662,6 +672,7 @@ class DataClassifier:
                 to_store[name] = f.get_data(stepcf.name, filters=filters)
 
             # Find and exctract the relevant log channels
+            n_matched_logs = 0
             for i, entry in enumerate(f.list_logs()):
                 # Collect only requested log entries.
                 should_skip = True
@@ -672,6 +683,7 @@ class DataClassifier:
                 # extract this log entry and if yes under what name
                 for lpattern in meas_pattern.logs:
                     if lpattern.match(i, entry):
+                        n_matched_logs += 1
                         should_skip = False
                         name = lpattern.name
                         x_name = lpattern.x_name
@@ -681,12 +693,20 @@ class DataClassifier:
                     continue
 
                 data = f.get_data(entry.name, filters=filters, get_x=x_name is not None)  # type: ignore
+
                 if x_name:
                     vector_data_names.append(name)
                     to_store[x_name] = data[0]
                     to_store[name] = data[1]
                 else:
                     to_store[name] = data
+
+            if n_matched_logs > len(meas_pattern.logs):
+                log_names = [e.name for e in f.list_logs()]
+                raise RuntimeError(
+                    "More logs were matched than there is log patterns. "
+                    f"The matched logs are {[l for l in to_store if l in log_names]}"
+                )
 
             # In the presence of vector data do the following
             # - one vector, add a dummy dimension to all data sets to get something
@@ -706,6 +726,43 @@ class DataClassifier:
                         # Store the original data
                         to_store[n] = new_data
 
+            # If the data are empty, do not store anything.
+            if any(v.shape == (0,) for v in to_store.values()):
+                return
             # Store the data
             for n, d in to_store.items():
-                storage.create_dataset(n, data=d)
+                # If data with similar classifers are already there check,
+                # if there are the same shape. If yes and one of them contains less nan
+                # than the other keep the most complete set, otherwise log the issue
+                # and do not store the new one.
+                if n in storage:
+                    dset = storage[n]
+                    if dset.shape == d.shape:
+                        ex_count = np.count_nonzero(np.isnan(dset))
+                        new_count = np.count_nonzero(np.isnan(d))
+                        if new_count < ex_count:
+                            dset = storage[n] = d
+                        else:
+                            logger.info(
+                                f"Ignoring {n} in {path} since more complete"
+                                "data already exists (less nans)"
+                            )
+                    elif dset.shape[1:] == d.shape[1:]:
+                        if dset.shape[0] < d.shape[0]:
+                            dset = storage[n] = d
+                        else:
+                            logger.info(
+                                f"Ignoring {n} in {path} since more complete"
+                                "data already exists, larger outer dimension"
+                            )
+                    else:
+                        logger.info(
+                            f"Ignoring {n} in {path} since data of a different"
+                            "shape already exists. "
+                            f"Existing {dset.shape}, new {d.shape}"
+                        )
+                else:
+                    dset = storage.create_dataset(n, data=d)
+
+                # Store the origin of the data by the data.
+                dset.attrs["__file__"] = f.filename

@@ -9,11 +9,14 @@
 """Routines to analyse data taken on JJ.
 
 """
+import logging
 from typing import Tuple, Optional, Union
 
 import numpy as np
 from scipy.signal import find_peaks, peak_widths
 from typing_extensions import Literal
+
+LOGGER = logging.getLogger(__name__)
 
 
 def compute_voltage_offset(
@@ -47,24 +50,44 @@ def compute_voltage_offset(
 
     # Compute the derivative of the signal
     dydx = np.diff(measured_voltage)
+    l_dydx = dydx[:midpoint]
+    r_dydx = dydx[midpoint:]
 
     # Find the most prominent peaks on each side of the zero bias current
-    peaks_left, _ = find_peaks(dydx[:midpoint], max(dydx[:midpoint]) / 2)
-    peaks_right, _ = find_peaks(dydx[midpoint:], max(dydx[midpoint:]) / 2)
+    peaks_left, _ = find_peaks(l_dydx, max(dydx[:midpoint]) / 2)
+    peaks_right, _ = find_peaks(r_dydx, max(dydx[midpoint:]) / 2)
 
-    # Evaluate the width of the peaks
-    peakwidth_left = peak_widths(dydx[:midpoint], peaks_left, rel_height=0.5)
-    peakwidth_right = peak_widths(dydx[midpoint:], peaks_right, rel_height=0.5)
+    # Manually evaluate the width of the peaks since they can be very asymetric
+    lw = 0
+    l_peak_value = l_dydx[peaks_left[-1]]
+    while l_dydx[peaks_left[-1] + lw] > l_peak_value / 2:
+        lw += 1
+
+    rw = 0
+    r_peak_value = r_dydx[peaks_right[-1]]
+    while r_dydx[peaks_right[-1] - rw] > r_peak_value / 2:
+        rw += 1
 
     # Keep only the data between the two peaks
     area = measured_voltage[
         peaks_left[-1]
-        + int(round(peakwidth_left[0][-1], 0)) * n_peak_width : peaks_right[0]
+        + lw * n_peak_width : peaks_right[0]
         + midpoint
-        - int(round(peakwidth_right[0][0], 0)) * n_peak_width
+        - rw * n_peak_width
     ]
 
-    return np.average(area), np.std(area)
+    # If we get an empty array simply return the middle point.
+    if area.shape == (0,):
+        LOGGER.info(
+            "While computing voltage offset, the area between resistance peak was "
+            "found to be 0."
+        )
+        return (
+            measured_voltage[midpoint],
+            np.std(measured_voltage[midpoint - 1 : midpoint + 2]),
+        )
+    else:
+        return np.average(area), np.std(area)
 
 
 def correct_voltage_offset(
@@ -104,15 +127,15 @@ def correct_voltage_offset(
     if index is not None:
         if isinstance(index, int):
             cb = current_bias[index]
-            mv = measured_voltage[index]
+            sv = measured_voltage[index]
         else:
             cb = current_bias
-            mv = measured_voltage
+            sv = measured_voltage
             for i in index:
                 cb = cb[i]
-                mv = mv[i]
+                sv = mv[i]
 
-        avg, _ = compute_voltage_offset(cb, mv, n_peak_width)
+        avg, _ = compute_voltage_offset(cb, sv, n_peak_width)
         mv -= avg
 
     # Substract the offset for each line
@@ -135,7 +158,9 @@ def compute_resistance(
 
     """
     resistance = np.diff(measured_voltage) / np.diff(bias_current)
-    new_bias = bias_current[..., :-1] - (bias_current[..., 1] - bias_current[..., 0])
+    new_bias = bias_current[..., :-1]
+    temp_bias = np.moveaxis(new_bias, -1, 0)
+    temp_bias -= bias_current[..., 1] - bias_current[..., 0]
     return new_bias, resistance
 
 

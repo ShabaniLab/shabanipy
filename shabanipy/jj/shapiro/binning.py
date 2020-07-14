@@ -97,10 +97,11 @@ def bin_power_shapiro_steps(
     frequency: Union[float, np.ndarray],
     step_fraction: float = 0.1,
     debug: bool = False,
-):
+) -> Tuple[np.ndarray, np.ndarray]:
     """Bin a power vs current measurement of the junction voltage.
 
-    power, current and voltage are expected to be of the same shape.
+    Power, current and voltage are expected to be of the same shape and the
+    current sweep is expected to occur on the last axis.
 
     Parameters
     ----------
@@ -127,6 +128,9 @@ def bin_power_shapiro_steps(
 
     Returns
     -------
+    powers : np.ndarray
+        2D array of the microwave power of the same shape as histo.
+
     voltage : np.ndarray
         Linear array of the center of the voltage bins, normalized by the
         Shapiro step size.
@@ -137,22 +141,30 @@ def bin_power_shapiro_steps(
         varying bias current.
 
     """
-    # Build the power array and compute the current step
-    power, indices = np.unique(power, return_index=True)
-    current = np.unique(current)
+    # Extract the power and the current scans and compute the current step.
+    power = power[:, 0]
+    current = current[0]
     c_step = abs(current[1] - current[0])
 
-    _, bins = bin_shapiro_steps(voltage[0], frequency, step_fraction)
-    results = np.empty((len(power), len(bins) - 1))
-    for i in range(len(power)):
+    # Generate the bins from the highest power which we expect to display the
+    # highest voltages
+    index = -1 if power[1] > power[0] else 0
+    incr = 1 if index == 0 else -1
+    v = voltage[index]
+    while np.any(np.isnan(v)):
+        index += incr
+        v = voltage[index]
+    _, bins = bin_shapiro_steps(v, frequency, step_fraction)
+
+    # Bin measurements at all power using the same bins.
+    results = np.empty((voltage.shape[0], len(bins) - 1))
+    for i in range(voltage.shape[0]):
         results[i], _ = bin_shapiro_steps(voltage[i], bins=bins)
     results *= c_step
 
-    # Flip the power axis if the power was decreasing during the scan.
-    if indices[0] > indices[1]:
-        results = results[::-1]
+    aux = center_bin(bins) / shapiro_step(frequency)
 
-    return power, center_bin(bins) / shapiro_step(frequency), results
+    return center_bin(bins) / shapiro_step(frequency), results
 
 
 def extract_step_weight(voltage, histo, index):

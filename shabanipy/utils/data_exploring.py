@@ -14,7 +14,7 @@ import os
 import re
 from collections import defaultdict, namedtuple
 from dataclasses import astuple, dataclass, field, fields
-from itertools import product
+from itertools import product, chain
 from typing import (
     Any,
     Dict,
@@ -30,9 +30,30 @@ from typing import (
 
 import numpy as np
 import toml
-from h5py import File, Group
+from h5py import File, Group, Dataset
 
 from .labber_io import LabberData, LogEntry, StepConfig
+
+
+def format_classifiers(classifiers: Dict[int, Dict[str, Any]], separator: str) -> str:
+    """Format the classifiers in a nice str format.
+
+    Parameters
+    ----------
+    classifiers: Dict[int, Dict[str, Any]]
+        Classifiers stored per level
+    separator: str
+        Separator to use between different classifiers
+
+    """
+    fmt = ""
+    for name, value in chain.from_iterable(c.items() for c in classifiers.values()):
+        if isinstance(value, float):
+            fmt += f"{name}={value:g}"
+        else:
+            fmt += f"{name}={value}"
+        fmt += separator
+    return fmt
 
 
 @dataclass
@@ -98,7 +119,7 @@ class DataExplorer:
         ) -> Dict[int, List[str]]:
             # By construction the classifiers are the same on each level
             # so we only visit one level of each
-            for entry in group:
+            for entry in group.values():
                 if isinstance(entry, Group):
                     classifiers[level] = list(entry.attrs)
                     extract_classifiers(entry, classifiers, level + 1)
@@ -122,13 +143,17 @@ class DataExplorer:
         def yield_classifier_and_data(
             group: Group, depth: int, classifiers: Dict[int, Dict[str, Any]]
         ) -> Iterator[Tuple[Dict[int, Dict[str, Any]], Group]]:
+            # If the group has any dataset yield it and then keep going
+            # This is relevant for processed data merged from different measurements
+            if any(isinstance(k, Dataset) for k in group.values()):
+                yield classifiers, group
             if depth == max_depth - 1:
-                for g in group:
+                for g in [g for g in group.values() if isinstance(g, Group)]:
                     clfs = classifiers.copy()
                     clfs[depth] = dict(g.attrs)
                     yield clfs, g
             else:
-                for g in group:
+                for g in group.values():
                     clfs = classifiers.copy()
                     clfs[depth] = dict(g.attrs)
                     yield from yield_classifier_and_data(g, depth + 1, clfs)
@@ -168,9 +193,16 @@ class DataExplorer:
         If any group does not exist it is created.
 
         """
+        # Ensure the top group is present
         group = self._file.require_group(toplevel)
+
+        # At each classifier level check if the group exist, create it if necessary
         for level, values in classifiers.items():
             key = "&".join(f"{k}::{values[k]}" for k in sorted(values))
-            group = group.require_group(key)
+            if key not in group:
+                group = group.create_group(key)
+                group.attrs.update(values)
+            else:
+                group = group[key]
 
         return group

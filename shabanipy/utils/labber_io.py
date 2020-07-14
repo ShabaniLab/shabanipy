@@ -425,12 +425,14 @@ class LabberData:
             padding = np.prod(results[i].shape) % np.prod(shape[:-1])
             # Pad the data to ensure that only the last axis shrinks
             if padding:
+                # Compute the number of points to add
+                to_add = np.prod(shape[:-1]) - padding
                 results[i] = np.concatenate(
-                    (results[i], np.nan * np.ones(padding)), None
+                    (results[i], np.nan * np.ones(to_add)), None
                 )
                 if vectorial_data and get_x:
                     x_results[i] = np.concatenate(
-                        (x_results[i], np.nan * np.ones(padding)), None
+                        (x_results[i], np.nan * np.ones(to_add)), None
                     )
 
             shaped_results.append(results[i].reshape(tuple(shape)[:-1] + (-1,)))

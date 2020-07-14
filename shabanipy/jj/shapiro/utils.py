@@ -70,7 +70,7 @@ def correct_voltage_offset_per_power(
     it = np.nditer(power[..., 0, 0], ["multi_index"])
 
     for b in it:
-        index = b.multi_index
+        index = it.multi_index
 
         # Compute the value of the Shapiro step
         step = shapiro_step(
@@ -85,7 +85,9 @@ def correct_voltage_offset_per_power(
         # Determine the noise on the data by looking at the zero resistance state
         # of the lowest measurement power
         lpower_index = np.argmin(p[:, 0])
-        _, std = compute_voltage_offset(c[lpower_index], v[lpower_index], n_peak_width)
+        _, std = compute_voltage_offset(
+            c[lpower_index, :], v[lpower_index, :], n_peak_width
+        )
 
         # Compute the step fraction to use when binning to get a high resolution
         # histogram
@@ -93,7 +95,7 @@ def correct_voltage_offset_per_power(
 
         # Compute the histogram of the steps and get the voltage in unit of shapiro steps
         # As a consequence steps are an interger value
-        _, volt_1d, histo = bin_power_shapiro_steps(p, c, v, frequency, step_fraction)
+        volt_1d, histo = bin_power_shapiro_steps(p, c, v, frequency, step_fraction)
 
         # Iterate over the line of the histo and find the peaks (ie Shapiro steps)
         for j, h in enumerate(histo):
@@ -102,7 +104,7 @@ def correct_voltage_offset_per_power(
             peaks, _ = find_peaks(h, distance=0.95 / step_fraction, height=max(h) / 2)
 
             # Calculate deviation of each peak and average
-            dev = np.average([voltage[i] - round(voltage[i]) for i in peaks])
+            dev = np.average([volt_1d[i] - round(volt_1d[i]) for i in peaks])
 
             # Subctract the offset of each line
             v[j] -= dev * step
