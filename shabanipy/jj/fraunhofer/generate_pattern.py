@@ -16,46 +16,12 @@ import numpy as np
 from numba import cfunc, njit
 from numba.types import CPointer, float64, intc
 from scipy import LowLevelCallable
-from scipy.integrate import quad, romb, IntegrationWarning
+from scipy.integrate import quad, IntegrationWarning
 from typing_extensions import Literal
 
-from shabanipy.utils.integrate import resample_evenly
+from shabanipy.utils.integrate import resample_evenly, romb
 
 warnings.filterwarnings("ignore", category=IntegrationWarning)
-
-
-@njit(cache=True, fastmath=True)
-def romb_1d(y, dx):
-    """Specialized implementation of the romb algorithm found in scipy for 1d arrays.
-
-    This is a fast and accurate integration method for 2**k+1 points.
-
-    """
-    n_interv = len(y) - 1
-    n = 1
-    k = 0
-    while n < n_interv:
-        n <<= 1
-        k += 1
-    if n != n_interv:
-        raise ValueError(
-            "Number of samples must be one plus a " "non-negative power of 2."
-        )
-
-    R = np.empty((k + 1, k + 1))
-    h = n_interv * dx
-    R[0, 0] = (y[0] + y[-1]) / 2.0 * h
-    start = stop = step = n_interv
-    for i in range(1, k + 1):
-        start >>= 1
-        R[(i, 0)] = 0.5 * (R[i - 1, 0] + h * y[start:stop:step].sum())
-        step >>= 1
-        for j in range(1, i + 1):
-            prev = R[i, j - 1]
-            R[i, j] = prev + (prev - R[i - 1, j - 1]) / ((1 << (2 * j)) - 1)
-        h /= 2.0
-
-    return R[k, k]
 
 
 def generate_current_integrand(
@@ -183,8 +149,8 @@ def produce_fraunhofer_fast(
 
     for i, field in enumerate(magnetic_field):
         current[i] = np.abs(
-            romb_1d(cd * np.cos(f2k * xs * field), step_size)
-            + 1j * romb_1d(cd * np.sin(f2k * xs * field), step_size)
+            romb(xs, cd * np.cos(f2k * xs * field))
+            + 1j * romb(xs, cd * np.sin(f2k * xs * field))
         )
 
     return current / jj_size
