@@ -15,6 +15,7 @@ import os
 from pickle import dump
 from typing import Any, Dict, Optional
 
+from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
 from .data_exploring import format_classifiers
@@ -57,5 +58,6 @@ def add_title_and_save(
         figure.savefig(os.path.join(pdf_dir, filename + ".pdf"))
         with open(os.path.join(pickle_dir, filename + ".pickle"), "wb") as f:
             dump(figure, f)
-        f.close()
+        figure.clf()
+        plt.close(figure)
 
