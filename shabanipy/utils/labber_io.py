@@ -384,8 +384,11 @@ class LabberData:
                 mask = masks.pop()
                 for m in masks:
                     np.logical_and(mask, m, mask)
+                # For unclear reason vector data are not index in the same order
+                # as other data and require the mask to be transposed before being
+                # raveled
                 if vectorial_data:
-                    mask = np.ravel(mask)
+                    mask = np.ravel(mask.T)
 
                 # Filter
                 results.append(data[i][mask])
