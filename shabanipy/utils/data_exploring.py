@@ -35,6 +35,24 @@ from h5py import File, Group, Dataset
 from .labber_io import LabberData, LogEntry, StepConfig
 
 
+def make_group_name(labels: Dict[str, Any]) -> str:
+    """Create a name for a group by assembling labels.
+
+    Different labels are separated by & while label and values are separated by ::
+    Floating points number are formatted using g to avoid rounding issue to lead
+    different groups.
+
+    """
+    fmt = ""
+    for name in sorted(labels):
+        if isinstance(labels[name], float):
+            fmt += f"{name}::{labels[name]:g}"
+        else:
+            fmt += f"{name}::{labels[name]}"
+        fmt += "&"
+    return fmt
+
+
 def format_classifiers(classifiers: Dict[int, Dict[str, Any]], separator: str) -> str:
     """Format the classifiers in a nice str format.
 
@@ -175,7 +193,7 @@ class DataExplorer:
 
         group = self._file[measurement]
         for level, values in classifiers.items():
-            key = "&".join(f"{k}::{values[k]}" for k in sorted(values))
+            key = make_group_name(values)
             if key not in group:
                 raise ValueError(
                     f"No entry of level {level} found for {values}, "
@@ -198,7 +216,7 @@ class DataExplorer:
 
         # At each classifier level check if the group exist, create it if necessary
         for level, values in classifiers.items():
-            key = "&".join(f"{k}::{values[k]}" for k in sorted(values))
+            key = make_group_name(values)
             if key not in group:
                 group = group.create_group(key)
                 group.attrs.update(values)

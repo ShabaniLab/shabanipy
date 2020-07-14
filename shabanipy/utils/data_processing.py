@@ -132,7 +132,7 @@ class PreProcessingStep(AnalysisStep):
         elif len(self.output_quantities) == 1:
             out = (out,)
         for n, d in zip(self.output_quantities, out):
-            dset = group.create_dataset(n, data=d)
+            dset = group.create_dataset(n, data=d, compression="gzip")
             dset.attrs["__step_name__"] = self.name
             dset.attrs.update(self.parameters)
 
@@ -182,7 +182,7 @@ class ProcessingStep(AnalysisStep):
 
         group = out_explorer.require_group(self.tier, classifiers)
         for n, d in zip(self.output_quantities, out):
-            dset = group.create_dataset(n, data=d)
+            dset = group.create_dataset(n, data=d, compression="gzip")
             dset.attrs["__step_name__"] = self.name
             dset.attrs.update(self.parameters)
 

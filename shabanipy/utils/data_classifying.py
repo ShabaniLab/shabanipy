@@ -32,6 +32,7 @@ import numpy as np
 import toml
 from h5py import File, Group
 
+from .data_exploring import make_group_name
 from .labber_io import LabberData, LogEntry, StepConfig
 
 logger = logging.getLogger(__name__)
@@ -624,7 +625,7 @@ class DataClassifier:
         # if the measurement was interrupted.
         for values in product(*all_values):
             # Create a new group and store classifiers values on attrs
-            group_name = fmt_str.format(*values)
+            group_name = make_group_name(dict(zip(names, values)))
             group = storage.require_group(group_name)
             group.attrs.update(dict(zip(names, values)))
 
