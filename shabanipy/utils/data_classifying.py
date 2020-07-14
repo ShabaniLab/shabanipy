@@ -660,6 +660,7 @@ class DataClassifier:
     ):
         """Extract the data corresponding to the specified filters."""
         vector_data_names = []
+        x_vector_data_names = []
         to_store = {}
 
         with LabberData(path) as f:
@@ -714,6 +715,7 @@ class DataClassifier:
 
                 if x_name:
                     vector_data_names.append(name)
+                    x_vector_data_names.append(x_name)
                     to_store[x_name] = data[0]
                     to_store[name] = data[1]
                 else:
@@ -734,7 +736,7 @@ class DataClassifier:
                 vec_dim = to_store[vector_data_names[0]].shape[-1]
 
                 for n, d in list(to_store.items()):
-                    if n not in vector_data_names:
+                    if n not in vector_data_names and n not in x_vector_data_names:
                         # Create a new array with an extra dimension
                         new_data = np.empty(list(d.shape) + [vec_dim], dtype=d.dtype)
                         # Create a view allowing to easily assign the same value
@@ -769,7 +771,9 @@ class DataClassifier:
                         if dset.shape[0] < d.shape[0]:
                             # Delete the existing dataset and use teh more complete one.
                             del storage[n]
-                            dset = storage.create_dataset(n, data=d)
+                            dset = storage.create_dataset(
+                                n, data=d, compression="gzip", compression_opts=6,
+                            )
                         else:
                             logger.info(
                                 f"Ignoring {n} in {path} since more complete"
@@ -782,7 +786,9 @@ class DataClassifier:
                             f"Existing {dset.shape}, new {d.shape}"
                         )
                 else:
-                    dset = storage.create_dataset(n, data=d)
+                    dset = storage.create_dataset(
+                        n, data=d, compression="gzip", compression_opts=6
+                    )
 
                 # Store the origin of the data by the data.
                 dset.attrs["__file__"] = f.filename
