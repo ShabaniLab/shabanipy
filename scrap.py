@@ -1,3 +1,5 @@
+import sys
+
 from matplotlib import pyplot as plt
 import numpy as np
 from numpy.fft import fft
@@ -12,29 +14,16 @@ PHI0 = c.physical_constants['mag. flux quantum'][0]
 a = 1e-6    # junction width
 d = 100e-9  # junction length (really d + 2λ)
 
+# tophat current distribution
+x = np.linspace(-2e-6, 2e-6, 129)
+jx = np.zeros_like(x)
+jx[np.where(np.abs(x) < a/2)] = 1
 
-# tophat
-jx = np.zeros(100)
-jx[40:60] = 1  # A/m (20 points in junction)
+# generate fraunhofer
+b = np.linspace(-.05, .05, 129)
+ic = produce_fraunhofer_fast(b, 2*np.pi*d/PHI0, jx, x)
+sys.exit()
 
-# position step size
-dx = a / len(jx[np.where(jx != 0)])
-x = np.arange(len(jx))
-x = (x - np.median(x))*dx  # center and scale
-
-# fourier transform -> critical current
-g = fft(jx)
-g = np.conj(g)  # match sign convention of (3) vs. numpy.fft
-ic = dx*np.abs(g)  # A
-
-# field step size
-dbeta = 2*np.pi / (len(jx)*dx)  # rad / m
-beta = np.arange(len(ic))*dbeta
-B = beta * PHI0 / (2*np.pi * d)  # T
-
-
-###########
-
-ic2 = produce_fraunhofer_fast(B, a, 2*np.pi*d/PHI0, jx, 1 + 2**7)
-theta = extract_theta(B, ic2)
-x2, jx2 = extract_current_distribution(B, ic2, 2*np.pi*d/PHI0, a, 100)
+# reconstruct fraunhofer
+theta = extract_theta(b, ic)
+x2, jx2 = extract_current_distribution(b, ic, 2*np.pi*d/PHI0, a, 100)

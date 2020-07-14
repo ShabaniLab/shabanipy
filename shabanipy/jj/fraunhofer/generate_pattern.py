@@ -19,7 +19,7 @@ from scipy import LowLevelCallable
 from scipy.integrate import quad, IntegrationWarning
 from typing_extensions import Literal
 
-from shabanipy.utils.integrate import resample_evenly, romb
+from shabanipy.utils.integrate import resample_evenly, romb, can_romberg
 
 warnings.filterwarnings("ignore", category=IntegrationWarning)
 
@@ -131,21 +131,17 @@ def produce_fraunhofer(
 #@njit(cache=True, fastmath=True)
 def produce_fraunhofer_fast(
     magnetic_field: np.ndarray,
-    jj_size: float,
     f2k: float, # field-to-wavevector conversion factor
-    current_distribution: np.ndarray,
-    n_points: int,
+    cd: np.ndarray, # current distribution
+    xs: np.ndarray
 ) -> np.ndarray:
     """Fast version of produce_fraunhofer relying on Romberg integration method.
 
     """
     current = np.empty_like(magnetic_field)
-    step_size = jj_size / (n_points - 1)
-    pos = np.arange(len(current_distribution)) * step_size
-    if len(current_distribution) != n_points:
-        xs, cd = resample_evenly(pos, current_distribution, n_points)
-    else:
-        xs, cd = pos, current_distribution
+    pos = xs
+    if not can_romberg(xs):
+        xs, cd = resample_evenly(xs, cd, 2**(int(np.log2(len(xs))) + 1) + 1)
 
     for i, field in enumerate(magnetic_field):
         current[i] = np.abs(
@@ -153,4 +149,4 @@ def produce_fraunhofer_fast(
             + 1j * romb(xs, cd * np.sin(f2k * xs * field))
         )
 
-    return current / jj_size
+    return current
