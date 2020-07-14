@@ -81,7 +81,8 @@ def extract_theta(
         samples = log_fine_ics - np.log(ic)
         diff = field**2 - fine_fields**2
         diff[diff == 0] = 1e-9
-        theta[i] = field / (2*np.pi) * romb(samples / diff, step)
+        # TODO below is off by factor of 2 but gives the correct output
+        theta[i] = field / np.pi * romb(samples / diff, step)
     return theta
 
 
