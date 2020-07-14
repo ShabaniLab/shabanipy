@@ -33,6 +33,7 @@ from shabanipy.utils.integrate import can_romberg, resample_evenly
 def extract_theta(
     fields: np.ndarray,
     ics: np.ndarray,
+    f2k,  # field-to-k conversion factor (i.e. beta/B)
     use_interpolation: bool = True,
     interpolation_kind: str = "cubic",
     n_points: Optional[int] = None,
@@ -63,57 +64,35 @@ def extract_theta(
         Hilbert tranform of Ic to be used when rebuilding the current distribution.
 
     """
-    if use_interpolation:
-        use_romb = use_interpolation
-        if n_points is None:
-            # Need 2**n + 1 for romb integration
-            n_points = 2 ** (int(np.log2(len(fields))) + 1) + 1
-
-        if not can_romberg(fields):
-            fine_fields, fine_ics = resample_evenly(fields, ics, n_points,
-                                                  interpolation_kind)
-        else:
-            fine_fields, fine_ics = fields, ics
-
-        log_fine_ics = np.log(fine_ics)
+    if not can_romberg(fields):
+        fine_fields, fine_ics = resample_evenly(fields, ics,
+                2**(int(np.log2(len(fields))) + 1) + 1)
     else:
-        # If the data are properly sampled use romb even if we did not interpolate.
-        use_romb = can_romberg(fields)
-        fine_fields = fields
-        log_fine_ics = np.log(ics)
+        fine_fields, fine_ics = fields, ics
+    log_fine_ics = np.log(fine_ics)
+
+    # scale from B to beta
+    fields = fields * f2k
+    fine_fields = fine_fields * f2k
+    step = abs(fine_fields[0] - fine_fields[1])
 
     theta = np.empty_like(fields)
-    with np.nditer(
-        (fields, ics, theta),
-        flags=["external_loop"],
-        op_flags=(["readonly"], ["readonly"], ["writeonly"]),
-    ) as it:
-        for inner_field, inner_ics, theta in it:
-            for i, (field, ic) in enumerate(zip(fields, ics)):
-                samples = log_fine_ics - np.log(ic)
-                diff = fine_fields ** 2 - field ** 2
-                # Replace zeros in the denominators by a small value
-                # (the numerator should be zero too at those points anyway).
-                diff[diff == 0] = 1e-9
-
-                if use_romb:
-                    step = abs(fine_fields[0] - fine_fields[1])
-                    theta[i] = field / (2 * pi) * romb(samples / diff, step)
-                else:
-                    theta[i] = field / (2 * pi) * simps(samples / diff, fields)
-
+    for i, (field, ic) in enumerate(zip(fields, ics)):
+        samples = log_fine_ics - np.log(ic)
+        diff = field**2 - fine_fields**2
+        diff[diff == 0] = 1e-9
+        theta[i] = field / (2*np.pi) * romb(samples / diff, step)
     return theta
 
 
 def extract_current_distribution(
     fields: np.ndarray,
     ics: np.ndarray,
-    conversion_factor: float,
+    f2k: float, # field-to-k conversion factor (i.e. beta/B)
     jj_size: float,
     jj_points: int,
     use_interpolation: bool = True,
     interpolation_kind: str = "cubic",
-    n_points: Optional[int] = None,
 ) -> np.ndarray:
     """Extract the current distribution from Ic(B).
 
@@ -125,7 +104,7 @@ def extract_current_distribution(
     ics : np.ndarray
         Measured value of the critical current.For ND input the sweep should
         occur on the last axis.
-    conversion_factor : float
+    f2k : float
         Field to wave-vector conversion factor. This can be estimated from the
         Fraunhofer periodicity.
     jj_size : float
@@ -152,32 +131,21 @@ def extract_current_distribution(
         Current density.
 
     """
-    if use_interpolation:
-        use_romb = use_interpolation
-        if n_points is None:
-            # Need 2**n + 1 for romb integration
-            n_points = 2 ** (int(np.log2(len(fields))) + 1) + 1
-        if not can_romberg(fields):
-            fine_fields, fine_ics = resample_evenly(fields, ics, n_points,
-                                                  interpolation_kind)
-            log_fine_ics = np.log(fine_ics)
+    if not can_romberg(fields):
+        fine_fields, fine_ics = resample_evenly(fields, ics,
+                2**(int(np.log2(len(fields))) + 1))
     else:
-        # If the data are properly sampled use romb even if we did not interpolate.
-        use_romb = can_romberg(fields)
-        fine_fields = fields
-        log_fine_ics = ics
+        fine_fields, fine_ics = fields, ics
 
-    # First compute the Hilbert transform of Ic
-    theta = extract_theta(fine_fields, fine_ics)
+    theta = extract_theta(fine_fields, fine_ics, f2k)
 
-    xs = np.linspace(-jj_size * 1.25 / 2, jj_size * 1.25 / 2,
-                     int(jj_points*5/4))
-    step = xs[1] - xs[0]
+    # scale from B to beta
+    fine_fields = f2k*fine_fields
+    step = abs(fine_fields[0] - fine_fields[1])
+
+    xs = np.linspace(-jj_size * 2, jj_size * 2, int(jj_points))
     j = np.empty(xs.shape, dtype=complex)
     for i, x in enumerate(xs):
-        j[i] = romb(fine_ics*np.exp(1j*(theta
-                                    - conversion_factor
-                                    * fine_fields * x)),
-                    step)
-
+        j[i] = 1 / (2*np.pi) * romb(fine_ics*np.exp(1j*(theta - 
+            fine_fields * x)), step)
     return xs, j
