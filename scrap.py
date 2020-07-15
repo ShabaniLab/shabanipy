@@ -26,5 +26,5 @@ b = np.linspace(-.25, .25, 513)
 ic = produce_fraunhofer_fast(b, f2k, jx, x)
 
 # reconstruct current distribution
-theta = extract_theta(b, ic, f2k)
+theta = extract_theta(b, ic, f2k, a)
 x2, jx2 = extract_current_distribution(b, ic, f2k, a, 100)
