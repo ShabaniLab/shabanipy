@@ -10,6 +10,7 @@
 
 """
 import os
+import re
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple, Union, overload
 from typing_extensions import Literal
@@ -56,6 +57,12 @@ class StepConfig:
 
     #: Does that step contains more than a single value.
     is_ramped: bool
+
+    #: Relation this step has to other other steps. The tuple contains a
+    #: string and a dictionary mapping placeholder in the format string to step
+    #: names. The relation can be evaluated by replacing the step name by the value
+    #: and using the dictionary as local when evaluating the string.
+    relation: Optional[Tuple[str, Dict[str, str]]]
 
     #: Set value for step with a single set point.
     value: Optional[float]
@@ -184,7 +191,9 @@ class LabberData:
 
         if not self._steps:
             steps = []
-            for (step, *_) in self._file["Step list"]:
+            for (step, _, _, _, _, has_relation, relation, *_) in self._file[
+                "Step list"
+            ]:
                 configs = [
                     f["Step config"][step]["Step items"]
                     for f in [self._file] + self._nested
@@ -194,11 +203,30 @@ class LabberData:
                     or any(bool(config[0][0]) for config in configs)
                     or len({config[0][2] for config in configs}) > 1
                 )
+                # We assume that if we have relations in one log we have them in all
+                if has_relation:
+                    rel_params = self._file["Step config"][step]["Relation parameters"]
+                    relation = (
+                        relation,
+                        {
+                            k: v
+                            for k, v, _ in rel_params
+                            # Preserve only the parameters useful to the relation
+                            # \W is a non word character (no letter no digit)
+                            if re.match(
+                                r"(.*\W+" + f"{k})|{k}" + r"(\W+.*|$)", relation
+                            )
+                        },
+                    )
+                else:
+                    relation = None
+
                 steps.append(
                     StepConfig(
                         name=step,
                         is_ramped=is_ramped,
-                        value=configs[0][0][2] if not is_ramped else None,
+                        relation=relation,
+                        value=None if is_ramped else configs[0][0][2],
                         ramps=[
                             (
                                 RampConfig(
@@ -222,6 +250,16 @@ class LabberData:
                         else None,
                     )
                 )
+
+            # Mark all channels with relation to a ramped channel as ramped.
+            for step in steps:
+                if step.relation is not None:
+                    step.is_ramped = any(
+                        s.is_ramped
+                        for s in steps
+                        if s.name in step.relation[1].values()
+                    )
+
             self._steps = steps
         return self._steps
 
@@ -410,7 +448,8 @@ class LabberData:
         steps_points = [
             s.points_per_log
             for i, s in enumerate(self.list_steps())
-            if s.is_ramped and i not in filters
+            # Only ramped steps with relations contribute to the overall shape
+            if s.is_ramped and s.relation is None and i not in filters
         ]
 
         if vectorial_data:
