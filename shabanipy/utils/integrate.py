@@ -11,7 +11,6 @@ from typing import Optional, Tuple
 
 from numba import njit
 import numpy as np
-import scipy
 from scipy.interpolate import interp1d
 
 
@@ -26,11 +25,12 @@ def can_romberg(x: np.ndarray) -> bool:
             and np.allclose(dx := np.diff(x), dx[0]))
 
 
-def resample_evenly(x: np.ndarray,
-                  y: np.ndarray,
-                  n_points: Optional[int] = None,
-                  interp_kind: Optional[str] = 'cubic'
-                  ) -> Tuple[np.ndarray, np.ndarray]:
+def resample_evenly(
+        x: np.ndarray,
+        y: np.ndarray,
+        n_points: Optional[int] = None,
+        interp_kind: Optional[str] = 'cubic'
+) -> Tuple[np.ndarray, np.ndarray]:
     """Generate `n_points` evenly-spaced samples of y(x) by interpolation.
 
     Parameters

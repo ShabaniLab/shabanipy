@@ -20,12 +20,10 @@ We need to use the more complex approach of the paper since we are interested
 in non-symmetric current distributions.
 
 """
-import warnings
-from math import pi
 from typing import Optional
 
 import numpy as np
-from scipy.integrate import romb, simps
+from scipy.integrate import romb
 
 from shabanipy.utils.integrate import can_romberg, resample_evenly
 
@@ -62,7 +60,8 @@ def extract_theta(
     Returns
     -------
     np.ndarray
-        Hilbert tranform of Ic to be used when rebuilding the current distribution.
+        Hilbert tranform of Ic to be used when rebuilding the current
+        distribution.
 
     """
     if not can_romberg(fields):
@@ -82,15 +81,15 @@ def extract_theta(
         diff = field**2 - fine_fields**2
         diff[diff == 0] = 1e-9
         # TODO below is off by factor of 2 but gives the correct output
-        theta[i] = field / np.pi * romb(samples / diff, step) \
-                - field * jj_width / 2
+        theta[i] = (field / np.pi * romb(samples / diff, step)
+                    - field * jj_width / 2)
     return theta
 
 
 def extract_current_distribution(
     fields: np.ndarray,
     ics: np.ndarray,
-    f2k: float, # field-to-k conversion factor (i.e. beta/B)
+    f2k: float,
     jj_width: float,
     jj_points: int,
     use_interpolation: bool = True,
@@ -127,8 +126,8 @@ def extract_current_distribution(
     Returns
     -------
     np.ndarray
-        Positions at which the current density was calculated. No matter the input
-        shape the returned array is 1D.
+        Positions at which the current density was calculated. No matter the
+        input shape the returned array is 1D.
     np.ndarray
         Current density.
 
@@ -147,6 +146,7 @@ def extract_current_distribution(
     xs = np.linspace(-jj_width, jj_width, int(2*jj_points))
     j = np.empty(xs.shape, dtype=complex)
     for i, x in enumerate(xs):
-        j[i] = 1 / (2*np.pi) * romb(fine_ics*np.exp(1j*(theta - 
-            fine_fields * x)), step)
+        j[i] = (1 / (2 * np.pi) * romb(fine_ics * np.exp(
+                1j*(theta - fine_fields * x)
+                ), step))
     return xs, j

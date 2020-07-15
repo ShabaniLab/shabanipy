@@ -29,6 +29,7 @@ class TestCanRomberg(unittest.TestCase):
         self.assertFalse(can_romberg([1]))
 
     def test_unevenly_spaced(self):
+        """Unevenly spaced data return false."""
         x = np.arange(5)  # length is good
         self.assertTrue(can_romberg(x))
         x[-1] = 6  # spacing is bad
@@ -73,8 +74,8 @@ class TestResampleEvenly(unittest.TestCase):
     def test_evenly_spaced(self):
         """Unevenly spaced input generates evenly spaced output."""
         x_uneven = np.logspace(1, 2, 100)
-        x_even, _ = resample_evenly(x_uneven, np.zeros_like(x_uneven),
-                                  len(x_uneven))
+        x_even, _ = resample_evenly(
+                x_uneven, np.zeros_like(x_uneven), len(x_uneven))
         dx = np.diff(x_even)
         np.testing.assert_allclose(dx, dx[0])
 

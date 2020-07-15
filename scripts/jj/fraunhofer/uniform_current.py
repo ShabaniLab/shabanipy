@@ -27,7 +27,7 @@ theta = extract_theta(b, ic, b2beta, jj_width)
 x2, jx2 = extract_current_distribution(b, ic, b2beta, jj_width, 100)
 
 # plot
-fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=[7,6.25])
+fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=[7, 6.25])
 ax1.set_ylabel('J(x)')
 ax1.plot(x, jx, linewidth=0, marker='.', label='original')
 ax1.plot(x2, jx2, linewidth=0, marker='.', label='reconstructed')

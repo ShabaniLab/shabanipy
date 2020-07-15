@@ -6,14 +6,11 @@
 #
 # The full license is in the file LICENCE, distributed with this software.
 # -----------------------------------------------------------------------------
-"""Generate a Fraunhofer pattern based on a current distribution..
-
-"""
+"""Generate a Fraunhofer pattern based on a current distribution."""
 import warnings
-from typing import Union, Tuple
 
 import numpy as np
-from numba import cfunc, njit
+from numba import cfunc
 from numba.types import CPointer, float64, intc
 from scipy import LowLevelCallable
 from scipy.integrate import romb, quad, IntegrationWarning
@@ -131,18 +128,14 @@ def produce_fraunhofer(
         raise ValueError("Unsupported method")
 
 
-#@njit(cache=True, fastmath=True)
 def produce_fraunhofer_fast(
     magnetic_field: np.ndarray,
-    f2k: float, # field-to-wavevector conversion factor
-    cd: np.ndarray, # current distribution
+    f2k: float,  # field-to-wavevector conversion factor
+    cd: np.ndarray,  # current distribution
     xs: np.ndarray
 ) -> np.ndarray:
-    """Fast version of produce_fraunhofer relying on Romberg integration method.
-
-    """
+    """Generate Fraunhofer from current density using Romberg integration."""
     current = np.empty_like(magnetic_field)
-    pos = xs
     if not can_romberg(xs):
         xs, cd = resample_evenly(xs, cd)
 
