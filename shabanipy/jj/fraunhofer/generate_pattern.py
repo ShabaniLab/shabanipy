@@ -75,6 +75,9 @@ def produce_fraunhofer(
 ) -> np.ndarray:
     """Compute the Fraunhoffer pattern for a given current density.
 
+    WARNING: This is not currently tested or maintained. Use
+    produce_fraunhofer_fast() instead.
+
     The Fraunhofer pattern is normalized by the size of the junction.
     This is independent of the current distribution used or of the junction size.
 
