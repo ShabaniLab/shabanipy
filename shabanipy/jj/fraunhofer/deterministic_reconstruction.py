@@ -33,9 +33,6 @@ def extract_theta(
     ics: np.ndarray,
     f2k: float,  # field-to-k conversion factor (i.e. beta/B)
     jj_width: float,
-    use_interpolation: bool = True,
-    interpolation_kind: str = "cubic",
-    n_points: Optional[int] = None,
 ) -> np.ndarray:
     """Compute the Ic Hilbert transform.
 
@@ -47,15 +44,6 @@ def extract_theta(
     ics : np.ndarray
         Measured value of the critical current. For ND input the sweep should
         occur on the last axis.
-    use_interpolation : bool, optional
-        Allow to resample the points using spline interpolation. This allows to
-        use the more precise Romberg integration method instead of the Simpson
-        one. The default is True.
-    interpolation_kind : str, optional
-        Order of the spline use in the interpolation (see `interp1d` for
-        details), by default "cubic"
-    n_points : Optional[int], optional
-        Number of points to generate using the interpolation, by default None
 
     Returns
     -------
@@ -86,13 +74,7 @@ def extract_theta(
 
 
 def extract_current_distribution(
-    fields: np.ndarray,
-    ics: np.ndarray,
-    f2k: float,
-    jj_width: float,
-    jj_points: int,
-    use_interpolation: bool = True,
-    interpolation_kind: str = "cubic",
+    fields: np.ndarray, ics: np.ndarray, f2k: float, jj_width: float, jj_points: int,
 ) -> np.ndarray:
     """Extract the current distribution from Ic(B).
 
@@ -112,15 +94,6 @@ def extract_current_distribution(
         a larger region (2 * jj_width)
     jj_points : int
         Number of points used to describe the junction inside jj_width.
-    use_interpolation : bool, optional
-        Allow to resample the points using spline interpolation. This allows to
-        use the more precise Romberg integration method instead of the Simpson
-        one. The default is True.
-    interpolation_kind : str, optional
-        Order of the spline use in the interpolation (see `interp1d` for
-        details), by default "cubic"
-    n_points : Optional[int], optional
-        Number of points to generate using the interpolation, by default None
 
     Returns
     -------
