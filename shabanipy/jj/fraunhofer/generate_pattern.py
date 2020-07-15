@@ -132,7 +132,7 @@ def produce_fraunhofer_fast(
     magnetic_field: np.ndarray,
     f2k: float,  # field-to-wavevector conversion factor
     cd: np.ndarray,  # current distribution
-    xs: np.ndarray
+    xs: np.ndarray,
 ) -> np.ndarray:
     """Generate Fraunhofer from current density using Romberg integration."""
     current = np.empty_like(magnetic_field)

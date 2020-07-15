@@ -78,11 +78,10 @@ def extract_theta(
     theta = np.empty_like(fields)
     for i, (field, ic) in enumerate(zip(fields, ics)):
         samples = log_fine_ics - np.log(ic)
-        diff = field**2 - fine_fields**2
+        diff = field ** 2 - fine_fields ** 2
         diff[diff == 0] = 1e-9
         # TODO below is off by factor of 2 but gives the correct output
-        theta[i] = (field / np.pi * romb(samples / diff, step)
-                    - field * jj_width / 2)
+        theta[i] = field / np.pi * romb(samples / diff, step) - field * jj_width / 2
     return theta
 
 
@@ -140,13 +139,15 @@ def extract_current_distribution(
     theta = extract_theta(fine_fields, fine_ics, f2k, jj_width)
 
     # scale from B to beta
-    fine_fields = f2k*fine_fields
+    fine_fields = f2k * fine_fields
     step = abs(fine_fields[0] - fine_fields[1])
 
-    xs = np.linspace(-jj_width, jj_width, int(2*jj_points))
+    xs = np.linspace(-jj_width, jj_width, int(2 * jj_points))
     j = np.empty(xs.shape, dtype=complex)
     for i, x in enumerate(xs):
-        j[i] = (1 / (2 * np.pi) * romb(fine_ics * np.exp(
-                1j*(theta - fine_fields * x)
-                ), step))
-    return xs, j
+        j[i] = (
+            1
+            / (2 * np.pi)
+            * romb(fine_ics * np.exp(1j * (theta - fine_fields * x)), step)
+        )
+    return xs, j.real
