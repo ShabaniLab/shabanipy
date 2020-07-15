@@ -144,7 +144,7 @@ def produce_fraunhofer_fast(
     current = np.empty_like(magnetic_field)
     pos = xs
     if not can_romberg(xs):
-        xs, cd = resample_evenly(xs, cd, 2**(int(np.log2(len(xs))) + 1) + 1)
+        xs, cd = resample_evenly(xs, cd)
 
     dx = abs(xs[0] - xs[1])
     for i, field in enumerate(magnetic_field):

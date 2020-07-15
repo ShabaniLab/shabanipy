@@ -35,7 +35,7 @@ class TestCanRomberg(unittest.TestCase):
         self.assertFalse(can_romberg(x))
 
 
-class TestResampleData(unittest.TestCase):
+class TestResampleEvenly(unittest.TestCase):
     """Unit tests for resample_evenly function."""
 
     def setUp(self):
@@ -77,6 +77,12 @@ class TestResampleData(unittest.TestCase):
                                   len(x_uneven))
         dx = np.diff(x_even)
         np.testing.assert_allclose(dx, dx[0])
+
+    def test_default_n_points(self):
+        """Returns 1+2**k samples if n_points isn't specified."""
+        x_cant_romberg = np.arange(100)
+        x_can_romberg, _ = resample_evenly(x_cant_romberg, x_cant_romberg)
+        self.assertEqual(len(x_can_romberg), 129)
 
 
 if __name__ == '__main__':

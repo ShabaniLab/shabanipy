@@ -66,8 +66,7 @@ def extract_theta(
 
     """
     if not can_romberg(fields):
-        fine_fields, fine_ics = resample_evenly(fields, ics,
-                2**(int(np.log2(len(fields))) + 1) + 1)
+        fine_fields, fine_ics = resample_evenly(fields, ics)
     else:
         fine_fields, fine_ics = fields, ics
     log_fine_ics = np.log(fine_ics)
@@ -135,8 +134,7 @@ def extract_current_distribution(
 
     """
     if not can_romberg(fields):
-        fine_fields, fine_ics = resample_evenly(fields, ics,
-                2**(int(np.log2(len(fields))) + 1))
+        fine_fields, fine_ics = resample_evenly(fields, ics)
     else:
         fine_fields, fine_ics = fields, ics
 

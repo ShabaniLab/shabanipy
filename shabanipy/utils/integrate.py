@@ -28,7 +28,7 @@ def can_romberg(x: np.ndarray) -> bool:
 
 def resample_evenly(x: np.ndarray,
                   y: np.ndarray,
-                  n_points: int,
+                  n_points: Optional[int] = None,
                   interp_kind: Optional[str] = 'cubic'
                   ) -> Tuple[np.ndarray, np.ndarray]:
     """Generate `n_points` evenly-spaced samples of y(x) by interpolation.
@@ -39,8 +39,10 @@ def resample_evenly(x: np.ndarray,
         Values of the independent variable.
     y : np.ndarray
         Values of the dependent variable y(x) corresponding to `x`.
-    n_points : int
-        Number of evenly-spaced samples to generate.
+    n_points : int, optional
+        Number of evenly-spaced samples to generate. If None, generate 1+2**k
+        samples for Romberg integration, where k is the smallest integer such
+        that the output contains more samples than the input.
     interp_kind : str, optional
         Kind of interpolator to use. See `interp1d` for details.
 
@@ -51,6 +53,7 @@ def resample_evenly(x: np.ndarray,
     np.ndarray
         Resampled `y` array containing `n_points` samples.
     """
+    n_points = n_points if n_points else 1 + 2**(1 + int(np.log2(len(x))))
     y_func = interp1d(x, y, interp_kind)
     x_ = np.linspace(x[0], x[-1], n_points)
     y_ = y_func(x_)
