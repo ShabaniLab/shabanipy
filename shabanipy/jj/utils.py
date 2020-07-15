@@ -206,6 +206,7 @@ def extract_switching_current(
     masked_data = volt_or_res[mask].reshape(bias.shape[:-1] + (-1,))
     it = np.nditer(masked_bias[..., 0], ["multi_index"])
     for b in it:
+        # Make it so the bias is always 0 at index 0, by flipping the array if necessary
         if np.argmin(np.abs(masked_bias[it.multi_index])) != 0:
             masked_bias[it.multi_index + (slice(None, None),)] = masked_bias[
                 it.multi_index + (slice(None, None, -1),)
@@ -215,8 +216,14 @@ def extract_switching_current(
             ]
 
     temp = np.greater(np.abs(masked_data), threshold)
+    # Identify the scans for which the threshold was never crossed and mark the last
+    # point as crossed.
+    index = np.logical_not(np.any(temp, axis=-1))
+    temp[index, -1] = True
+
     # Make sure we pinpoint the last current where we were below threshold
-    index = np.argmax(temp, axis=-1) - 1
+    index = np.argmax(temp, axis=-1)
+    index[np.nonzero(index)] -= 1
 
     return np.take_along_axis(masked_bias, index[..., None], axis=-1).reshape(
         bias.shape[:-1]
