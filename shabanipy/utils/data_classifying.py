@@ -303,7 +303,7 @@ class StepPattern:
                 "Step is ramped but pattern does not expect a ramp."
                 f"Step: {config}, pattern: {self}"
             )
-        if config.ramps:
+        if config.is_ramped:
             # Retrieve the classifier data directly from the log file to avoid
             # considering values that were not acquired because the measurement
             # was stopped.
@@ -311,7 +311,16 @@ class StepPattern:
             # Remove nan
             return tuple(data[~np.isnan(data)])
         else:
-            return (config.value,)
+            if config.relation:
+                steps = {
+                    "Step values" if s.name == config.name else s.name: s.value
+                    for s in dataset.list_steps()
+                }
+                locs = {k: steps[v] for k, v in config.relation[1].items()}
+                # XXX should provide some math functions
+                return (eval(config.relation[0], locs),)
+            else:
+                return (config.value,)
 
 
 @dataclass(init=True)
@@ -425,7 +434,7 @@ class MeasurementPattern:
             for i, step in enumerate(dataset.list_steps()):
                 if pattern.match(i, step):
                     classifiers[pattern.classifier_level][pattern.name] = Classifier(
-                        step.name, pattern.extract(dataset, step), bool(step.ramps)
+                        step.name, pattern.extract(dataset, step), step.is_ramped
                     )
                     continue
 
@@ -471,16 +480,20 @@ class DataClassifier:
             for root, dirs, files in os.walk(folder):
                 for datafile in (f for f in files if f.endswith(".hdf5")):
                     path = os.path.join(root, datafile)
-                    with LabberData(path) as f:
-                        for p in self.patterns:
-                            if p.match(f):
-                                datasets[p.name].append(path)
-                                logger.debug(
-                                    f"Accepted {datafile} for measurement pattern {p.name}"
-                                )
-                                break
-                        else:
-                            logger.debug(f"Rejected {datafile} for all patterns")
+                    try:
+                        with LabberData(path) as f:
+                            for p in self.patterns:
+                                if p.match(f):
+                                    datasets[p.name].append(path)
+                                    logger.debug(
+                                        f"Accepted {datafile} "
+                                        f"for measurement pattern {p.name}"
+                                    )
+                                    break
+                            else:
+                                logger.debug(f"Rejected {datafile} for all patterns")
+                    except OSError:
+                        logger.debug(f"Rejected {datafile}: file is corrupted")
 
         self._datasets = datasets
 
@@ -617,12 +630,9 @@ class DataClassifier:
         ]
         all_values = [clf[k].values for k in names]
 
-        # Create a conventional, easy to parse name for subgroup, & delimits
-        # different classifiers, :: separates the classifier name from the value
-        fmt_str = "&".join(f"{c_name}" "::{}" for c_name in names)
-
         # This assumes that all combination of classifiers exist which may not be true
         # if the measurement was interrupted.
+        # XXX this could be optimized for relation that enforce equality
         for values in product(*all_values):
             # Create a new group and store classifiers values on attrs
             group_name = make_group_name(dict(zip(names, values)))
@@ -650,7 +660,7 @@ class DataClassifier:
             # dataset), meaning that this combination of classifiers is invalid due
             # to the measurement being interrupted we delete the group.
             if not group.keys():
-                del storage[group]
+                del storage[group.name]
 
     def _extract_datasets(
         self,
@@ -765,7 +775,7 @@ class DataClassifier:
                             dset = storage[n] = d
                         else:
                             logger.info(
-                                f"Ignoring {n} in {path} since more complete"
+                                f"Ignoring {n} in {path} since more complete "
                                 "data already exists (less nans)"
                             )
                     elif dset.shape[1:] == d.shape[1:]:
@@ -777,12 +787,12 @@ class DataClassifier:
                             )
                         else:
                             logger.info(
-                                f"Ignoring {n} in {path} since more complete"
+                                f"Ignoring {n} in {path} since more complete "
                                 "data already exists, larger outer dimension"
                             )
                     else:
                         logger.info(
-                            f"Ignoring {n} in {path} since data of a different"
+                            f"Ignoring {n} in {path} since data of a different "
                             "shape already exists. "
                             f"Existing {dset.shape}, new {d.shape}"
                         )
