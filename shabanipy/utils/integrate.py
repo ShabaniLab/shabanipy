@@ -57,35 +57,8 @@ def resample_evenly(x: np.ndarray,
     return x_, y_
 
 
-def romb(x: np.ndarray, y: np.ndarray) -> np.float64:
-    """1D Romberg integration of any number of samples.
-
-    This is a wrapper around `scipy.integrate.romb` that resamples the data if
-    necessary.
-
-    TODO: Instead of resampling, consider passing the interpolating function
-    output from `scipy.interpolate.interp1d` directly to
-    `scipy.integrate.romberg`.
-
-    Parameters
-    ----------
-    x : np.ndarray
-        Values of the independent variable.
-    y : np.ndarray
-        Values of the dependent variable y(x) corresponding to `x`.
-
-    Returns
-    -------
-    np.float64
-        The integral of y(x).
-    """
-    if not can_romberg(x):
-        x, y = resample_evenly(x, y, 2**(int(np.log2(len(x))) + 1))
-    return scipy.integrate.romb(y, abs(x[0] - x[1]))
-
-
 @njit(cache=True, fastmath=True)
-def _romb_1d(y, dx):
+def romb_1d(y, dx):
     """Romberg integration of 1D data.
 
     This is a specialized implementation of the romb algorithm found in scipy

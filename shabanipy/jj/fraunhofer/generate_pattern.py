@@ -16,10 +16,10 @@ import numpy as np
 from numba import cfunc, njit
 from numba.types import CPointer, float64, intc
 from scipy import LowLevelCallable
-from scipy.integrate import quad, IntegrationWarning
+from scipy.integrate import romb, quad, IntegrationWarning
 from typing_extensions import Literal
 
-from shabanipy.utils.integrate import resample_evenly, romb, can_romberg
+from shabanipy.utils.integrate import resample_evenly, can_romberg
 
 warnings.filterwarnings("ignore", category=IntegrationWarning)
 
@@ -143,10 +143,11 @@ def produce_fraunhofer_fast(
     if not can_romberg(xs):
         xs, cd = resample_evenly(xs, cd, 2**(int(np.log2(len(xs))) + 1) + 1)
 
+    dx = abs(xs[0] - xs[1])
     for i, field in enumerate(magnetic_field):
         current[i] = np.abs(
-            romb(xs, cd * np.cos(f2k * xs * field))
-            + 1j * romb(xs, cd * np.sin(f2k * xs * field))
+            romb(cd * np.cos(f2k * xs * field), dx)
+            + 1j * romb(cd * np.sin(f2k * xs * field), dx)
         )
 
     return current
