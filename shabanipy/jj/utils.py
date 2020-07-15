@@ -157,11 +157,8 @@ def compute_resistance(
     """Compute the differential from the VI characteristic of a JJ.
 
     """
-    resistance = np.diff(measured_voltage) / np.diff(bias_current)
-    new_bias = bias_current[..., :-1]
-    temp_bias = np.moveaxis(new_bias, -1, 0)
-    temp_bias -= bias_current[..., 1] - bias_current[..., 0]
-    return new_bias, resistance
+    resistance = np.gradient(measured_voltage, bias_current[0], axis=-1)
+    return bias_current, resistance
 
 
 def extract_switching_current(

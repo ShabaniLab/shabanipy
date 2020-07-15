@@ -12,6 +12,7 @@
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
+from scipy.signal import find_peaks, peak_widths
 from matplotlib import pyplot as plt
 
 from shabanipy.utils.plotting import add_title_and_save
@@ -56,9 +57,17 @@ def plot_differential_resistance_map(
     m_ax = f.gca()
 
     if transpose:
-        extent = (bias[0, 0], bias[0, -1], power[0, 0], power[-1, 0])
+        extent = (power[0, 0], power[-1, 0], bias[0, 0] * 1e6, bias[0, -1] * 1e6)
     else:
-        extent = (power[0, 0], power[-1, 0], bias[0, 0], bias[0, -1])
+        extent = (bias[0, 0] * 1e6, bias[0, -1] * 1e6, power[0, 0], power[-1, 0])
+
+    # Bin the data, find the peaks and its width to determine the most
+    # appropriate range for the colorbar
+    hist, bins = np.histogram(np.ravel(resistance), "auto")
+    peaks, _ = find_peaks(hist, np.max(hist) / 2)
+    widths = peak_widths(hist, peaks)
+    # Use the right most peak and go to 2 times it full width
+    cmax = bins[peaks[-1] + 3 * int(round(widths[0][-1]))]
 
     im = m_ax.imshow(
         resistance.T if transpose else resistance,
@@ -67,7 +76,7 @@ def plot_differential_resistance_map(
         aspect="auto",
         vmin=0,
         # Use the average of the high bias resistance as reference for the color limits
-        vmax=0.5 * np.max(resistance),
+        vmax=cmax,
     )
     cbar = f.colorbar(im, ax=m_ax, aspect=50)
     cbar.ax.set_ylabel("Differential resistance (Ω)")
