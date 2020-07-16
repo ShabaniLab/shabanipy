@@ -128,9 +128,6 @@ def bin_power_shapiro_steps(
 
     Returns
     -------
-    powers : np.ndarray
-        2D array of the microwave power of the same shape as histo.
-
     voltage : np.ndarray
         Linear array of the center of the voltage bins, normalized by the
         Shapiro step size.
@@ -167,7 +164,9 @@ def bin_power_shapiro_steps(
     return center_bin(bins) / shapiro_step(frequency), results
 
 
-def extract_step_weight(voltage, histo, index):
+def extract_step_weight(
+    voltage: np.ndarray, histo: np.ndarray, index: int
+) -> np.ndarray:
     """Extract the line of an histogram matching a given step.
 
     Parameters
