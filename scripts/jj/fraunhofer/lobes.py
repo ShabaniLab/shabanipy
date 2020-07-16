@@ -28,7 +28,7 @@ def j_true(x):
             [np.abs(x) < JJ_WIDTH / 2, np.abs(x) >= JJ_WIDTH / 2], [1, 0])
 
 node_start, node_stop, node_step = 1, 12, 1  # number of nodes
-ppl_start, ppl_stop, ppl_step = 5, 55, 5    # points per lobe
+ppl_start, ppl_stop, ppl_step = 10, 60, 5    # points per lobe
 n_nodes = np.arange(node_start, node_stop, node_step)
 n_ppls = np.arange(ppl_start, ppl_stop, ppl_step)
 fidelity = np.empty(shape=(len(n_nodes), len(n_ppls)))
@@ -40,7 +40,7 @@ x = np.linspace(-JJ_WIDTH, JJ_WIDTH, 200)
 ax.plot(x, j_true(x))
 
 # choose a few reconstructions to plot (n_node, n_ppl)
-should_plot = [(2, 5), (6, 5), (4, 20), (6, 10), (11, 15)]
+should_plot = [(4, 20), (6, 10), (7, 15), (11, 15), (11, 25)]
 
 for i, n_node in enumerate(n_nodes):
     for j, n_ppl in enumerate(n_ppls):
@@ -54,6 +54,7 @@ for i, n_node in enumerate(n_nodes):
         if (n_node, n_ppl) in should_plot:
             ax.plot(x_out, j_out, label=f'{n_node}, {n_ppl}')
 ax.legend()
+fig.tight_layout()
 
 fig, ax = plt.subplots()
 ax.set_xlabel('points per lobe')
