@@ -81,6 +81,7 @@ def extract_current_distribution(
     jj_width: float,
     jj_points: int,
     debug: bool = False,
+    theta: Optional[np.ndarray] = None
 ) -> np.ndarray:
     """Extract the current distribution from Ic(B).
 
@@ -98,6 +99,9 @@ def extract_current_distribution(
         a larger region (2 * jj_width)
     jj_points : int
         Number of points used to describe the junction inside jj_width.
+    theta : np.ndarray, optional
+        Phase distribution to use in the current reconstruction. If None, it
+        will be extracted from the given Fraunhofer pattern.
 
     Returns
     -------
@@ -114,7 +118,8 @@ def extract_current_distribution(
 
     fine_ics[np.less_equal(fine_ics, 1e-10)] = 1e-10
 
-    theta = extract_theta(fine_fields, fine_ics, f2k, jj_width)
+    if theta is None:
+        theta = extract_theta(fine_fields, fine_ics, f2k, jj_width)
 
     # scale from B to beta
     fine_fields = f2k * fine_fields
