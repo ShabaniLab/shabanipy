@@ -141,9 +141,6 @@ def produce_fraunhofer_fast(
 
     dx = abs(xs[0] - xs[1])
     for i, field in enumerate(magnetic_field):
-        current[i] = np.abs(
-            romb(cd * np.cos(f2k * xs * field), dx)
-            + 1j * romb(cd * np.sin(f2k * xs * field), dx)
-        )
+        current[i] = np.abs(romb(cd * np.exp(1j * f2k * field * xs), dx))
 
     return current
