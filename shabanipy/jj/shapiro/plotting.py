@@ -100,6 +100,7 @@ def plot_shapiro_histogram(
     transpose: bool = False,
     mark_steps: Optional[List[int]] = None,
     mark_steps_limit: Optional[float] = None,
+    voltage_limit: Optional[float] = None,
     directory: Optional[str] = None,
     classifiers: Dict[int, Dict[str, Any]] = None,
     dir_per_plot_format: bool = True,
@@ -146,6 +147,10 @@ def plot_shapiro_histogram(
     else:
         extent = (voltage[0], voltage[-1], p[0], p[-1])
 
+    # Copy the data before scaling them to be in µA
+    counts = np.copy(counts)
+    counts *= 1e6
+
     # Extract the -2 step and use the max value for color contrast
     weight = extract_step_weight(voltage, counts, -2)
 
@@ -167,9 +172,13 @@ def plot_shapiro_histogram(
     if transpose:
         m_ax.set_xlabel(plabel)
         m_ax.set_ylabel(clabel)
+        if voltage_limit:
+            m_ax.set_ylim((-voltage_limit, voltage_limit))
     else:
         m_ax.set_ylabel(plabel)
         m_ax.set_xlabel(clabel)
+        if voltage_limit:
+            m_ax.set_xlim((-voltage_limit, voltage_limit))
 
     if mark_steps:
         lims = [power[0], power[-1]]
