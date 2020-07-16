@@ -166,6 +166,7 @@ def extract_switching_current(
     volt_or_res: np.ndarray,
     threshold: float,
     side: Literal["positive", "negative"],
+    replace_zeros: Optional[float] = None,
     debug: bool = False,
 ) -> np.ndarray:
     """Extract the switching current from a voltage or resistance map.
@@ -225,6 +226,11 @@ def extract_switching_current(
     index = np.argmax(temp, axis=-1)
     index[np.nonzero(index)] -= 1
 
-    return np.take_along_axis(masked_bias, index[..., None], axis=-1).reshape(
+    ics = np.take_along_axis(masked_bias, index[..., None], axis=-1).reshape(
         bias.shape[:-1]
     )
+
+    if replace_zeros is not None:
+        ics[np.less_equal(ics, replace_zeros)] = replace_zeros
+
+    return ics
