@@ -23,6 +23,7 @@ in non-symmetric current distributions.
 from typing import Optional
 
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.integrate import romb
 
 from shabanipy.utils.integrate import can_romberg, resample_evenly
@@ -74,18 +75,21 @@ def extract_theta(
 
 
 def extract_current_distribution(
-    fields: np.ndarray, ics: np.ndarray, f2k: float, jj_width: float, jj_points: int,
+    fields: np.ndarray,
+    ics: np.ndarray,
+    f2k: float,
+    jj_width: float,
+    jj_points: int,
+    debug: bool = False,
 ) -> np.ndarray:
     """Extract the current distribution from Ic(B).
 
     Parameters
     ----------
     fields : np.ndarray
-        Magnetic field at which the critical current was measured. For ND input
-        the sweep should occur on the last axis.
+        1D array of the magnetic field at which the critical current was measured.
     ics : np.ndarray
-        Measured value of the critical current.For ND input the sweep should
-        occur on the last axis.
+        1D array of the measured value of the critical current.
     f2k : float
         Field to wave-vector conversion factor. This can be estimated from the
         Fraunhofer periodicity.
@@ -98,8 +102,7 @@ def extract_current_distribution(
     Returns
     -------
     np.ndarray
-        Positions at which the current density was calculated. No matter the
-        input shape the returned array is 1D.
+        Positions at which the current density was calculated.
     np.ndarray
         Current density.
 
@@ -108,6 +111,8 @@ def extract_current_distribution(
         fine_fields, fine_ics = resample_evenly(fields, ics)
     else:
         fine_fields, fine_ics = fields, ics
+
+    fine_ics[np.less_equal(fine_ics, 1e-10)] = 1e-10
 
     theta = extract_theta(fine_fields, fine_ics, f2k, jj_width)
 
@@ -123,4 +128,11 @@ def extract_current_distribution(
             / (2 * np.pi)
             * romb(fine_ics * np.exp(1j * (theta - fine_fields * x)), step)
         )
+
+    if debug:
+        f, axes = plt.subplots(2, 1)
+        axes[0].plot(f2k * fields, ics)
+        axes[1].plot(xs, j.real)
+        plt.show()
+
     return xs, j.real
