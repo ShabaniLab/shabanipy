@@ -50,7 +50,8 @@ def make_group_name(labels: Dict[str, Any]) -> str:
         else:
             fmt += f"{name}::{labels[name]}"
         fmt += "&"
-    return fmt
+    # Strip the extra & from the name
+    return fmt[:-1]
 
 
 def format_classifiers(classifiers: Dict[int, Dict[str, Any]], separator: str) -> str:
@@ -178,20 +179,18 @@ class DataExplorer:
 
         yield from yield_classifier_and_data(self._file[measurement], 0, dict())
 
-    def get_data(
-        self, measurement: str, classifiers: Dict[int, Dict[str, Any]]
-    ) -> Group:
+    def get_data(self, toplevel: str, classifiers: Dict[int, Dict[str, Any]]) -> Group:
         """Retrieve the group containing the datasets corresponding to the classifiers.
 
         """
-        known = self.list_classifiers(measurement)
+        known = self.list_classifiers(toplevel)
         if not {k: list(v) for k, v in classifiers.items()} == known:
             raise ValueError(
                 f"Unknown classifiers used ({classifiers}),"
                 f" known classifiers are {known}"
             )
 
-        group = self._file[measurement]
+        group = self._file[toplevel]
         for level, values in classifiers.items():
             key = make_group_name(values)
             if key not in group:

@@ -252,6 +252,7 @@ class ProcessCoordinator:
     #: List of summary steps to run.
     summary_steps: List[SummarizingStep]
 
+    # XXX add ways to run by names, tiers
     def run_preprocess(self, debug: bool = False) -> None:
         """Run the pre-processing steps."""
         # Duplicate the data to avoid corrupting the original dataset
