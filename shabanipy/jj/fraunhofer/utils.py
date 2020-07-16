@@ -18,6 +18,13 @@ from scipy.signal import peak_widths
 from lmfit.models import GaussianModel
 
 
+def f2k_from_periodicity_and_width(periodicty: float, width: float) -> float:
+    """Field to k estimate from the periodicity of a pattern and the assumed width.
+
+    """
+    return 2 * np.pi / (periodicty * width)
+
+
 def find_fraunhofer_center(
     field: np.ndarray, ic: np.ndarray, debug: bool = False
 ) -> float:
@@ -45,7 +52,7 @@ def find_fraunhofer_center(
     params = model.guess(subset_ic, subset_field)
     out = model.fit(subset_ic, params, x=subset_field)
 
-    if False:
+    if debug:
         plt.figure()
         plt.plot(field, ic)
         plt.plot(subset_field, out.best_fit)
@@ -81,3 +88,69 @@ def recenter_fraunhofer(
         res[index] -= center
 
     return res
+
+
+def symmetrize_fraunhofer(
+    field: np.ndarray, ic: np.ndarray, debug: bool = False
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Symmetrize a Fraunhofer pattern.
+
+    We conserve the side on which more lobes are visible and perform a mirror.
+
+    Parameters
+    ----------
+    field : np.ndarray
+        1D array of the magnetic field applied of the JJ, the last dimension is
+        expected to be swept. The field should be offset free.
+    ic : np.ndarray
+        1D array of the JJ critical current.
+
+    Returns
+    -------
+    np.ndarray
+        New field array which has been symmetrizes.
+    np.ndarray
+        Critical current symmetrized with respect to 0 field.
+
+    """
+    # Ensure we get increasing value of field
+    if field[0] > field[1]:
+        field = field[::-1]
+        ic = ic[::-1]
+
+    index = np.argmin(np.abs(field))
+    if index == 0:
+        side = "positive"
+        f = field
+        i = ic
+    elif index == len(field) - 1:
+        side = "negative"
+        f = field
+        i = ic
+    else:
+        if len(field[:index]) > len(field[index + 1 :]):
+            side = "negative"
+            f = field[: index + 1]
+            i = ic[: index + 1]
+        else:
+            side = "positive"
+            f = field[index:]
+            i = ic[index:]
+
+    if side == "positive":
+        out = (
+            np.concatenate((-f[1:][::-1], f), axis=None),
+            np.concatenate((i[1:][::-1], i), axis=None),
+        )
+    else:
+        out = (
+            np.concatenate((f, -f[:-1][::-1]), axis=None),
+            np.concatenate((i, i[:-1][::-1]), axis=None),
+        )
+
+    if debug:
+        plt.figure()
+        plt.plot(*out)
+        plt.show()
+
+    return out
