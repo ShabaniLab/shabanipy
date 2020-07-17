@@ -159,5 +159,5 @@ def pretty_print(root: h5py.Group, increment=""):
             )
 
 
-with h5py.File(path) as f:
+with h5py.File(CONSOLIDATION_PATH, "r") as f:
     pretty_print(f)
