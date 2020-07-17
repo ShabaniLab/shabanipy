@@ -392,7 +392,7 @@ class LabberData:
                 data = [a.T for a in aux[0]]
             else:
                 x_data, data = [a.T for a in aux[0]], [a.T for a in aux[1]]
-            vec_dim = data[0].shape[0]
+            vec_dim = data[0].shape[-1]
         else:
             data = self._get_data_data(
                 channel.name, is_complex=getattr(channel, "is_complex", False)
@@ -445,12 +445,20 @@ class LabberData:
             x_results = x_data
 
         # Identify the ramped steps not used for filtering
-        steps_points = [
-            s.points_per_log
-            for i, s in enumerate(self.list_steps())
-            # Only ramped steps with relations contribute to the overall shape
-            if s.is_ramped and s.relation is None and i not in filters
-        ]
+        steps_points = []
+        first_step_is_used = False
+        for i, s in reversed(list(enumerate(self.list_steps()))):
+            if s.is_ramped and s.relation is None and i not in filters:
+                # Labber stores scalar data as 3D:
+                # - the first dimension is the first step number of points
+                # - the second one refer to the channel
+                # - the third refer to all other steps but in reverse order
+                # For vector data it is the same except that the first is not special.
+                if i == 0 and not vectorial_data:
+                    steps_points.insert(0, s.points_per_log)
+                    first_step_is_used = True
+                else:
+                    steps_points.append(s.points_per_log)
 
         if vectorial_data:
             steps_points.append((vec_dim,) * len(steps_points[0]))
@@ -464,11 +472,18 @@ class LabberData:
             if results[i].shape == (0,):
                 continue
 
-            padding = np.prod(results[i].shape) % np.prod(shape[:-1])
+            # The outer most dimension of the scan corresponds either to the first
+            # index if the first step was filtered on or, otherwise, to the second.
+            points_inner_dimensions = (
+                np.prod(shape[1:])
+                if first_step_is_used
+                else shape[0] * np.prod(shape[2:])
+            )
+            padding = np.prod(results[i].shape) % (points_inner_dimensions)
             # Pad the data to ensure that only the last axis shrinks
             if padding:
                 # Compute the number of points to add
-                to_add = np.prod(shape[:-1]) - padding
+                to_add = points_inner_dimensions - padding
                 results[i] = np.concatenate(
                     (results[i], np.nan * np.ones(to_add)), None
                 )
@@ -477,24 +492,24 @@ class LabberData:
                         (x_results[i], np.nan * np.ones(to_add)), None
                     )
 
-            shaped_results.append(results[i].reshape(tuple(shape)[:-1] + (-1,)))
+            # Allow the most outer shape to shrink
+            new_shape = list(shape)
+            new_shape[1 if first_step_is_used else 0] = -1
+            shaped_results.append(results[i].reshape(new_shape))
             if vectorial_data and get_x:
-                shaped_x.append(x_results[i].reshape(tuple(shape)[:-1] + (-1,)))
+                shaped_x.append(x_results[i].reshape(new_shape))
 
         # Create the complete data
         full_data = np.concatenate(shaped_results, axis=-1)
         if vectorial_data and get_x:
             full_x = np.concatenate(shaped_x, axis=-1)
 
-        # Transpose the axis so that the inner most loops occupy the last dimensions
-        full_data = np.transpose(full_data)
-
-        # Due to the earlier manipulation to allow filtering we need to move
-        # the now first axis to last position
-        if vectorial_data:
+        # Move the first axis to last position so that the dimensions are in the reverse
+        # order of the steps.
+        if first_step_is_used:
             full_data = np.moveaxis(full_data, 0, -1)
+
         if vectorial_data and get_x:
-            full_x = np.moveaxis(np.transpose(full_x), 0, -1)
             return full_x, full_data
         else:
             return full_data
