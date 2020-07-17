@@ -3,13 +3,12 @@
 In particular, how do
     1) the number of side lobes (i.e. B-field range), and
     2) the number of points per lobe (i.e. B-field resolution)
-in the Fraunhofer pattern I_c(B) impact the fidelity of a reconstructed uniform
-current density J(x).
+in the Fraunhofer pattern I_c(B) impact the fidelity of a reconstructed
+uniform or Guassian current density J(x).
 """
-import sys
-
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.stats
 
 from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
 from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
@@ -23,16 +22,23 @@ B2BETA = 2 * np.pi * JJ_LENGTH / PHI0
 B_NODE = PHI0 / (JJ_WIDTH * JJ_LENGTH)
 IC0 = 1e-6
 
-def j_true(x):
+def j_uniform(x):
     """Uniform current density with which to compare output."""
     return np.piecewise(x,
             [np.abs(x) < JJ_WIDTH / 2, np.abs(x) >= JJ_WIDTH / 2], [1, 0])
 
+def j_gaussian(x):
+    """Gaussian current density."""
+    return IC0 * scipy.stats.norm.pdf(x, loc=0, scale=JJ_WIDTH/4)
+
+# select a current density profile
+j_true = j_gaussian
+
 x = np.linspace(-JJ_WIDTH, JJ_WIDTH, 200)
 jx = j_true(x)
 
-node_start, node_stop, node_step = 1, 12, 1  # number of nodes
-ppl_start, ppl_stop, ppl_step = 10, 60, 5    # points per lobe
+node_start, node_stop, node_step = 2, 15, 1  # number of nodes
+ppl_start, ppl_stop, ppl_step = 10, 65, 5    # points per lobe
 n_nodes = np.arange(node_start, node_stop, node_step)
 n_ppls = np.arange(ppl_start, ppl_stop, ppl_step)
 fidelity = np.empty(shape=(len(n_nodes), len(n_ppls)))
@@ -43,13 +49,12 @@ ax.set_ylabel('J (uA/um)')
 ax.plot(x / 1e-6, jx, color='k', label='original')
 
 # choose a few reconstructions to plot (n_node, n_ppl)
-should_plot = [(4, 20), (6, 10), (7, 15), (11, 15), (11, 25)]
+should_plot = [(4, 10), (4, 20), (5, 15), (5, 30)]
 
 for i, n_node in enumerate(n_nodes):
     for j, n_ppl in enumerate(n_ppls):
         b = np.linspace(-n_node*B_NODE, n_node*B_NODE, n_ppl*n_node*2)
-        # factor of 1/π is due to np.sinc definition
-        ic = np.abs(IC0 * np.sinc(b * B2BETA * JJ_WIDTH / 2 / np.pi))
+        ic = produce_fraunhofer_fast(b, B2BETA, jx, x)
         x_out, j_out = extract_current_distribution(
                 b, ic, B2BETA, JJ_WIDTH, 100)
         fidelity[i, j] = np.sqrt(np.mean((j_out - j_true(x_out))**2))
