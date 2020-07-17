@@ -4,7 +4,7 @@ In particular, how do
     1) the number of side lobes (i.e. B-field range), and
     2) the number of points per lobe (i.e. B-field resolution)
 in the Fraunhofer pattern I_c(B) impact the fidelity of a reconstructed
-uniform or Guassian current density J(x).
+uniform, Guassian, or generalized normal current density J(x).
 """
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,8 +31,12 @@ def j_gaussian(x):
     """Gaussian current density."""
     return IC0 * scipy.stats.norm.pdf(x, loc=0, scale=JJ_WIDTH/4)
 
+def j_gennorm(x):
+    """Generalized normal distributed current density."""
+    return IC0 * scipy.stats.gennorm.pdf(x, 8, loc=0, scale=JJ_WIDTH/2)
+
 # select a current density profile
-j_true = j_gaussian
+j_true = j_gennorm
 
 x = np.linspace(-JJ_WIDTH, JJ_WIDTH, 200)
 jx = j_true(x)
@@ -49,7 +53,7 @@ ax.set_ylabel('J (uA/um)')
 ax.plot(x / 1e-6, jx, color='k', label='original')
 
 # choose a few reconstructions to plot (n_node, n_ppl)
-should_plot = [(4, 10), (4, 20), (5, 15), (5, 30)]
+should_plot = [(6, 25), (8, 10), (8, 25), (9, 20), (10, 20)]
 
 for i, n_node in enumerate(n_nodes):
     for j, n_ppl in enumerate(n_ppls):
