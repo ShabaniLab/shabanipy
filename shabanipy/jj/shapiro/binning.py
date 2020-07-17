@@ -27,11 +27,23 @@ def center_bin(bins: np.ndarray) -> np.ndarray:
     return 0.5 * (bins[1] - bins[0]) + bins[:-1]
 
 
+def create_weigths(current: np.ndarray) -> np.ndarray:
+    """Compute the proper weigths for a Shapiro histogram non-equistant current points.
+
+    """
+    weights = np.zeros_like(current)
+    weights[0] = abs(current[1] - current[0]) / 2
+    weights[-1] = abs(current[-1] - current[-2]) / 2
+    weights[1:-1] = np.abs(current[:-2] - current[2:]) / 2
+    return weights
+
+
 def bin_shapiro_steps(
     voltage: np.ndarray,
     frequency: Optional[float] = None,
     step_fraction: float = 0.1,
-    bins: np.ndarray = None,
+    bins: Optional[np.ndarray] = None,
+    weights: Optional[np.ndarray] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Compute the histogram associated with an IV curve.
 
@@ -49,6 +61,9 @@ def bin_shapiro_steps(
 
     bins : np.ndarray, optional
         Precomputed bins to use to compute the histogram.
+
+    weights : np.ndarray, optional
+        Weights to use for the histogram in case points are not linearly spaced.
 
     Returns
     -------
@@ -87,7 +102,7 @@ def bin_shapiro_steps(
                 total_bins,
             )
 
-    return np.histogram(voltage, bins)
+    return np.histogram(voltage, bins, weights=weights)
 
 
 def bin_power_shapiro_steps(
@@ -141,7 +156,6 @@ def bin_power_shapiro_steps(
     # Extract the power and the current scans and compute the current step.
     power = power[:, 0]
     current = current[0]
-    c_step = abs(current[1] - current[0])
 
     # Generate the bins from the highest power which we expect to display the
     # highest voltages
@@ -156,8 +170,9 @@ def bin_power_shapiro_steps(
     # Bin measurements at all power using the same bins.
     results = np.empty((voltage.shape[0], len(bins) - 1))
     for i in range(voltage.shape[0]):
-        results[i], _ = bin_shapiro_steps(voltage[i], bins=bins)
-    results *= c_step
+        results[i], _ = bin_shapiro_steps(
+            voltage[i], bins=bins, weights=create_weigths(current)
+        )
 
     aux = center_bin(bins) / shapiro_step(frequency)
 
