@@ -11,6 +11,7 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
+from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
 from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
         extract_current_distribution)
 
@@ -27,17 +28,19 @@ def j_true(x):
     return np.piecewise(x,
             [np.abs(x) < JJ_WIDTH / 2, np.abs(x) >= JJ_WIDTH / 2], [1, 0])
 
+x = np.linspace(-JJ_WIDTH, JJ_WIDTH, 200)
+jx = j_true(x)
+
 node_start, node_stop, node_step = 1, 12, 1  # number of nodes
 ppl_start, ppl_stop, ppl_step = 10, 60, 5    # points per lobe
 n_nodes = np.arange(node_start, node_stop, node_step)
 n_ppls = np.arange(ppl_start, ppl_stop, ppl_step)
 fidelity = np.empty(shape=(len(n_nodes), len(n_ppls)))
 
-fig, ax = plt.subplots()
-ax.set_xlabel('x (m)')
-ax.set_ylabel('J(x) (A/m)')
-x = np.linspace(-JJ_WIDTH, JJ_WIDTH, 200)
-ax.plot(x, j_true(x))
+fig, ax = plt.subplots(constrained_layout=True)
+ax.set_xlabel('x (um)')
+ax.set_ylabel('J (uA/um)')
+ax.plot(x / 1e-6, jx, color='k', label='original')
 
 # choose a few reconstructions to plot (n_node, n_ppl)
 should_plot = [(4, 20), (6, 10), (7, 15), (11, 15), (11, 25)]
@@ -52,18 +55,24 @@ for i, n_node in enumerate(n_nodes):
         fidelity[i, j] = np.sqrt(np.mean((j_out - j_true(x_out))**2))
 
         if (n_node, n_ppl) in should_plot:
-            ax.plot(x_out, j_out, label=f'{n_node}, {n_ppl}')
+            ax.plot(x_out / 1e-6, j_out, label=f'{n_node}, {n_ppl}')
 ax.legend()
-fig.tight_layout()
+fig.show()
 
-fig, ax = plt.subplots()
-ax.set_xlabel('points per lobe')
-ax.set_ylabel('# of nodes')
-ax.set_xticks(n_ppls)
-ax.set_yticks(n_nodes)
-im = ax.imshow(fidelity, origin='lower', aspect='auto', extent=[
+fig2, ax2 = plt.subplots(constrained_layout=True)
+ax2.set_xlabel('B [mT]')
+ax2.set_ylabel(r'$I_c$ [uA]')
+ax2.plot(b / 1e-3, ic / 1e-6)
+fig2.show()
+
+fig3, ax3 = plt.subplots(constrained_layout=True)
+ax3.set_xlabel('points per lobe')
+ax3.set_ylabel('# of nodes')
+ax3.set_xticks(n_ppls)
+ax3.set_yticks(n_nodes)
+im = ax3.imshow(fidelity, origin='lower', aspect='auto', extent=[
     ppl_start - ppl_step / 2, ppl_stop - ppl_step / 2,
     node_start - node_step / 2, node_stop - node_step / 2])
-cb = fig.colorbar(im)
+cb = fig3.colorbar(im)
 cb.set_label(r'rms error')
-fig.tight_layout()
+fig3.show()
