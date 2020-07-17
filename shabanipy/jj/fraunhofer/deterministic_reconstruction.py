@@ -24,7 +24,9 @@ from typing import Optional
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.integrate import romb
+from scipy.integrate import romb, quad
+from scipy.interpolate import interp1d
+from typing_extensions import Literal
 
 from shabanipy.utils.integrate import can_romberg, resample_evenly
 
@@ -34,8 +36,13 @@ def extract_theta(
     ics: np.ndarray,
     f2k: float,  # field-to-k conversion factor (i.e. beta/B)
     jj_width: float,
+    integ_method: Optional[Literal['romb', 'quad']] = 'romb'
 ) -> np.ndarray:
     """Compute the Ic Hilbert transform.
+
+    Note the expression for θ(β) differs from Dynes and Fulton (1971) by a
+    factor of 2, but gives the correct output. (The source of this discrepancy
+    is as yet unknown.)
 
     Parameters
     ----------
@@ -53,24 +60,41 @@ def extract_theta(
         distribution.
 
     """
-    if not can_romberg(fields):
-        fine_fields, fine_ics = resample_evenly(fields, ics)
-    else:
-        fine_fields, fine_ics = fields, ics
-    log_fine_ics = np.log(fine_ics)
-
-    # scale from B to beta
+    # scale B to beta first; then forget about it
     fields = fields * f2k
-    fine_fields = fine_fields * f2k
-    step = abs(fine_fields[0] - fine_fields[1])
+
+    if integ_method == 'romb':
+        if not can_romberg(fields):
+            fine_fields, fine_ics = resample_evenly(fields, ics)
+        else:
+            fine_fields, fine_ics = fields, ics
+        step = abs(fine_fields[0] - fine_fields[1])
+
+        def integrand(beta, ic):
+            denom = beta**2 - fine_fields**2
+            denom[denom == 0] = 1e-9
+            return (np.log(fine_ics) - np.log(ic)) / denom
+    elif integ_method == 'quad':
+        fine_ics = interp1d(fields, ics, 'cubic')
+        def integrand(b, beta, ic):
+            # quad will provide b when calling this
+            denom = beta**2 - b**2
+            if denom == 0:
+                denom = 1e-9
+            return (np.log(fine_ics(b)) - np.log(ic)) / denom
+    else:
+        raise ValueError(f"Integration method '{integ_method}' unsupported")
 
     theta = np.empty_like(fields)
     for i, (field, ic) in enumerate(zip(fields, ics)):
-        samples = log_fine_ics - np.log(ic)
-        diff = field ** 2 - fine_fields ** 2
-        diff[diff == 0] = 1e-9
-        # TODO below is off by factor of 2 but gives the correct output
-        theta[i] = field / np.pi * romb(samples / diff, step) - field * jj_width / 2
+        if integ_method == 'romb':
+            theta[i] = field / np.pi * romb(integrand(field, ic), step) \
+                    - field * jj_width / 2
+        elif integ_method == 'quad':
+            theta[i] = (field / np.pi
+                    * quad(integrand, np.min(fields), np.max(fields),
+                        args=(field, ic))[0]
+                    - field * jj_width / 2)
     return theta
 
 

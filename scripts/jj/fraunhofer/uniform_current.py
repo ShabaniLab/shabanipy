@@ -30,7 +30,7 @@ fig.show()
 
 # compare true and reconstructed phase distributions
 theta = extract_theta(b, ic, b2beta, jj_width)
-theta_true = np.angle(g)
+theta_true = extract_theta(b, ic, b2beta, jj_width, integ_method='quad')
 
 fig, ax = plt.subplots(constrained_layout=True)
 ax.set_xlabel('B [mT]')
@@ -39,11 +39,11 @@ ax.set_yticks(np.arange(-0.5, 2, 0.5))
 # wrap reconstructed phase at [-π/2, 3π/2] (in units of π) to allow better
 # comparison with true phase
 ax.plot(b / 1e-3, ((theta / np.pi + 1/2) % 2 - 1/2),
-        linewidth=0, marker='.', markersize=2, label='reconstructed')
+        linewidth=0, marker='.', markersize=2, label='romb')
 # plot true phase modulo 2π (in units of π)
 # small shift θ + ε forces points at 2π - ε into the 0 bin
-ax.plot(b / 1e-3, (theta_true / np.pi + 1e-9) % 2,
-        linewidth=0, marker='.', markersize=2, label='true')
+ax.plot(b / 1e-3, (theta_true / np.pi + 1/2) % 2 - 1/2,
+        linewidth=0, marker='.', markersize=2, label='quad')
 ax.legend()
 fig.show()
 
@@ -56,7 +56,7 @@ fig, ax = plt.subplots(constrained_layout=True)
 ax.set_xlabel('x [um]')
 ax.set_ylabel('J [uA/um]')
 ax.plot(x / 1e-6, jx, linewidth=2, label='original', color='black')
-ax.plot(x2 / 1e-6, jx2, linewidth=2, label='reconstructed')
-ax.plot(x2_true / 1e-6, jx2_true, linewidth=2, label='phase-corrected')
+ax.plot(x2 / 1e-6, jx2, linewidth=2, label='romb')
+ax.plot(x2_true / 1e-6, jx2_true, linewidth=2, label='quad')
 ax.legend()
 fig.show()
