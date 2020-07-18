@@ -9,6 +9,7 @@ import numpy as np
 from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
 from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
         extract_theta, extract_current_distribution)
+from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center
 from shabanipy.jj.utils import extract_switching_current
 from shabanipy.utils.labber_io import LabberData
 
@@ -45,15 +46,25 @@ with LabberData(str(DATA_FILE_PATH)) as f:
         resist.append(np.abs(np.real(VOLT_TO_RESIST *
             f.get_data(CH_RESIST, filters={CH_GATE: g})[:-10])))
         ic.append(extract_switching_current(bias, resist[-1], 5, 'positive'))
+resist = np.array(resist)
+ic = np.array(ic)
+# bias sweeps should be the same for all gate values
+bias_min, bias_max = np.min(bias), np.max(bias)
 
-for i, g in enumerate(gate):
+gate_V_selection = gate[::2]
+for gate_, resist_, ic_ in zip(gate, resist, ic):
+    if gate_ not in gate_V_selection:
+        continue
+
+    field_ = field - find_fraunhofer_center(field, ic_)
+
     fig, ax = plt.subplots(constrained_layout=True)
-    ax.set_title(r'$V_{g,odd}$ = ' + f'{g}')
+    ax.set_title(r'$V_{g,odd}$ = ' + f'{gate_}')
     ax.set_xlabel('Magnetic field (mT)')
     ax.set_ylabel('Bias current (µA)')
-    im = ax.imshow(resist[i].T, origin='lower',
-            extent=(field[0], field[-1], 0, 2))
+    im = ax.imshow(resist_.T, origin='lower',
+            extent=(field_[0], field_[-1], bias_min, bias_max))
     cb = fig.colorbar(im)
     cb.ax.set_ylabel('Differential resistance (Ω)')
-    ax.plot(field, ic[i], color='white')
+    ax.plot(field_, ic_, color='white')
     fig.show()
