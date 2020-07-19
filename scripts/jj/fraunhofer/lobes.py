@@ -24,7 +24,7 @@ IC0 = 1e-6
 
 def j_uniform(x):
     """Uniform current density with which to compare output."""
-    return np.piecewise(x,
+    return IC0 / JJ_WIDTH * np.piecewise(x,
             [np.abs(x) < JJ_WIDTH / 2, np.abs(x) >= JJ_WIDTH / 2], [1, 0])
 
 def j_gaussian(x):
