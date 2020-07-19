@@ -61,7 +61,7 @@ def j_multigate(x, distr):
         ], distr * IC0 / GATE_WIDTH)
 
 # select a current density profile
-j_true = lambda x: j_multigate(x, [5, 6, 5, 6, 5])
+j_true = lambda x: j_multigate(x, [4, 5.5, 3.5, 5.5, 4])
 
 x = np.linspace(-JJ_WIDTH, JJ_WIDTH, 200)
 jx = j_true(x)
@@ -78,7 +78,7 @@ ax.set_ylabel('J (uA/um)')
 ax.plot(x / 1e-6, jx, color='k', label='original')
 
 # choose a few reconstructions to plot (n_node, n_ppl)
-should_plot = [(3, 50), (4, 35), (7, 20), (9, 35), (14, 35)]
+should_plot = [(4, 25), (6, 40), (8, 25), (13, 40), (14, 30)]
 
 for i, n_node in enumerate(n_nodes):
     for j, n_ppl in enumerate(n_ppls):
