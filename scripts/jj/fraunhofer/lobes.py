@@ -16,7 +16,7 @@ from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
 
 
 PHI0 = 2e-15
-JJ_WIDTH = 1e-6
+JJ_WIDTH = 4e-6
 JJ_LENGTH = 100e-9
 B2BETA = 2 * np.pi * JJ_LENGTH / PHI0
 B_NODE = PHI0 / (JJ_WIDTH * JJ_LENGTH)
@@ -35,8 +35,33 @@ def j_gennorm(x):
     """Generalized normal distributed current density."""
     return IC0 * scipy.stats.gennorm.pdf(x, 8, loc=0, scale=JJ_WIDTH/2)
 
+def j_multigate(x, distr):
+    """Five-gate multigate distribution.
+
+    Parameters
+    ----------
+    distr : list or np.ndarray
+        1D list or array, of length 5, describing the relative distribution of
+        current density in the regions below each minigate. Will be
+        automatically normalized.
+    """
+    NUM_GATES = 5
+    GATE_WIDTH = JJ_WIDTH / 5
+    left_edge = -JJ_WIDTH / 2
+    distr = np.asarray(distr) / np.sum(distr)
+    return np.piecewise(x,
+        [np.logical_and(x >= left_edge, x < left_edge + GATE_WIDTH),
+        np.logical_and(x >= left_edge + GATE_WIDTH,
+            x < left_edge + 2*GATE_WIDTH),
+        np.logical_and(x >= left_edge + 2*GATE_WIDTH,
+            x < left_edge + 3*GATE_WIDTH),
+        np.logical_and(x >= left_edge + 3*GATE_WIDTH,
+            x < left_edge + 4*GATE_WIDTH),
+        np.logical_and(x >= left_edge + 4*GATE_WIDTH, x < JJ_WIDTH / 2)
+        ], distr * IC0 / GATE_WIDTH)
+
 # select a current density profile
-j_true = j_gennorm
+j_true = lambda x: j_multigate(x, [5, 6, 5, 6, 5])
 
 x = np.linspace(-JJ_WIDTH, JJ_WIDTH, 200)
 jx = j_true(x)
@@ -53,7 +78,7 @@ ax.set_ylabel('J (uA/um)')
 ax.plot(x / 1e-6, jx, color='k', label='original')
 
 # choose a few reconstructions to plot (n_node, n_ppl)
-should_plot = [(6, 25), (8, 10), (8, 25), (9, 20), (10, 20)]
+should_plot = [(3, 50), (4, 35), (7, 20), (9, 35), (14, 35)]
 
 for i, n_node in enumerate(n_nodes):
     for j, n_ppl in enumerate(n_ppls):
