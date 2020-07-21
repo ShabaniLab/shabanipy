@@ -5,11 +5,15 @@ import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import constants as cs
 
 from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
 from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
         extract_theta, extract_current_distribution)
-from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center
+from shabanipy.jj.fraunhofer.utils import (
+    find_fraunhofer_center,
+    symmetrize_fraunhofer,
+)
 from shabanipy.jj.utils import extract_switching_current
 from shabanipy.utils.labber_io import LabberData
 
@@ -33,6 +37,13 @@ CH_RESIST = 'SRS - Value'
 CURR_TO_FIELD = 1e3 / 18.2  # coil current to B-field (in mT)
 VOLT_TO_RESIST = 1 / 10e-9  # lock-in voltage to resistance (inverse current)
 
+# constants
+PHI0 = cs.h / (2 * cs.e)  # magnetic flux quantum
+jj_width = 4e-6
+jj_length = 1800e-9  # includes London penetration depths
+b2beta = 2 * np.pi * jj_length / PHI0  # B-field to beta factor
+fraunhofer_period = 2 * np.pi / (b2beta * jj_width)
+
 resist = []
 ic = []
 with LabberData(str(DATA_FILE_PATH)) as f:
@@ -51,20 +62,39 @@ ic = np.array(ic)
 # bias sweeps should be the same for all gate values
 bias_min, bias_max = np.min(bias), np.max(bias)
 
-gate_V_selection = gate[::2]
-for gate_, resist_, ic_ in zip(gate, resist, ic):
+jss = [[0.05, 0.26, 0.1], [], [0.5, 0.26, 0.18], [], [0.9, 0.26, 0.4]]
+gate_V_selection = [-1, 0, 1]
+for gate_, resist_, ic_, js in zip(gate, resist, ic, jss):
     if gate_ not in gate_V_selection:
         continue
 
     field_ = field - find_fraunhofer_center(field, ic_)
+    field_, ic_ = symmetrize_fraunhofer(field_, ic_)
+
+    # zero-padded uniform current distributions under variable gate widths
+    x = np.linspace(-4 * jj_width, 4 * jj_width, 513)
+    jx = np.zeros_like(x)
+    mask = np.abs(x) < jj_width / 2
+    jx[mask] = js[0]
+    mask = np.logical_and(mask, np.abs(x) < jj_width / 2.3)
+    jx[mask] = js[1]
+    mask = np.logical_and(mask, np.abs(x) < jj_width / 8)
+    jx[mask] = js[2]
+
+    gen_ic = produce_fraunhofer_fast(field_ / 1e3, b2beta, jx, x)
 
     fig, ax = plt.subplots(constrained_layout=True)
     ax.set_title(r'$V_{g,odd}$ = ' + f'{gate_}')
     ax.set_xlabel('Magnetic field (mT)')
     ax.set_ylabel('Bias current (µA)')
-    im = ax.imshow(resist_.T, origin='lower',
-            extent=(field_[0], field_[-1], bias_min, bias_max))
-    cb = fig.colorbar(im)
-    cb.ax.set_ylabel('Differential resistance (Ω)')
-    ax.plot(field_, ic_, color='white')
-    fig.show()
+    ax.plot(field_, ic_, label='data')
+    ax.plot(field_, gen_ic * 1e6, label='generated')
+    ax.legend()
+
+    # fig, ax = plt.subplots(constrained_layout=True)
+    # ax.set_title(r'$V_{g,odd}$ = ' + f'{gate_}')
+    # ax.set_xlabel('x (µm)')
+    # ax.set_ylabel('Current density (µA/µm)')
+    # ax.plot(x * 1e6, jx)
+
+plt.show()
