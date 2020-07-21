@@ -494,7 +494,7 @@ class LabberData:
 
             # Allow the most outer shape to shrink
             new_shape = list(shape)
-            new_shape[1 if first_step_is_used else 0] = -1
+            new_shape[1 if first_step_is_used and len(shape) > 1 else 0] = -1
             shaped_results.append(results[i].reshape(new_shape))
             if vectorial_data and get_x:
                 shaped_x.append(x_results[i].reshape(new_shape))

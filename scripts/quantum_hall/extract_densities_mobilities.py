@@ -16,10 +16,6 @@ GATE_COLUMN = None
 #: Index or name of the column containing the applied magnetic field.
 FIELD_COLUMN = 0
 
-# WARNING Labber uses 2 columns per lock-in value so you should be careful when
-# using indexes. The index is always assumed to refer to the first column of
-# the lock-in (ie real values)
-
 #: Index or name of the column contaning the longitudinal voltage drop
 #: measurement along x.
 XX_VOLTAGE_COLUMN = 1
@@ -86,44 +82,52 @@ with LabberData(PATH) as data:
 
     names = data.list_channels()
     if GATE_COLUMN is not None:
-        shape = data.compute_shape((GATE_COLUMN, FIELD_COLUMN))
-
-        gate = data.get_data(GATE_COLUMN).reshape(shape).T
-        field = data.get_data(FIELD_COLUMN).reshape(shape).T
+        gate = data.get_data(GATE_COLUMN)
+        field = data.get_data(FIELD_COLUMN)
     else:
-        field = data.get_data(FIELD_COLUMN).T
+        field = data.get_data(FIELD_COLUMN)
         gate = np.zeros(1)
-    res = dict.fromkeys(("xx", "yy", "xy"))
+    res = {}
+    for col, label in zip(
+        (XX_VOLTAGE_COLUMN, YY_VOLTAGE_COLUMN, XY_VOLTAGE_COLUMN), ("xx", "yy", "xy")
+    ):
+        if col is not None:
+            res[label] = None
     for k in res:
         name = globals()[f"{k.upper()}_VOLTAGE_COLUMN"]
-        index = data.name_or_index_to_index(name)
         if LOCK_IN_QUANTITY == "real":
-            val = data.get_data(index)
+            val = data.get_data(name).real
         elif LOCK_IN_QUANTITY == "imag":
-            val = data.get_data(index + 1)
+            val = data.get_data(name).imag
         else:
-            val = data.get_data(index) ** 2 + data.get_data(index + 1) ** 2
+            val = np.abs(data.get_data(name))
 
-        if GATE_COLUMN is not None:
-            val = val.reshape(shape)
-        val = val.T
+        val = val
 
         res[k] = convert_lock_in_meas_to_diff_res(val, PROBE_CURRENT)
 
 if GATE_COLUMN is not None:
     gate = gate[:, 0]
-density, std_density = extract_density(field, res["xy"], FIELD_BOUNDS, PLOT_DENSITY_FIT)
+
+if "xy" in res:
+    density, std_density = extract_density(
+        field, res["xy"], FIELD_BOUNDS, PLOT_DENSITY_FIT
+    )
+    print(f"{density / 1e4:g}")
 if PLOT_DENSITY_FIT:
     plt.show()
 
-mobility = extract_mobility(
-    field, res["xx"], res["yy"], density, GEOMETRIC_FACTORS[GEOMETRY]
-)
+if "xx" in res and "yy" in res:
+    mobility = extract_mobility(
+        field, res["xx"], res["yy"], density, GEOMETRIC_FACTORS[GEOMETRY]
+    )
 
-mass = EFFECTIVE_MASS * cs.electron_mass
-vf = fermi_velocity_from_density(density, mass)
-mft = mean_free_time_from_mobility(mobility, mass)
-diff = diffusion_constant_from_mobility_density(mobility, density, mass)
+if len(res) == 3:
+    mass = EFFECTIVE_MASS * cs.electron_mass
+    vf = fermi_velocity_from_density(density, mass)
+    mft = mean_free_time_from_mobility(mobility, mass)
+    diff = diffusion_constant_from_mobility_density(mobility, density, mass)
+
 
 if RESULT_PATH:
     df = pd.DataFrame(
@@ -148,14 +152,15 @@ if RESULT_PATH:
         )
         df.to_csv(f, index=False)
 
-fig, axes = plt.subplots(1, 2)
-axes[0].errorbar(gate, density / 1e4, std_density / 1e4, fmt="*")
-axes[0].set_xlabel("Gate voltage (V)")
-axes[0].set_ylabel("Density (cm$^2$)")
-axes[1].plot(density / 1e4, mobility[0] * 1e4, "+", label="xx")
-axes[1].plot(density / 1e4, mobility[1] * 1e4, "x", label="yy")
-axes[1].set_xlabel("Density (cm$^2$)")
-axes[1].set_ylabel("Mobility (cm$^2$V$^-1$s$^-1$)")
-plt.legend()
-plt.tight_layout()
-plt.show()
+if len(res) == 3:
+    fig, axes = plt.subplots(1, 2)
+    axes[0].errorbar(gate, density / 1e4, std_density / 1e4, fmt="*")
+    axes[0].set_xlabel("Gate voltage (V)")
+    axes[0].set_ylabel("Density (cm$^2$)")
+    axes[1].plot(density / 1e4, mobility[0] * 1e4, "+", label="xx")
+    axes[1].plot(density / 1e4, mobility[1] * 1e4, "x", label="yy")
+    axes[1].set_xlabel("Density (cm$^2$)")
+    axes[1].set_ylabel("Mobility (cm$^2$V$^-1$s$^-1$)")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
