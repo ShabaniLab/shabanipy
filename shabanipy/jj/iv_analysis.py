@@ -1,37 +1,30 @@
+# -*- coding: utf-8 -*-
+# -----------------------------------------------------------------------------
+# Copyright 2020 by ShabaniPy Authors, see AUTHORS for more details.
+#
+# Distributed under the terms of the MIT license.
+#
+# The full license is in the file LICENCE, distributed with this software.
+# -----------------------------------------------------------------------------
 """Utility functions to analyse V-I characteristic.
 
 """
+from typing import Tuple
+
 import numpy as np
 import matplotlib.pyplot as plt
 from lmfit.models import LinearModel
 
-
-def compute_voltage_offset(current_bias, measured_voltage, voltage_offset_correction):
-    """Compute the voltage offset in the VI characteristic of a JJ.
-
-    Parameters
-    ----------
-    current_bias : np.ndarray
-        Current bias applied on the junction in A.
-    measured_voltage : np.ndarray
-        Voltage accross the junction in V.
-    voltage_offset_correction : int
-        Number of points around 0 bias on which to average to correct for the
-        offset in the DC measurement.
-    """
-     # Index at which the bias current is zero
-    index = np.argmin(np.abs(current_bias))
-
-    # Correct the offset in the voltage data
-    avg_sl = slice(index-voltage_offset_correction+1,
-                    index+voltage_offset_correction)
-    to_average = measured_voltage[avg_sl]
-    return np.average(measured_voltage[avg_sl])
+from .utils import correct_voltage_offset
 
 
-def analyse_vi_curve(current_bias, measured_voltage, voltage_offset_correction,
-                     ic_voltage_threshold, high_bias_threshold, plots=True,
-                     plot_title=""):
+def analyse_vi_curve(
+    current_bias: np.ndarray,
+    measured_voltage: np.ndarray,
+    ic_voltage_threshold: float,
+    high_bias_threshold: float,
+    debug: bool = False,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Extract the critical and excess current along with the normal resistance.
 
     All values are extracted for cold and hot electrons. The cold side is the
@@ -41,151 +34,148 @@ def analyse_vi_curve(current_bias, measured_voltage, voltage_offset_correction,
     Parameters
     ----------
     current_bias : np.ndarray
-        Current bias applied on the junction in A.
+        N+1D array of the current bias applied on the junction in A.
     measured_voltage : np.ndarray
-        Voltage accross the junction in V.
-    voltage_offset_correction : int | float
-        Number of points around 0 bias on which to average to correct for the
-        offset in the DC measurement, or actual offset to substract.
+        N+1D array of the voltage accross the junction in V.
     ic_voltage_threshold : float
         Voltage threshold in V above which the junction is not considered to carry a
         supercurrent anymore. Used in the determination of the critical current.
     high_bias_threshold : float
         Positive bias value above which the data can be used to extract the
         normal resistance.
-    plots : bool, optional
+    debug : bool, optional
         Generate summary plots of the fitting.
 
     Returns
     -------
-    voltage_offset_correction : float
-        Offset used to correct the measured voltage.
-    rn_c : float
-        Normal resistance evaluated on the cold electron side.
-    rn_h : float
-        Normal resistance evaluated on the hot electron side.
-    ic_c : float
-        Critical current evaluated on the cold electron side.
-    ic_h : float
-        Critical current evaluated on the hot electron side.
-    iexe_c : float
-        Excess current evaluated on the cold electron side.
-    iexe_h : float
-        Excess current evaluated on the hot electron side.
+    voltage_offset_correction : np.ndarray
+        Offset used to correct the measured voltage. ND array
+    rn_c : np.ndarray
+        Normal resistance evaluated on the cold electron side. ND array
+    rn_h : np.ndarray
+        Normal resistance evaluated on the hot electron side. ND array
+    ic_c : np.ndarray
+        Critical current evaluated on the cold electron side. ND array
+    ic_h : np.ndarray
+        Critical current evaluated on the hot electron side. ND array
+    iexe_c : np.ndarray
+        Excess current evaluated on the cold electron side. ND array
+    iexe_h : np.ndarray
+        Excess current evaluated on the hot electron side. ND array
 
     """
-    # Determine the hot and cold electron side
-    if current_bias[0] < 0.0:
-        cold_value = lambda p, n: abs(p)
-        hot_value = lambda p, n: abs(n)
-    else:
-        cold_value = lambda p, n: abs(n)
-        hot_value = lambda p, n: abs(p)
+    ic_c = np.empty(current_bias.shape[:-1])
+    ic_h = np.empty(current_bias.shape[:-1])
+    rn_c = np.empty(current_bias.shape[:-1])
+    rn_h = np.empty(current_bias.shape[:-1])
+    ie_c = np.empty(current_bias.shape[:-1])
+    ie_h = np.empty(current_bias.shape[:-1])
 
+    # Iterate on additional dimensions
+    it = np.nditer(current_bias[..., 0], ["multi_index"])
 
-    # Sort the data so that the bias always go from negative to positive
-    sorting_index = np.argsort(current_bias)
-    current_bias = current_bias[sorting_index]
-    measured_voltage = measured_voltage[sorting_index]
+    for b in it:
+        m_index = it.multi_index
 
-    # Index at which the bias current is zero
-    index = np.argmin(np.abs(current_bias))
+        # Extract the relevant sweeps.
+        cb = current_bias[m_index]
+        mv = measured_voltage[m_index]
 
-    # Correct the offset in the voltage data
-    if voltage_offset_correction and isinstance(voltage_offset_correction, int):
-        voltage_offset_correction = compute_voltage_offset(current_bias,
-                                                           measured_voltage,
-                                                           voltage_offset_correction)
+        # Determine the hot and cold electron side
+        if cb[0] < 0.0:
+            cold_value = lambda p, n: abs(p)
+            hot_value = lambda p, n: abs(n)
+        else:
+            cold_value = lambda p, n: abs(n)
+            hot_value = lambda p, n: abs(p)
 
-    measured_voltage -= voltage_offset_correction
+        # Sort the data so that the bias always go from negative to positive
+        sorting_index = np.argsort(cb)
+        cb = cb[sorting_index]
+        mv = mv[sorting_index]
 
-    # Extract the critical current on the positive and negative branch
-    # Express them in µA
-    ic_n = current_bias[np.max(
-                            np.where(
-                                np.less(measured_voltage[:index],
-                                        -ic_voltage_threshold
-                                        )
-                                )[0]
-                            )
-                        ]
-    ic_p = current_bias[np.min(
-                            np.where(
-                                np.greater(measured_voltage[index:],
-                                           ic_voltage_threshold
-                                           )
-                                )[0]
-                            ) + index
-                        ]
+        # Index at which the bias current is zero
+        index = np.argmin(np.abs(cb))
 
-    # Fit the high positive/negative bias to extract the normal resistance
-    # excess current and their product
-    index_pos = np.argmin(np.abs(current_bias - high_bias_threshold))
-    index_neg = np.argmin(np.abs(current_bias + high_bias_threshold))
+        # Extract the critical current on the positive and negative branch
+        ic_n = cb[np.max(np.where(np.less(mv[:index], -ic_voltage_threshold))[0])]
+        ic_p = cb[
+            np.min(np.where(np.greater(mv[index:], ic_voltage_threshold))[0]) + index
+        ]
 
-    model = LinearModel()
-    pars = model.guess(measured_voltage[index_pos:],
-                        x=current_bias[index_pos:])
-    pos_results = model.fit(measured_voltage[index_pos:], pars,
-                            x=current_bias[index_pos:])
+        # Fit the high positive/negative bias to extract the normal resistance
+        # excess current and their product
+        index_pos = np.argmin(np.abs(cb - high_bias_threshold))
+        index_neg = np.argmin(np.abs(cb + high_bias_threshold))
 
-    pars = model.guess(measured_voltage[index_neg:],
-                       x=current_bias[index_neg:])
-    neg_results = model.fit(measured_voltage[:index_neg], pars,
-                            x=current_bias[:index_neg])
+        model = LinearModel()
+        pars = model.guess(mv[index_pos:], x=cb[index_pos:])
+        pos_results = model.fit(mv[index_pos:], pars, x=cb[index_pos:])
 
-    rn_p = pos_results.best_values["slope"]
-    # Iexe p
-    iexe_p = -pos_results.best_values["intercept"]/rn_p
+        pars = model.guess(mv[index_neg:], x=cb[index_neg:])
+        neg_results = model.fit(mv[:index_neg], pars, x=cb[:index_neg])
 
-    rn_n = neg_results.best_values["slope"]
-    # Iexe n
-    iexe_n = neg_results.best_values["intercept"]/rn_n
+        rn_p = pos_results.best_values["slope"]
+        # Iexe p
+        iexe_p = -pos_results.best_values["intercept"] / rn_p
 
-    # XXX Fix layout + title plus positive bias plot
-    if plots:
-        # Prepare a summary plot: full scale
-        fig = plt.figure(constrained_layout=True)
-        fig.suptitle(plot_title)
-        ax = fig.gca()
-        ax.plot(current_bias*1e6, measured_voltage*1e3)
-        ax.plot(current_bias[index:]*1e6,
-                model.eval(pos_results.params, x=current_bias[index:])*1e3,
-                "--k")
-        ax.plot(current_bias[:index+1]*1e6,
-                model.eval(neg_results.params, x=current_bias[:index+1])*1e3,
-                "--k")
-        ax.set_xlabel("Bias current (µA)")
-        ax.set_ylabel("Voltage drop (mV)")
+        rn_n = neg_results.best_values["slope"]
+        # Iexe n
+        iexe_n = neg_results.best_values["intercept"] / rn_n
 
-        # Prepare a summary plot: zoomed in
-        mask = np.logical_and(np.greater(current_bias, -3*ic_p),
-                              np.less(current_bias, 3*ic_p))
-        if np.any(mask):
+        if debug:
+            # Prepare a summary plot: full scale
             fig = plt.figure(constrained_layout=True)
-            fig.suptitle(plot_title + ": zoom")
             ax = fig.gca()
-            ax.plot(current_bias*1e6, measured_voltage*1e3)
-            aux = model.eval(pos_results.params, x=current_bias[index:])*1e3
-            ax.plot(current_bias[index:]*1e6,
-                    model.eval(pos_results.params, x=current_bias[index:])*1e3,
-                    "--")
-            ax.plot(current_bias[:index+1]*1e6,
-                    model.eval(neg_results.params, x=current_bias[:index+1])*1e3,
-                    "--")
-            ax.set_xlim((-3*cold_value(ic_p, ic_n)*1e6, 3*cold_value(ic_p, ic_n)*1e6))
-            aux = measured_voltage[mask]
-            ax.set_ylim((np.min(measured_voltage[mask])*1e3,
-                         np.max(measured_voltage[mask])*1e3))
+            ax.plot(cb * 1e6, mv * 1e3)
+            ax.plot(
+                cb[index:] * 1e6,
+                model.eval(pos_results.params, x=cb[index:]) * 1e3,
+                "--k",
+            )
+            ax.plot(
+                cb[: index + 1] * 1e6,
+                model.eval(neg_results.params, x=cb[: index + 1]) * 1e3,
+                "--k",
+            )
             ax.set_xlabel("Bias current (µA)")
             ax.set_ylabel("Voltage drop (mV)")
 
-    return (
-        voltage_offset_correction,
-        cold_value(rn_p, rn_n),
-        hot_value(rn_p, rn_n),
-        cold_value(ic_p, ic_n),
-        hot_value(ic_p, ic_n),
-        cold_value(iexe_p, iexe_n),
-        hot_value(iexe_p, iexe_n),
-    )
+            # Prepare a summary plot: zoomed in
+            mask = np.logical_and(np.greater(cb, -3 * ic_p), np.less(cb, 3 * ic_p))
+            if np.any(mask):
+                fig = plt.figure(constrained_layout=True)
+                ax = fig.gca()
+                ax.plot(cb * 1e6, mv * 1e3)
+                aux = model.eval(pos_results.params, x=cb[index:]) * 1e3
+                ax.plot(
+                    cb[index:] * 1e6,
+                    model.eval(pos_results.params, x=cb[index:]) * 1e3,
+                    "--",
+                )
+                ax.plot(
+                    cb[: index + 1] * 1e6,
+                    model.eval(neg_results.params, x=cb[: index + 1]) * 1e3,
+                    "--",
+                )
+                ax.set_xlim(
+                    (
+                        -3 * cold_value(ic_p, ic_n) * 1e6,
+                        3 * cold_value(ic_p, ic_n) * 1e6,
+                    )
+                )
+                aux = mv[mask]
+                ax.set_ylim((np.min(mv[mask]) * 1e3, np.max(mv[mask]) * 1e3,))
+                ax.set_xlabel("Bias current (µA)")
+                ax.set_ylabel("Voltage drop (mV)")
+
+            plt.show()
+
+        rn_c[m_index] = cold_value(rn_p, rn_n)
+        rn_h[m_index] = hot_value(rn_p, rn_n)
+        ic_c[m_index] = cold_value(ic_p, ic_n)
+        ic_h[m_index] = hot_value(ic_p, ic_n)
+        ie_c[m_index] = cold_value(iexe_p, iexe_n)
+        ie_h[m_index] = hot_value(iexe_p, iexe_n)
+
+    return (rn_c, rn_h, ic_c, ic_h, ie_c, ie_h)
