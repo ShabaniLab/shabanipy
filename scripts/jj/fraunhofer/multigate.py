@@ -99,10 +99,22 @@ for gate_, resist_, ic_, js in zip(gate, resist, ic, jss):
     ax.plot(field_, gen_ic * 1e6, label='generated')
     ax.legend()
 
-    # fig, ax = plt.subplots(constrained_layout=True)
-    # ax.set_title(r'$V_{g,odd}$ = ' + f'{gate_}')
-    # ax.set_xlabel('x (µm)')
-    # ax.set_ylabel('Current density (µA/µm)')
-    # ax.plot(x * 1e6, jx)
+    #x_data, jx_data = extract_current_distribution(
+    #    field_ / 1e3, ic_, b2beta, jj_width, 200
+    #)
+    #x_gen, jx_gen = extract_current_distribution(
+    #    field_ / 1e3, gen_ic, b2beta, jj_width, 200
+    #)
+
+    #fig2, ax2 = plt.subplots(constrained_layout=True)
+    #ax2.set_title(r'$V_{g,odd}$ = ' + f'{gate_}')
+    #ax2.set_xlabel('x (µm)')
+    #ax2.set_ylabel('Current density (µA/µm)')
+    #ax2.plot(
+    #    x[175:-175] * 1e6, jx[175:-175], color='black', label='original input'
+    #)
+    #ax2.plot(x_gen * 1e6, jx_gen, label='from generated')
+    #ax2.plot(x_data * 1e6, jx_data / 1e6, label='from data')
+    #ax2.legend()
 
 plt.show()
