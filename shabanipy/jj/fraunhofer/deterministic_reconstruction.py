@@ -26,6 +26,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import romb, quad
 from scipy.interpolate import interp1d
+from scipy.signal import hilbert
 from typing_extensions import Literal
 
 from shabanipy.utils.integrate import can_romberg, resample_evenly
@@ -34,15 +35,15 @@ from shabanipy.utils.integrate import can_romberg, resample_evenly
 def extract_theta(
     fields: np.ndarray,
     ics: np.ndarray,
-    f2k: float,  # field-to-k conversion factor (i.e. beta/B)
+    f2k: float,
     jj_width: float,
-    integ_method: Optional[Literal['romb', 'quad']] = 'romb'
+    method: Optional[Literal['romb', 'quad', 'hilbert']] = 'hilbert'
 ) -> np.ndarray:
-    """Compute the Ic Hilbert transform.
+    """Compute the phase as the Hilbert transform of ln(I_c).
 
-    Note the expression for θ(β) differs from Dynes and Fulton (1971) by a
-    factor of 2, but gives the correct output. (The source of this discrepancy
-    is as yet unknown.)
+    Note the integral expressions for θ(β) below differ from Dynes and Fulton
+    (1971) by a factor of 2, but gives the correct output. (The source of this
+    discrepancy is as yet unknown.)
 
     Parameters
     ----------
@@ -52,18 +53,31 @@ def extract_theta(
     ics : np.ndarray
         Measured value of the critical current. For ND input the sweep should
         occur on the last axis.
+    f2k : float
+        Field-to-wavenumber conversion factor (i.e. β / B).
+    jj_width: float
+        Width of the junction transverse to the field and current.
+    method: str, optional
+        Method used to compute the phase; `romb` and `quad` specify
+        numerical integration methods (note `quad` is particularly slow), while
+        `hilbert` uses `scipy.signal.hilbert` to compute the discrete Hilbert
+        transform.
 
     Returns
     -------
     np.ndarray
-        Hilbert tranform of Ic to be used when rebuilding the current
-        distribution.
+        Phase θ, the Hilbert transform of ln(I_c), to be used when rebuilding
+        the current distribution. The phases are shifted by a factor
+        `field * jj_width / 2` to give a reconstructed current density centered
+        about the origin.
 
     """
     # scale B to beta first; then forget about it
     fields = fields * f2k
 
-    if integ_method == 'romb':
+    if method == 'hilbert':
+        return np.imag(hilbert(np.log(ics))) - fields * jj_width / 2
+    elif method == 'romb':
         if not can_romberg(fields):
             fine_fields, fine_ics = resample_evenly(fields, ics)
         else:
@@ -74,7 +88,7 @@ def extract_theta(
             denom = beta**2 - fine_fields**2
             denom[denom == 0] = 1e-9
             return (np.log(fine_ics) - np.log(ic)) / denom
-    elif integ_method == 'quad':
+    elif method == 'quad':
         fine_ics = interp1d(fields, ics, 'cubic')
         def integrand(b, beta, ic):
             # quad will provide b when calling this
@@ -83,14 +97,14 @@ def extract_theta(
                 denom = 1e-9
             return (np.log(fine_ics(b)) - np.log(ic)) / denom
     else:
-        raise ValueError(f"Integration method '{integ_method}' unsupported")
+        raise ValueError(f"Integration method '{method}' unsupported")
 
     theta = np.empty_like(fields)
     for i, (field, ic) in enumerate(zip(fields, ics)):
-        if integ_method == 'romb':
+        if method == 'romb':
             theta[i] = field / np.pi * romb(integrand(field, ic), step) \
                     - field * jj_width / 2
-        elif integ_method == 'quad':
+        elif method == 'quad':
             theta[i] = (field / np.pi
                     * quad(integrand, np.min(fields), np.max(fields),
                         args=(field, ic))[0]
