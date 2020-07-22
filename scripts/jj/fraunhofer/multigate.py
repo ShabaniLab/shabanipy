@@ -95,8 +95,8 @@ for gate_, resist_, ic_, js in zip(gate, resist, ic, jss):
     ax.set_title(r'$V_{g,odd}$ = ' + f'{gate_}')
     ax.set_xlabel('Magnetic field (mT)')
     ax.set_ylabel('Bias current (µA)')
-    ax.plot(field_, ic_, label='data')
     ax.plot(field_, gen_ic * 1e6, label='generated')
+    ax.plot(field_, ic_, label='data')
     ax.legend()
 
     x_data, jx_data = extract_current_distribution(
@@ -111,7 +111,8 @@ for gate_, resist_, ic_, js in zip(gate, resist, ic, jss):
     ax2.set_xlabel('x (µm)')
     ax2.set_ylabel('Current density (µA/µm)')
     ax2.plot(
-        x[175:-175] * 1e6, jx[175:-175], color='black', label='original input'
+        x[175:-175] * 1e6, jx[175:-175], color='black',
+        label='manually optimized'
     )
     ax2.plot(x_gen * 1e6, jx_gen, label='from generated')
     ax2.plot(x_data * 1e6, jx_data / 1e6, label='from data')
