@@ -473,10 +473,11 @@ class LabberData:
                 continue
 
             # The outer most dimension of the scan corresponds either to the first
-            # index if the first step was filtered on or, otherwise, to the second.
+            # index if the first step was filtered on (not first_step_is_used) or,
+            # otherwise, to the second.
             points_inner_dimensions = (
                 np.prod(shape[1:])
-                if first_step_is_used
+                if not first_step_is_used
                 else shape[0] * np.prod(shape[2:])
             )
             padding = np.prod(results[i].shape) % (points_inner_dimensions)
