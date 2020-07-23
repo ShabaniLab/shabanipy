@@ -28,10 +28,10 @@ ax.set_ylabel(r'$I_c$ [uA]')
 ax.plot(b / 1e-3, ic / 1e-6)
 
 # compare true and reconstructed phase distributions
-theta_true = np.angle(g)
 theta_r = extract_theta(b, ic, b2beta, jj_width, method='romb')
 theta_q = extract_theta(b, ic, b2beta, jj_width, method='quad')
 theta_h = extract_theta(b, ic, b2beta, jj_width, method='hilbert')
+theta_true = np.angle(g)
 
 fig2, ax2 = plt.subplots(constrained_layout=True)
 ax2.set_xlabel('B [mT]')
@@ -51,25 +51,25 @@ theta_true_unwrapped = (
     )
 )
 
-ax2.plot(b / 1e-3, theta_true_unwrapped / np.pi, lw=1, marker='.', markersize=2,
-        label='true')
 ax2.plot(b / 1e-3, theta_r / np.pi, lw=1, marker='.', markersize=2,
         label='romb')
 ax2.plot(b / 1e-3, theta_q / np.pi, lw=1, marker='.', markersize=2,
         label='quad')
 ax2.plot(b / 1e-3, theta_h / np.pi, lw=1, marker='.', markersize=2,
         label='hilbert')
+ax2.plot(b / 1e-3, theta_true_unwrapped / np.pi, lw=1, marker='.', markersize=2,
+        label='true')
 ax2.legend()
 
 # compare current reconstruction using true vs. reconstructed phases
-x_true, jx_true = extract_current_distribution(b, ic, b2beta, jj_width, 100,
-        theta=theta_true)
 x_r, jx_r = extract_current_distribution(b, ic, b2beta, jj_width, 100,
         theta=theta_r)
 x_q, jx_q = extract_current_distribution(b, ic, b2beta, jj_width, 100,
         theta=theta_q)
 x_h, jx_h = extract_current_distribution(b, ic, b2beta, jj_width, 100,
         theta=theta_h)
+x_true, jx_true = extract_current_distribution(b, ic, b2beta, jj_width, 100,
+        theta=theta_true)
 
 fig3, ax3 = plt.subplots(constrained_layout=True)
 ax3.set_xlabel('x [um]')
