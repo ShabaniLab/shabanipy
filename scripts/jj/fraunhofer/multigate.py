@@ -97,6 +97,7 @@ for gate_, resist_, ic_, js in zip(gate, resist, ic, jss):
     ax.set_ylabel('Bias current (µA)')
     ax.plot(field_, gen_ic * 1e6, label='generated')
     ax.plot(field_, ic_, label='data')
+    ax.set_ylim(0, 1.6)
     ax.legend()
 
     x_data, jx_data = extract_current_distribution(
@@ -116,6 +117,8 @@ for gate_, resist_, ic_, js in zip(gate, resist, ic, jss):
     )
     ax2.plot(x_gen * 1e6, jx_gen, label='from generated')
     ax2.plot(x_data * 1e6, jx_data / 1e6, label='from data')
+    ax2.set_xlim(-3, 3)
+    ax2.set_ylim(-0.15, 1)
     ax2.legend()
 
 plt.show()
