@@ -675,7 +675,7 @@ class DataClassifier:
         to_store = {}
 
         with LabberData(path) as f:
-            # Find and exctract the relevant step channels (ie not used in classifying)
+            # Find and extract the relevant step channels (ie not used in classifying)
             for i, stepcf in [
                 (i, s) for i, s in enumerate(f.list_steps()) if s.is_ramped
             ]:

@@ -277,7 +277,7 @@ class LabberData:
             # One can inspect ramps to know if a step is ramped outside of a relation.
             for step in steps:
                 if step.relation is not None:
-                    step.is_ramped = any(
+                    step.is_ramped |= any(
                         s.is_ramped
                         for s in steps
                         if s.name in step.relation[1].values()
@@ -440,7 +440,7 @@ class LabberData:
                     # If the mask is not empty, ensure we do not eliminate nans
                     # added by Labber to have complete sweeps
                     if np.any(mask):
-                        mask &= np.isnan(filter_data)
+                        mask |= np.isnan(filter_data)
                     masks.append(mask)
 
                 mask = masks.pop()
