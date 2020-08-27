@@ -52,7 +52,6 @@ def j_multigate(x, distr):
         current density in the regions below each minigate. Will be
         automatically normalized.
     """
-    NUM_GATES = 5
     GATE_WIDTH = JJ_WIDTH / 5
     left_edge = -JJ_WIDTH / 2
     distr = np.asarray(distr) / np.sum(distr)
@@ -73,8 +72,10 @@ def j_multigate(x, distr):
     )
 
 
-# select a current density profile
-j_true = lambda x: j_multigate(x, [3, 5, 2, 5, 3])
+def j_true(x):
+    """Selected current density profile to test."""
+    return j_multigate(x, [3, 5, 2, 5, 3])
+
 
 x = np.linspace(-JJ_WIDTH, JJ_WIDTH, 200)
 jx = j_true(x)

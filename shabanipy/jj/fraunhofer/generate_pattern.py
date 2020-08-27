@@ -28,16 +28,12 @@ def generate_current_integrand(
     current_distribution: np.ndarray,
     phase_distribution: np.ndarray,
 ):
-    """Integrand to compute the current through a junction at a given field.
-
-    """
+    """Integrand to compute the current through a junction at a given field."""
     step = width / len(current_distribution)
 
     @cfunc(float64(intc, CPointer(float64)))
     def real_current_integrand(n, args):
-        """Cfunc to be used with quad to calculate the current from the distribution.
-
-        """
+        """Cfunc to be used with quad to calculate the current from the distribution."""
         pos, field = args[0], args[1]
         x = int(pos // step)
         return current_distribution[x] * np.cos(
@@ -46,9 +42,7 @@ def generate_current_integrand(
 
     @cfunc(float64(intc, CPointer(float64)))
     def imag_current_integrand(n, args):
-        """Cfunc to be used with quad to calculate the current from the distribution.
-
-        """
+        """Cfunc to be used with quad to calculate the current from the distribution."""
         pos, field = args[0], args[1]
         x = int(pos // step)
         return current_distribution[x] * np.sin(
