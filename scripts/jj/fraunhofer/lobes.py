@@ -91,13 +91,11 @@ for i, n_node in enumerate(n_nodes):
         if (n_node, n_ppl) in should_plot:
             ax.plot(x_out / 1e-6, j_out, label=f'{n_node}, {n_ppl}')
 ax.legend()
-fig.show()
 
 fig2, ax2 = plt.subplots(constrained_layout=True)
 ax2.set_xlabel('B [mT]')
 ax2.set_ylabel(r'$I_c$ [uA]')
 ax2.plot(b / 1e-3, ic / 1e-6)
-fig2.show()
 
 fig3, ax3 = plt.subplots(constrained_layout=True)
 ax3.set_xlabel('points per lobe')
@@ -109,4 +107,5 @@ im = ax3.imshow(fidelity, origin='lower', aspect='auto', extent=[
     node_start - node_step / 2, node_stop - node_step / 2])
 cb = fig3.colorbar(im)
 cb.set_label(r'rms error')
-fig3.show()
+
+plt.show()
