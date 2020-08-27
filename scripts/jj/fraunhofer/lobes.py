@@ -6,14 +6,14 @@ In particular, how do
 in the Fraunhofer pattern I_c(B) impact the fidelity of a reconstructed
 uniform, Guassian, or generalized normal current density J(x).
 """
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats
+from matplotlib import pyplot as plt
 
-from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
 from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
-        extract_current_distribution)
-
+    extract_current_distribution,
+)
+from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
 
 PHI0 = 2e-15
 JJ_WIDTH = 4e-6

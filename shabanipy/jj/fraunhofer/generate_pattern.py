@@ -7,17 +7,17 @@
 # The full license is in the file LICENCE, distributed with this software.
 # -----------------------------------------------------------------------------
 """Generate a Fraunhofer pattern based on a current distribution."""
-from typing import Optional
 import warnings
+from typing import Optional
 
 import numpy as np
 from numba import cfunc
 from numba.types import CPointer, float64, intc
 from scipy import LowLevelCallable
-from scipy.integrate import romb, quad, IntegrationWarning
+from scipy.integrate import IntegrationWarning, quad, romb
 from typing_extensions import Literal
 
-from shabanipy.utils.integrate import resample_evenly, can_romberg
+from shabanipy.utils.integrate import can_romberg, resample_evenly
 
 warnings.filterwarnings("ignore", category=IntegrationWarning)
 

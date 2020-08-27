@@ -23,8 +23,8 @@ in non-symmetric current distributions.
 from typing import Optional
 
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.integrate import romb, quad
+from matplotlib import pyplot as plt
+from scipy.integrate import quad, romb
 from scipy.interpolate import interp1d
 from scipy.signal import hilbert
 from typing_extensions import Literal

@@ -1,10 +1,12 @@
 """Test reconstruction of a zero-padded uniform current density."""
-import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import pyplot as plt
 
-from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
 from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
-        extract_theta, extract_current_distribution)
+    extract_current_distribution,
+    extract_theta,
+)
+from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
 
 # constants
 PHI0 = 2e-15  # magnetic flux quantum

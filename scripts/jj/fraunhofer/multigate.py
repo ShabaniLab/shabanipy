@@ -2,21 +2,17 @@
 import os
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import pyplot as plt
 from scipy import constants as cs
 
-from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
 from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
     extract_current_distribution,
 )
-from shabanipy.jj.fraunhofer.utils import (
-    find_fraunhofer_center,
-    symmetrize_fraunhofer,
-)
+from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
+from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center, symmetrize_fraunhofer
 from shabanipy.jj.utils import extract_switching_current
 from shabanipy.utils.labber_io import LabberData
-
 
 LABBER_DATA_DIR = os.environ['LABBER_DATA_DIR']
 
