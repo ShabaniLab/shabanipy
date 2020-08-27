@@ -43,7 +43,8 @@ def extract_theta(
 
     Note the integral expressions for θ(β) below differ from Dynes and Fulton
     (1971) by a factor of 2, but gives the correct output. (The source of this
-    discrepancy is as yet unknown.)
+    discrepancy is as yet unknown. But note the Hilbert transform is usually
+    defined, as below, with a prefactor 1/π.)
 
     Parameters
     ----------
