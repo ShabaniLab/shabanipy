@@ -37,7 +37,7 @@ def extract_theta(
     ics: np.ndarray,
     f2k: float,
     jj_width: float,
-    method: Optional[Literal['romb', 'quad', 'hilbert']] = 'hilbert'
+    method: Optional[Literal["romb", "quad", "hilbert"]] = "hilbert",
 ) -> np.ndarray:
     """Compute the phase as the Hilbert transform of ln(I_c).
 
@@ -76,9 +76,9 @@ def extract_theta(
     # scale B to beta first; then forget about it
     fields = fields * f2k
 
-    if method == 'hilbert':
+    if method == "hilbert":
         return np.imag(hilbert(np.log(ics))) - fields * jj_width / 2
-    elif method == 'romb':
+    elif method == "romb":
         if not can_romberg(fields):
             fine_fields, fine_ics = resample_evenly(fields, ics)
         else:
@@ -86,30 +86,36 @@ def extract_theta(
         step = abs(fine_fields[0] - fine_fields[1])
 
         def integrand(beta, ic):
-            denom = beta**2 - fine_fields**2
+            denom = beta ** 2 - fine_fields ** 2
             denom[denom == 0] = 1e-9
             return (np.log(fine_ics) - np.log(ic)) / denom
-    elif method == 'quad':
-        fine_ics = interp1d(fields, ics, 'cubic')
+
+    elif method == "quad":
+        fine_ics = interp1d(fields, ics, "cubic")
+
         def integrand(b, beta, ic):
             # quad will provide b when calling this
-            denom = beta**2 - b**2
+            denom = beta ** 2 - b ** 2
             if denom == 0:
                 denom = 1e-9
             return (np.log(fine_ics(b)) - np.log(ic)) / denom
+
     else:
         raise ValueError(f"Integration method '{method}' unsupported")
 
     theta = np.empty_like(fields)
     for i, (field, ic) in enumerate(zip(fields, ics)):
-        if method == 'romb':
-            theta[i] = field / np.pi * romb(integrand(field, ic), step) \
-                    - field * jj_width / 2
-        elif method == 'quad':
-            theta[i] = (field / np.pi
-                    * quad(integrand, np.min(fields), np.max(fields),
-                        args=(field, ic))[0]
-                    - field * jj_width / 2)
+        if method == "romb":
+            theta[i] = (
+                field / np.pi * romb(integrand(field, ic), step) - field * jj_width / 2
+            )
+        elif method == "quad":
+            theta[i] = (
+                field
+                / np.pi
+                * quad(integrand, np.min(fields), np.max(fields), args=(field, ic))[0]
+                - field * jj_width / 2
+            )
     return theta
 
 
@@ -120,7 +126,7 @@ def extract_current_distribution(
     jj_width: float,
     jj_points: int,
     debug: bool = False,
-    theta: Optional[np.ndarray] = None
+    theta: Optional[np.ndarray] = None,
 ) -> np.ndarray:
     """Extract the current distribution from Ic(B).
 

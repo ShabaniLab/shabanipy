@@ -134,7 +134,7 @@ def produce_fraunhofer_fast(
     f2k: float,  # field-to-wavevector conversion factor
     cd: np.ndarray,  # current distribution
     xs: np.ndarray,
-    ret_fourier: Optional[bool] = False
+    ret_fourier: Optional[bool] = False,
 ) -> np.ndarray:
     """Generate Fraunhofer from current density using Romberg integration.
 

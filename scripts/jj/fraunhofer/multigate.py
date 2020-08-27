@@ -14,22 +14,19 @@ from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center, symmetrize_fra
 from shabanipy.jj.utils import extract_switching_current
 from shabanipy.utils.labber_io import LabberData
 
-LABBER_DATA_DIR = os.environ['LABBER_DATA_DIR']
+LABBER_DATA_DIR = os.environ["LABBER_DATA_DIR"]
 
 # Fraunhofer data for multigates -1-2-3-4-5-
 # Gates 2 and 4 are fixed at Vg2 = Vg4 = constant while gates 1, 3, and 5 are
 # swept together.
 # A Fraunhofer pattern is measured for 6 values of Vg1 = Vg3 = Vg5.
-DATA_FILE_PATH = (
-    Path(LABBER_DATA_DIR) /
-    '2019/11/Data_1104/JS123A_BM003_054.hdf5'
-)
+DATA_FILE_PATH = Path(LABBER_DATA_DIR) / "2019/11/Data_1104/JS123A_BM003_054.hdf5"
 
 # channel names
-CH_MAGNET = 'Keithley Magnet 1 - Source current'
-CH_BIAS = 'Yoko 1 - Voltage'    # current bias
-CH_GATE = 'SRS - Aux 2 output'  # gate voltage (gates 1, 3, and 5)
-CH_RESIST = 'SRS - Value'
+CH_MAGNET = "Keithley Magnet 1 - Source current"
+CH_BIAS = "Yoko 1 - Voltage"  # current bias
+CH_GATE = "SRS - Aux 2 output"  # gate voltage (gates 1, 3, and 5)
+CH_RESIST = "SRS - Value"
 
 # conversion factors
 CURR_TO_FIELD = 1e3 / 18.2  # coil current to B-field (in mT)
@@ -55,12 +52,11 @@ with LabberData(str(DATA_FILE_PATH)) as f:
         resist.append(
             np.abs(
                 np.real(
-                    VOLT_TO_RESIST
-                    * f.get_data(CH_RESIST, filters={CH_GATE: g})[:-10]
+                    VOLT_TO_RESIST * f.get_data(CH_RESIST, filters={CH_GATE: g})[:-10]
                 )
             )
         )
-        ic.append(extract_switching_current(bias, resist[-1], 5, 'positive'))
+        ic.append(extract_switching_current(bias, resist[-1], 5, "positive"))
 resist = np.array(resist)
 ic = np.array(ic)
 # bias sweeps should be the same for all gate values
@@ -88,11 +84,11 @@ for gate_, resist_, ic_, js in zip(gate, resist, ic, jss):
     gen_ic = produce_fraunhofer_fast(field_ / 1e3, b2beta, jx, x)
 
     fig, ax = plt.subplots(constrained_layout=True)
-    ax.set_title(r'$V_{g,odd}$ = ' + f'{gate_}')
-    ax.set_xlabel('Magnetic field (mT)')
-    ax.set_ylabel('Bias current (µA)')
-    ax.plot(field_, gen_ic * 1e6, label='generated')
-    ax.plot(field_, ic_, label='data')
+    ax.set_title(r"$V_{g,odd}$ = " + f"{gate_}")
+    ax.set_xlabel("Magnetic field (mT)")
+    ax.set_ylabel("Bias current (µA)")
+    ax.plot(field_, gen_ic * 1e6, label="generated")
+    ax.plot(field_, ic_, label="data")
     ax.set_ylim(0, 1.6)
     ax.legend()
 
@@ -104,15 +100,12 @@ for gate_, resist_, ic_, js in zip(gate, resist, ic, jss):
     )
 
     fig2, ax2 = plt.subplots(constrained_layout=True)
-    ax2.set_title(r'$V_{g,odd}$ = ' + f'{gate_}')
-    ax2.set_xlabel('x (µm)')
-    ax2.set_ylabel('Current density (µA/µm)')
-    ax2.plot(
-        x[175:-175] * 1e6, jx[175:-175], color='black',
-        label='manually optimized'
-    )
-    ax2.plot(x_gen * 1e6, jx_gen, label='from generated')
-    ax2.plot(x_data * 1e6, jx_data / 1e6, label='from data')
+    ax2.set_title(r"$V_{g,odd}$ = " + f"{gate_}")
+    ax2.set_xlabel("x (µm)")
+    ax2.set_ylabel("Current density (µA/µm)")
+    ax2.plot(x[175:-175] * 1e6, jx[175:-175], color="black", label="manually optimized")
+    ax2.plot(x_gen * 1e6, jx_gen, label="from generated")
+    ax2.plot(x_data * 1e6, jx_data / 1e6, label="from data")
     ax2.set_xlim(-3, 3)
     ax2.set_ylim(-0.15, 1)
     ax2.legend()
