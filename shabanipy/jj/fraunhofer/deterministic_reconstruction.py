@@ -9,9 +9,8 @@
 """Deterministic reconstruction of the j(x) in a JJ from a Fraunhofer pattern.
 
 The method implemented here is based on:
-Dynes, R. C. & Fulton, T. A.
-Supercurrent Density Distribution in Josephson Junctions.
-Phys. Rev. B 3, 3015–3023 (1971).
+    [1] Dynes, R. C. & Fulton, T. A.  Supercurrent Density Distribution in
+    Josephson Junctions.  Phys. Rev. B 3, 3015–3023 (1971).
 
 This method has the advantage of being algebraic but can suffer from a lack of
 precision due to the finite extend of the measured Fraunhofer pattern.
@@ -41,8 +40,8 @@ def extract_theta(
 ) -> np.ndarray:
     """Compute the phase as the Hilbert transform of ln(I_c).
 
-    Note the integral expressions for θ(β) below differ from Dynes and Fulton
-    (1971) by a factor of 2, but gives the correct output. (The source of this
+    Note the integral expressions for θ(β) implemented here differ from Eq. (5)
+    [1] by a factor of 2, but give the correct output. (The source of this
     discrepancy is as yet unknown. But note the Hilbert transform is usually
     defined, as below, with a prefactor 1/π.)
 
@@ -76,19 +75,20 @@ def extract_theta(
     # scale B to beta first; then forget about it
     fields = fields * f2k
 
-    if method == "hilbert":
-        return np.imag(hilbert(np.log(ics))) - fields * jj_width / 2
-    elif method == "romb":
-        return _extract_theta_romb(fields, ics, jj_width)
+    if method == "romb":
+        theta = _extract_theta_romb(fields, ics)
     elif method == "quad":
-        return _extract_theta_quad(fields, ics, jj_width)
+        theta = _extract_theta_quad(fields, ics)
+    elif method == "hilbert":
+        theta = _extract_theta_hilbert(ics)
     else:
         raise ValueError(f"Method '{method}' unsupported")
 
+    return theta - fields * jj_width / 2
 
-def _extract_theta_romb(
-    fields: np.ndarray, ics: np.ndarray, jj_width: float,
-) -> np.ndarray:
+
+def _extract_theta_romb(fields: np.ndarray, ics: np.ndarray) -> np.ndarray:
+    """Compute Eq. (5) of [1] using Romberg integration."""
     if not can_romberg(fields):
         fine_fields, fine_ics = resample_evenly(fields, ics)
     else:
@@ -101,24 +101,20 @@ def _extract_theta_romb(
         denom = field ** 2 - fine_fields ** 2
         denom[denom == 0] = 1e-9
 
-        theta[i] = (
-            field / np.pi * romb((np.log(fine_ics) - np.log(ic)) / denom, step)
-            - field * jj_width / 2
-        )
+        theta[i] = field / np.pi * romb((np.log(fine_ics) - np.log(ic)) / denom, step)
     return theta
 
 
-def _extract_theta_quad(
-    fields: np.ndarray, ics: np.ndarray, jj_width: float,
-) -> np.ndarray:
-    fine_ics = interp1d(fields, ics, "cubic")
+def _extract_theta_quad(fields: np.ndarray, ics: np.ndarray) -> np.ndarray:
+    """Compute Eq. (5) of [1] using scipy.integrate.quad."""
+    ics_interp = interp1d(fields, ics, "cubic")
 
     def integrand(b, beta, ic):
         # quad will provide b when calling this
         denom = beta ** 2 - b ** 2
         if denom == 0:
             denom = 1e-9
-        return (np.log(fine_ics(b)) - np.log(ic)) / denom
+        return (np.log(ics_interp(b)) - np.log(ic)) / denom
 
     theta = np.empty_like(fields)
     for i, (field, ic) in enumerate(zip(fields, ics)):
@@ -126,9 +122,13 @@ def _extract_theta_quad(
             field
             / np.pi
             * quad(integrand, np.min(fields), np.max(fields), args=(field, ic))[0]
-            - field * jj_width / 2
         )
     return theta
+
+
+def _extract_theta_hilbert(ics: np.ndarray) -> np.ndarray:
+    """Compute Eq. (5) of [1] using a discrete Hilbert transform."""
+    return hilbert(np.log(ics)).imag
 
 
 def extract_current_distribution(
