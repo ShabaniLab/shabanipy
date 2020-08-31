@@ -105,14 +105,17 @@ def _extract_theta_romb(fields: np.ndarray, ics: np.ndarray) -> np.ndarray:
     return theta
 
 
-def _extract_theta_quad(fields: np.ndarray, ics: np.ndarray) -> np.ndarray:
+def _extract_theta_quad(
+    fields: np.ndarray, ics: np.ndarray, use_points: bool = False
+) -> np.ndarray:
     """Compute Eq. (5) of [1] using scipy.integrate.quad."""
     ics_interp = interp1d(fields, ics, "cubic")
 
     def integrand(b, beta, ic):
         # quad will provide b when calling this
         denom = beta ** 2 - b ** 2
-        if denom == 0:
+
+        if not use_points and denom == 0:
             denom = 1e-9
         return (np.log(ics_interp(b)) - np.log(ic)) / denom
 
@@ -121,7 +124,13 @@ def _extract_theta_quad(fields: np.ndarray, ics: np.ndarray) -> np.ndarray:
         theta[i] = (
             field
             / np.pi
-            * quad(integrand, np.min(fields), np.max(fields), args=(field, ic))[0]
+            * quad(
+                integrand,
+                np.min(fields),
+                np.max(fields),
+                args=(field, ic),
+                points=[field] if use_points else None,
+            )[0]
         )
     return theta
 
