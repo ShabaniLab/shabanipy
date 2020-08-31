@@ -42,10 +42,5 @@ ax.plot(
 ax.plot(
     xs, _extract_theta_quad(xs, np.exp(f(xs))), label="scipy.integrate.quad",
 )
-ax.plot(
-    xs,
-    _extract_theta_quad(xs, np.exp(f(xs)), use_points=True),
-    label="scipy.integrate.quad (points)",
-)
 ax.legend()
 plt.show()
