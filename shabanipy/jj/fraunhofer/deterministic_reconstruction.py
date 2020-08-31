@@ -79,43 +79,55 @@ def extract_theta(
     if method == "hilbert":
         return np.imag(hilbert(np.log(ics))) - fields * jj_width / 2
     elif method == "romb":
-        if not can_romberg(fields):
-            fine_fields, fine_ics = resample_evenly(fields, ics)
-        else:
-            fine_fields, fine_ics = fields, ics
-        step = abs(fine_fields[0] - fine_fields[1])
-
-        def integrand(beta, ic):
-            denom = beta ** 2 - fine_fields ** 2
-            denom[denom == 0] = 1e-9
-            return (np.log(fine_ics) - np.log(ic)) / denom
-
+        return _extract_theta_romb(fields, ics, jj_width)
     elif method == "quad":
-        fine_ics = interp1d(fields, ics, "cubic")
-
-        def integrand(b, beta, ic):
-            # quad will provide b when calling this
-            denom = beta ** 2 - b ** 2
-            if denom == 0:
-                denom = 1e-9
-            return (np.log(fine_ics(b)) - np.log(ic)) / denom
-
+        return _extract_theta_quad(fields, ics, jj_width)
     else:
-        raise ValueError(f"Integration method '{method}' unsupported")
+        raise ValueError(f"Method '{method}' unsupported")
+
+
+def _extract_theta_romb(
+    fields: np.ndarray, ics: np.ndarray, jj_width: float,
+) -> np.ndarray:
+    if not can_romberg(fields):
+        fine_fields, fine_ics = resample_evenly(fields, ics)
+    else:
+        fine_fields, fine_ics = fields, ics
+    step = abs(fine_fields[0] - fine_fields[1])
 
     theta = np.empty_like(fields)
     for i, (field, ic) in enumerate(zip(fields, ics)):
-        if method == "romb":
-            theta[i] = (
-                field / np.pi * romb(integrand(field, ic), step) - field * jj_width / 2
-            )
-        elif method == "quad":
-            theta[i] = (
-                field
-                / np.pi
-                * quad(integrand, np.min(fields), np.max(fields), args=(field, ic))[0]
-                - field * jj_width / 2
-            )
+        # don't divide by zero
+        denom = field ** 2 - fine_fields ** 2
+        denom[denom == 0] = 1e-9
+
+        theta[i] = (
+            field / np.pi * romb((np.log(fine_ics) - np.log(ic)) / denom, step)
+            - field * jj_width / 2
+        )
+    return theta
+
+
+def _extract_theta_quad(
+    fields: np.ndarray, ics: np.ndarray, jj_width: float,
+) -> np.ndarray:
+    fine_ics = interp1d(fields, ics, "cubic")
+
+    def integrand(b, beta, ic):
+        # quad will provide b when calling this
+        denom = beta ** 2 - b ** 2
+        if denom == 0:
+            denom = 1e-9
+        return (np.log(fine_ics(b)) - np.log(ic)) / denom
+
+    theta = np.empty_like(fields)
+    for i, (field, ic) in enumerate(zip(fields, ics)):
+        theta[i] = (
+            field
+            / np.pi
+            * quad(integrand, np.min(fields), np.max(fields), args=(field, ic))[0]
+            - field * jj_width / 2
+        )
     return theta
 
 
