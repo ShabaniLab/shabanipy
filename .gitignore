@@ -3,6 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+
+# Mac Finder settings file
+.DS_Store
+
 # C extensions
 *.so
 
