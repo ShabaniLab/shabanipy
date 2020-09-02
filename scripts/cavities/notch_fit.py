@@ -16,7 +16,7 @@ filenames = [
 ]
 
 # Strip off '.hdf5' in case file extensions are left on
-filenames = [i.rstrip('.hdf5') for i in filenames] 
+filenames = [i.rstrip('.hdf5') for i in filenames]
 
 attenuation_on_vna = [-20, -40, -60]
 
