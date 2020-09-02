@@ -1,4 +1,4 @@
-rom resonator_tools import circuit
+from resonator_tools import circuit
 import numpy as np
 import csv
 from os import path as pth
@@ -19,9 +19,9 @@ from shabanipy.cavities.utils import (extract_baseline,
                                       correct_for_time_delay)
 
 
-FREQ_COLUMN = 0
-POWER_COLUMN = 1
-SUBTRACT_BASELINE = True
+FREQ_COLUMN = 1
+POWER_COLUMN = 0
+SUBTRACT_BASELINE = False
 PLOT_SUBTRACTED_BASELINE = False
 PLOT_QINT_VS_POWER = True
 PLOT_QC_VS_POWER = True
@@ -49,20 +49,20 @@ RESONANCE_PARAMETERS = {
 }
 #put the path of all files you want to study and then put their associated attenuation below
 
-SAMPLE = 'JS200'
+SAMPLE = 'JS314'
 BASEPATH = '/Users/joe_yuan/Desktop/Desktop/Shabani Lab/Projects/ResonatorPaper'
 
 path = pth.join(BASEPATH,'data')
 csv_directory = pth.join(BASEPATH,'fits',SAMPLE)
 IMAGE_DIR = pth.join(BASEPATH,'images',SAMPLE)
 
-filename = ['JS200_JY001_008']
-#filename = ['JS314_CD1_att20_004', 'JS314_CD1_att40_006', 'JS314_CD1_att60_007']
+#filename = ['JS200_JY001_008']
+filename = ['JS314_CD1_att20_004']#, 'JS314_CD1_att40_006', 'JS314_CD1_att60_007']
 
 # Strip off '.hdf5' in case file extensions are left on
 filename = [i.rstrip('.hdf5') for i in filename] 
 
-attenuation_on_vna = [0]
+attenuation_on_vna = [-20, -40, -60]
 
 res_freq_array = []
 
@@ -132,7 +132,7 @@ for FILENAME in filename:
         else:
             #create a different csv file for each resonance within each .hdf5
             with open(res_result_path, mode='a+') as data_base:
-               data_base.seek(0)
+                data_base.seek(0)
                 fieldnames = ['res_index', 'res_freq', 'attenuation', 'power', 'total_power','photon_num','qi','qi_err','qc','ql','ql_err','chi_square']
                 writer = csv.DictWriter(data_base, fieldnames=fieldnames)
                 writer.writeheader()
