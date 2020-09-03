@@ -23,7 +23,7 @@ def compute_voltage_offset(
     current_bias: np.ndarray, 
     measured_voltage: np.ndarray,
     n_peak_width: int,
-    bound: Optional[float] = None
+    bound: Optional[float] = None,
 ) -> Tuple[float, float]:
     """Compute the voltage offset in the VI characteristic of a JJ.
 
@@ -55,7 +55,6 @@ def compute_voltage_offset(
     if current_bias[0] > current_bias[1]:
         current_bias = current_bias[::-1]
         measured_voltage = measured_voltage[::-1]
-    print(current_bias)
     
     #Take entire bias range if there is no bounds
     if bound is None:
@@ -160,7 +159,7 @@ def correct_voltage_offset(
                 
         avg, _ = compute_voltage_offset(cb, sv, n_peak_width,bound)
         mv -= avg
-        
+    
     # Substract the offset for each line
     else:
         it = np.nditer(current_bias[..., 0], ["multi_index"])

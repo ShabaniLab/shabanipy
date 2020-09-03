@@ -167,6 +167,8 @@ def plot_shapiro_histogram(
     counts *= 1e6/I_c
     
     # Extract the 0 step to normalize the power and fix power offset
+    #In some cases sigma value for guassian_filter maybe be unsuitable. 
+    #Same goes for max height ratio (height=coeffcient*max) and distance when finding peaks
     weight = gaussian_filter(extract_step_weight(voltage, counts, 0),len(p)/80)
     weight = 1/(weight + 0.001*weight[0])
     peaks, _ = find_peaks(weight, height=0.5*np.max(weight), distance=len(p)/7)
@@ -203,7 +205,7 @@ def plot_shapiro_histogram(
         m_ax.set_ylabel(clabel)
         m_ax.yaxis.set_tick_params(direction='in')
         if power_limit:
-            m_ax.set_xlim((power_limit[0],power_limit[1]))
+            m_ax.set_xlim(power_limit)
         if voltage_limit:
             m_ax.set_ylim((-voltage_limit, voltage_limit))
     else:
@@ -285,7 +287,9 @@ def plot_step_weights(
     else:
         p = power[:, 0]
     
-     # Extract the 0 step to normalize the power and fix power offset
+    # Extract the 0 step to normalize the power and fix power offset
+    #In some cases sigma value for guassian_filter maybe be unsuitable. 
+    #Same goes for max height ratio (height=coeffcient*max) and distance when finding peaks
     weight = gaussian_filter(extract_step_weight(voltage, counts, 0), len(p)/80)
     weight = 1/(weight + 0.001*weight[0])
     peaks, _ = find_peaks(weight, height=0.7*np.max(weight), distance=len(p)/7)

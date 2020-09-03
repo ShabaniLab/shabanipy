@@ -68,6 +68,7 @@ def correct_voltage_offset_per_power(
     """
     # Copy the data to preserve the original
     new_voltage = np.copy(voltage)
+    
     # Iterate on the extra dimensions if any
     it = np.nditer(power[..., 0, 0], ["multi_index"])
 
@@ -103,6 +104,7 @@ def correct_voltage_offset_per_power(
         for j, h in enumerate(histo):
 
             # Enforce that the peaks are at least of about 1 (ignore fractional steps)
+            # In some cases, height here may cause an issue (not large enough)
             peaks, _ = find_peaks(h, distance=0.95 / step_fraction, height=max(h) / 2)
 
             # Calculate deviation of each peak and average
