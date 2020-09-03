@@ -26,6 +26,7 @@ def correct_voltage_offset_per_power(
     frequency: Union[float, np.ndarray],
     n_peak_width: int,
     n_std_as_bin: int,
+    bound: Optional[float] = None,
     debug: bool = False,
 ):
     """Correct the voltage offset in a Shapiro map (power, current bias) at each power.
@@ -54,6 +55,8 @@ def correct_voltage_offset_per_power(
     n_std_as_bin : int
         Number of standard deviation (as determined from the superconducting plateau of
         the lowest power measurement).
+    bound : Optional[float]
+        Bounds around midpoint to look for peaks (in uA)
     debug : bool, optional
         [description], by default False
 
@@ -65,7 +68,6 @@ def correct_voltage_offset_per_power(
     """
     # Copy the data to preserve the original
     new_voltage = np.copy(voltage)
-
     # Iterate on the extra dimensions if any
     it = np.nditer(power[..., 0, 0], ["multi_index"])
 
@@ -86,7 +88,7 @@ def correct_voltage_offset_per_power(
         # of the lowest measurement power
         lpower_index = np.argmin(p[:, 0])
         _, std = compute_voltage_offset(
-            c[lpower_index, :], v[lpower_index, :], n_peak_width
+            c[lpower_index, :], v[lpower_index, :], n_peak_width, bound
         )
 
         # Compute the step fraction to use when binning to get a high resolution
