@@ -6,8 +6,10 @@ In particular, how do
 in the Fraunhofer pattern I_c(B) impact the fidelity of a reconstructed
 uniform, Guassian, or generalized normal current density J(x).
 """
+import os
+import sys
+
 import numpy as np
-import scipy.stats
 from matplotlib import pyplot as plt
 
 from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
@@ -15,66 +17,23 @@ from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
 )
 from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
 
+# enable import from current_profiles.py in this directory
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+
+from current_profiles import j_multigate
+
+# constants
 PHI0 = 2e-15
-JJ_WIDTH = 4e-6
 JJ_LENGTH = 100e-9
 B2BETA = 2 * np.pi * JJ_LENGTH / PHI0
+JJ_WIDTH = 4e-6
 B_NODE = PHI0 / (JJ_WIDTH * JJ_LENGTH)
 IC0 = 1e-6
 
 
-def j_uniform(x):
-    """Uniform current density with which to compare output."""
-    return (
-        IC0
-        / JJ_WIDTH
-        * np.piecewise(x, [np.abs(x) < JJ_WIDTH / 2, np.abs(x) >= JJ_WIDTH / 2], [1, 0])
-    )
-
-
-def j_gaussian(x):
-    """Gaussian current density."""
-    return IC0 * scipy.stats.norm.pdf(x, loc=0, scale=JJ_WIDTH / 4)
-
-
-def j_gennorm(x):
-    """Generalized normal distributed current density."""
-    return IC0 * scipy.stats.gennorm.pdf(x, 8, loc=0, scale=JJ_WIDTH / 2)
-
-
-def j_multigate(x, distr):
-    """Five-gate multigate distribution.
-
-    Parameters
-    ----------
-    distr : list or np.ndarray
-        1D list or array, of length 5, describing the relative distribution of
-        current density in the regions below each minigate. Will be
-        automatically normalized.
-    """
-    GATE_WIDTH = JJ_WIDTH / 5
-    left_edge = -JJ_WIDTH / 2
-    distr = np.asarray(distr) / np.sum(distr)
-    return np.piecewise(
-        x,
-        [
-            np.logical_and(x >= left_edge, x < left_edge + GATE_WIDTH),
-            np.logical_and(x >= left_edge + GATE_WIDTH, x < left_edge + 2 * GATE_WIDTH),
-            np.logical_and(
-                x >= left_edge + 2 * GATE_WIDTH, x < left_edge + 3 * GATE_WIDTH
-            ),
-            np.logical_and(
-                x >= left_edge + 3 * GATE_WIDTH, x < left_edge + 4 * GATE_WIDTH
-            ),
-            np.logical_and(x >= left_edge + 4 * GATE_WIDTH, x < JJ_WIDTH / 2),
-        ],
-        distr * IC0 / GATE_WIDTH,
-    )
-
-
 def j_true(x):
     """Selected current density profile to test."""
-    return j_multigate(x, [3, 5, 2, 5, 3])
+    return j_multigate(x, [3, 5, 2, 5, 3], ic0=IC0, jj_width=JJ_WIDTH)
 
 
 x = np.linspace(-JJ_WIDTH, JJ_WIDTH, 200)
