@@ -30,17 +30,19 @@ PTS_PER_NODE = 4
 N_POINTS = 2 * (PTS_PER_NODE * N_NODES)
 
 # set up plots
-mpl.rcParams["lines.linewidth"] = 0.5
+mpl.rcParams["lines.linewidth"] = 1
 mpl.rcParams["lines.marker"] = "."
+mpl.rcParams["lines.markersize"] = 0
 fig, ax = plt.subplots(constrained_layout=True)
 ax.set_ylabel("J(x)")
 fig2, ax2 = plt.subplots(constrained_layout=True)
 ax2.set_ylabel(r"$I_c(\beta)$")
+cmap = mpl.cm.get_cmap("inferno")
 
 # input current distribution
 xs = np.linspace(-JJ_WIDTH, JJ_WIDTH, N_POINTS)
 js = j_uniform(xs, ic0=IC0, jj_width=JJ_WIDTH)
-ax.plot(xs, js, label="input (0)")
+ax.plot(xs, js, lw=1, label="input (0)", color=cmap(0))
 
 # analytical Fraunhofer
 fine_bs = np.linspace(-N_NODES * B_NODE, N_NODES * B_NODE, 10 * N_POINTS)
@@ -50,19 +52,26 @@ ax2.plot(
     lw=1,
     markersize=0,
     label="analytical",
+    color=cmap(0),
 )
 
 bs = np.linspace(-N_NODES * B_NODE, N_NODES * B_NODE, N_POINTS)
-for i in range(5):
+TRIPS = 50
+for i in range(TRIPS):
     # generate Fraunhofer
     ics = produce_fraunhofer_fast(bs, B2BETA, js, xs)
-    ax2.plot(bs, ics, label=f"{2*i + 1}")
+    ax2.plot(bs, ics, label=f"{2*i + 1}", color=cmap((2 * i + 1) / (2 * TRIPS)))
 
     # reconstruct current density
     xs, js = extract_current_distribution(bs, ics, B2BETA, JJ_WIDTH, len(xs) / 2)
-    ax.plot(xs, js, label=f"{2*i + 2}")
+    ax.plot(xs, js, label=f"{2*i + 2}", color=cmap((2 * i + 2) / (2 * TRIPS)))
 
 
-fig.legend()
-fig2.legend()
+# fig.legend()
+# fig2.legend()
+fig3, ax3 = plt.subplots(constrained_layout=True, figsize=[1, 5])
+sm = mpl.cm.ScalarMappable(cmap=cmap)
+sm.set_clim(0, TRIPS)
+cbar = fig3.colorbar(sm, cax=ax3)
+cbar.set_label("round trips")
 plt.show()
