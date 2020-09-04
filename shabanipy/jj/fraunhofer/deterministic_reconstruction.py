@@ -19,7 +19,7 @@ We need to use the more complex approach of the paper since we are interested
 in non-symmetric current distributions.
 
 """
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -142,7 +142,7 @@ def extract_current_distribution(
     jj_points: int,
     debug: bool = False,
     theta: Optional[np.ndarray] = None,
-) -> np.ndarray:
+) -> Tuple[np.ndarray, np.ndarray]:
     """Extract the current distribution from Ic(B).
 
     Parameters
