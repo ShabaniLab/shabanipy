@@ -45,10 +45,15 @@ js = j_uniform(xs, ic0=IC0, jj_width=JJ_WIDTH)
 ax.plot(xs, js, lw=1, label="input (0)", color=cmap(0))
 
 # analytical Fraunhofer
+def ic_analytical(b):
+    """Perfect Fraunhofer from a uniform current density."""
+    return IC0 * np.abs(np.sinc(b * B2BETA * JJ_WIDTH / 2 / np.pi))
+
+
 fine_bs = np.linspace(-N_NODES * B_NODE, N_NODES * B_NODE, 10 * N_POINTS)
 ax2.plot(
     fine_bs,
-    IC0 * np.abs(np.sinc(fine_bs * B2BETA * JJ_WIDTH / 2 / np.pi)),
+    ic_analytical(fine_bs),
     lw=1,
     markersize=0,
     label="analytical",
@@ -58,9 +63,15 @@ ax2.plot(
 bs = np.linspace(-N_NODES * B_NODE, N_NODES * B_NODE, N_POINTS)
 TRIPS = 50
 for i in range(TRIPS):
-    # generate Fraunhofer
-    ics = produce_fraunhofer_fast(bs, B2BETA, js, xs)
-    ax2.plot(bs, ics, label=f"{2*i + 1}", color=cmap((2 * i + 1) / (2 * TRIPS)))
+    label = f"{2*i + 1}"
+    if i == 0:
+        # sample the perfect Fraunhofer
+        ics = ic_analytical(bs)
+        label += " (sampled)"
+    else:
+        # generate Fraunhofer
+        ics = produce_fraunhofer_fast(bs, B2BETA, js, xs)
+    ax2.plot(bs, ics, label=label, color=cmap((2 * i + 1) / (2 * TRIPS)))
 
     # reconstruct current density
     xs, js = extract_current_distribution(bs, ics, B2BETA, JJ_WIDTH, len(xs) / 2)
