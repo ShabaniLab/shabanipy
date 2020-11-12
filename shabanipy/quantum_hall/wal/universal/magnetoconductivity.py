@@ -12,26 +12,28 @@
 from math import cos, exp, pi
 
 import numpy as np
+from numba import njit
 
 #: Corrective factor in the magneto conductance calculation depending on the
 #: maximum number of scattering events considered.
 F = np.sum(1 / (np.arange(3, 5001) - 2))
 
 
+@njit(fastmath=True)
 def wal_magneto_conductance(
-    field: float,
+    fields: np.ndarray,
     l_phi: float,
     traces: np.ndarray,
     surfaces: np.ndarray,
     lengths: np.ndarray,
     cosjs: np.ndarray,
 ) -> float:
-    """[summary]
+    """Compute the magneto conductance using precomputed trajectories traces.
 
     Parameters
     ----------
-    field : float
-        Out of plane field (in rad/surface unit)
+    fields : np.ndarray
+        1D array of the out of plane field (in rad/surface unit)
     l_phi : float
         Spin phase coherence length.
     traces : np.ndarray
@@ -46,10 +48,15 @@ def wal_magneto_conductance(
     Returns
     -------
     float
-        Conductance at the given field in unit of e^2/h
+        Conductance at the given field in unit of e^2/(2πh)
+        Same unit as used in W. Knap et al., PRB. 53, 3912–3924 (1996).
 
     """
-    xj = np.exp(-lengths / l_phi) * 0.5 * traces * (1 + cosjs)
-    a = xj * np.cos(field * surfaces)
+    sigma = np.empty_like(fields)
+    for i, f in enumerate(fields):
+        xj = np.exp(-lengths / l_phi) * 0.5 * traces * (1 + cosjs)
+        a = xj * np.cos(f * surfaces)
 
-    return -2 * F * np.sum(a) / len(traces)
+        sigma[i] = -2 * F * np.sum(a) / len(traces)
+
+    return sigma

@@ -107,5 +107,8 @@ venv.bak/
 *.swp
 *.un~
 
-# Vscode
+# VS code
 .vscode/
+
+# Large datafiles
+*.hdf5

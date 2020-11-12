@@ -14,12 +14,11 @@ import numpy as np
 import scipy.constants as cs
 from scipy.signal import argrelmin, savgol_filter
 
-from ..conversion import (diffusion_constant_from_mobility_density,
-                          mean_free_time_from_mobility)
-from .wal_full_diagonalization import \
-    compute_wal_conductance_difference as full_wal
-from .wal_no_dresselhaus import \
-    compute_wal_conductance_difference as simple_wal
+from ..conversion import (
+    diffusion_constant_from_mobility_density,
+    mean_free_time_from_mobility,
+)
+from .wal_no_dresselhaus import compute_wal_conductance_difference as simple_wal
 
 
 def compute_dephasing_time(dephasing_field, diffusion):
@@ -30,7 +29,7 @@ def compute_dephasing_time(dephasing_field, diffusion):
     dephasing_field : float | np.ndarray
         Dephasing field in T.
     diffusion : float | np.ndarray
-        Diffusion coefficient.
+        Diffusion coefficient in m.s^-2.
 
     Returns
     -------
@@ -38,7 +37,7 @@ def compute_dephasing_time(dephasing_field, diffusion):
         Dephasing time in ps.
 
     """
-    return cs.hbar/(dephasing_field*4*cs.e*diffusion)*1e12
+    return cs.hbar / (dephasing_field * 4 * cs.e * diffusion) * 1e12
 
 
 def compute_linear_soi(soi_field, mobility, density, effective_mass):
@@ -49,9 +48,9 @@ def compute_linear_soi(soi_field, mobility, density, effective_mass):
     soi_field : float | np.ndarray
         Linear SOI field in T.
     mobility : float | np.ndarray
-        Sample mobility.
+        Sample mobility in .
     density : float | np.ndarray
-        Sample density.
+        Sample density in m^-2.
     effective_mass : float
         Effective mass of the carriers.
 
@@ -62,10 +61,12 @@ def compute_linear_soi(soi_field, mobility, density, effective_mass):
 
     """
     t_free = mean_free_time_from_mobility(mobility, effective_mass)
-    diff = diffusion_constant_from_mobility_density(mobility, density,
-                                                    effective_mass)
-    return np.sqrt(soi_field*cs.e*diff*cs.hbar /
-                   (np.pi*density*t_free) )*1e13/cs.e
+    diff = diffusion_constant_from_mobility_density(mobility, density, effective_mass)
+    return (
+        np.sqrt(soi_field * cs.e * diff * cs.hbar / (np.pi * density * t_free))
+        * 1e13
+        / cs.e
+    )
 
 
 def flip_field_axis(field, *quantities):
@@ -131,10 +132,10 @@ def recenter_wal_data(field, resistance, fraction=0.2, minrel_order=10):
         resistance = np.array((resistance,))
 
     for i, (f, r) in enumerate(zip(field, resistance)):
-        max_field = np.max(f)*fraction
+        max_field = np.max(f) * fraction
         mask = np.where(np.less(np.abs(f), max_field))
         masked_r = r[mask]
-        mins, = argrelmin(masked_r, order=minrel_order)  # We need to unpack
+        (mins,) = argrelmin(masked_r, order=minrel_order)  # We need to unpack
         # No local minima were found, look for a maximum
         if not len(mins):
             center_index = np.argmax(masked_r)
@@ -152,7 +153,7 @@ def recenter_wal_data(field, resistance, fraction=0.2, minrel_order=10):
     return field.reshape(original_shape), resistance.reshape(original_shape)
 
 
-def symmetrize_wal_data(field, resistance, mode='average'):
+def symmetrize_wal_data(field, resistance, mode="average"):
     """Symmetrize WAL data with respect to 0 field.
 
     This method assumes that the data have been properly recentered around 0
@@ -194,71 +195,91 @@ def symmetrize_wal_data(field, resistance, mode='average'):
     for i, (f, r) in enumerate(zip(field, resistance)):
         center = np.argmin(np.abs(f))
         neg_len = len(r[:center])
-        pos_len = len(r[center+1:])
+        pos_len = len(r[center + 1 :])
         if pos_len == neg_len:
-            if mode == 'average':
-                resistance[i] = (r + r[::-1])/2
-            elif mode == 'positive':
-                resistance[i][:center] = r[center+1:][::-1]
+            if mode == "average":
+                resistance[i] = (r + r[::-1]) / 2
+            elif mode == "positive":
+                resistance[i][:center] = r[center + 1 :][::-1]
             else:
-                resistance[i][center+1:] = r[:center][::-1]
+                resistance[i][center + 1 :] = r[:center][::-1]
         elif pos_len > neg_len:
             neg_r = r[:center].copy()[::-1]
-            pos_r = r[center+1:center+1+neg_len].copy()[::-1]
-            if mode == 'average':
+            pos_r = r[center + 1 : center + 1 + neg_len].copy()[::-1]
+            if mode == "average":
                 resistance[i][:center] += pos_r
                 resistance[i][:center] /= 2
-                resistance[i][center+1:center+1+neg_len] += neg_r
-                resistance[i][center+1:center+1+neg_len] /= 2
-            elif mode == 'positive':
+                resistance[i][center + 1 : center + 1 + neg_len] += neg_r
+                resistance[i][center + 1 : center + 1 + neg_len] /= 2
+            elif mode == "positive":
                 resistance[i][:center] = pos_r
             else:
-                resistance[i][center+1:center+1+neg_len] = neg_r
+                resistance[i][center + 1 : center + 1 + neg_len] = neg_r
         else:
-            neg_r = r[abs(pos_len-center):center].copy()[::-1]
-            pos_r = r[center+1:].copy()[::-1]
-            if mode == 'average':
-                resistance[i][abs(pos_len-center):center] += pos_r
-                resistance[i][abs(pos_len-center):center] /= 2
-                resistance[i][center+1:] += neg_r
-                resistance[i][center+1:] /= 2
-            elif mode == 'positive':
-                resistance[i][abs(pos_len-center):center] = pos_r
+            neg_r = r[abs(pos_len - center) : center].copy()[::-1]
+            pos_r = r[center + 1 :].copy()[::-1]
+            if mode == "average":
+                resistance[i][abs(pos_len - center) : center] += pos_r
+                resistance[i][abs(pos_len - center) : center] /= 2
+                resistance[i][center + 1 :] += neg_r
+                resistance[i][center + 1 :] /= 2
+            elif mode == "positive":
+                resistance[i][abs(pos_len - center) : center] = pos_r
             else:
-                resistance[i][center+1:] = neg_r
+                resistance[i][center + 1 :] = neg_r
 
     if trace_number == 1:
         return field[0], resistance[0]
     return field.reshape(original_shape), resistance.reshape(original_shape)
 
 
-def weight_wal_data(field, dsigma, mask='gauss', stiffness=1, htr=None):
-    """Generate weigth to use when fitting WAL data.
+def weight_wal_data(
+    field,
+    dsigma,
+    mask="gauss",
+    stiffness=1,
+    htr=None,
+    filter_points=31,
+    filter_order=3,
+):
+    """Generate a weigth to use when fitting WAL data.
 
-    First we identify the minimum in the conductance. If it not localized at
-    zero field we use this value to determine on what scale to have the weight
-    decays.
+    First, we filter the data and we identify the minimum in the conductance.
+    If it is not localized at zero field we use this value to determine on what
+    scale to have the weight decay.
 
     Parameters
     ----------
-    field : [type]
-        [description]
-    dsigma : [type]
-        [description]
-    stiffness : [type]
-        [description]
+    field : np.ndarray
+        Field at which the conductance was measured.
+    dsigma : np.ndarray
+        Value of the conductance (normalized to zero at zero field)
+    mask : {"exp", "peak-gauss", "gauss", "lorentz"}
+        Type of mask to use.
+    stiffness : float
+        Factor controlling the decay speed of the weigth.
+    htr : float
+        Value of the Htr field. If specified used if it is larger than the
+        position of the minimum.
+    filter_points : int
+        Number of points to use in the savgol filter applied before finding the
+        minimum.
+    filter_order : int
+        Order of the polynome to use in the savgol filter applied before finding the
+        minimum.
+
+    Returns
+    -------
+    np.ndarray
+        Weight that can be used to give more importance to data close to 0.
 
     """
     filtered_dsigma = savgol_filter(dsigma, 31, 3)
     index = np.argmin(filtered_dsigma)
-    wf = max(field[index], 2*htr) if htr is not None else field[index]
-    if mask == 'exp':
-        return np.exp(-np.abs(field/wf)*stiffness)
-    elif mask == 'peak-gauss':
-        return (1*np.exp(-np.abs(field/wf)**2*stiffness) +
-                2*np.exp(-np.abs(field/wf*2)**2*stiffness))
-    elif mask == 'gauss':
-        return np.exp(-np.abs(field/wf)**2*stiffness)
-    elif mask == 'lorentz':
-        return 1/(1 + np.abs(field/wf)**2*stiffness)
-
+    wf = max(field[index], 2 * htr) if htr is not None else field[index]
+    if mask == "exp":
+        return np.exp(-np.abs(field / wf) * stiffness)
+    elif mask == "gauss":
+        return np.exp(-((field / wf) ** 2) * stiffness)
+    elif mask == "lorentz":
+        return 1 / (1 + (field / wf) ** 2 * stiffness)
