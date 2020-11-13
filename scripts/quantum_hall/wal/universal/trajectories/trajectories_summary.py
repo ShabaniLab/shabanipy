@@ -40,11 +40,11 @@ with get_all_trajectory_data() as f:
             continue
 
         n.append(int(group.name[group.name.index("=") + 1 :]))
-        l.append(g.attrs["length"] - group.attrs["calculated_length"])
-        s.append(g.attrs["surface"] - group.attrs["calculated_surface"])
-        cosj.append(group.attrs["cosj"] - group.attrs["calculated_cosj"])
+        l.append(group.attrs["length"] - group.attrs["calculated_length"])
+        s.append(group.attrs["surface"] - group.attrs["calculated_surface"])
+        cosj.append(group.attrs["cosj'"] - group.attrs["calculated_cosj"])
 
-if l:
+if n:
 
     f, (ax1, ax2, ax3) = plt.subplots(1, 3, constrained_layout=True)
 

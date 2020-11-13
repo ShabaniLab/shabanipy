@@ -23,7 +23,7 @@ from typing import Tuple, Optional
 import h5py
 import pandas as pd
 import numpy as np
-from scipy.integrate import cumtrapz
+from scipy.integrate import trapz
 from numba import njit
 from typing_extensions import Literal, overload
 
@@ -144,7 +144,7 @@ def generate_trajectory(seed: int, n_scat: int) -> np.ndarray:
     return trajectory.T
 
 
-def create_all_data() -> None:
+def create_all_data(verbose=False) -> None:
     """Function to create a data file to store all the trajectory data.
 
     The data file is organized as follow:
@@ -235,7 +235,9 @@ def create_all_data() -> None:
             # Validate teh trace against the parameters provided in Sawada paper
             is_valid &= abs(np.sum(l) - L[i]) < 0.005
             is_valid &= abs(cos(angle[-1]) - cosj[i]) < 5e-6
-            calculated_surface = cumtrapz(y, x)
+            # The surface is always used inside a cos and as a consequence the sign
+            # is irrerlevant.
+            calculated_surface = abs(trapz(y, x))
             is_valid &= abs(calculated_surface - S[i]) < 0.005
             valid_traces[i] = is_valid
 
@@ -271,7 +273,7 @@ def create_all_data() -> None:
             g1.attrs["seed"] = seed[i]
             g1.attrs["surface"] = S[i]
             g1.attrs["calculated_surface"] = calculated_surface
-            g1.attrs["cosj'"] = cosj[i]
+            g1.attrs["cosj"] = cosj[i]
             g1.attrs["calculated_cosj"] = cos(angle[-1])
 
         # Store the parameters for the valid trajectories
@@ -289,8 +291,13 @@ def create_all_data() -> None:
     os.rename(temp_file, os.path.join(dir_name, "trajectories_data.hdf5"))
 
 
-def _ensure_trajectory_data_exist() -> str:
+def _ensure_trajectory_data_exist(force: bool) -> str:
     """Ensure that the trajectory data exist.
+
+    Parameters
+    ----------
+    force : bool
+        Force the creation of new data no matter if data pre-exist.
 
     Returns
     -------
@@ -301,14 +308,19 @@ def _ensure_trajectory_data_exist() -> str:
     # This could cause problems in some installs but hopefully it won't happen in
     # pratice
     path = os.path.join(os.path.dirname(__file__), "trajectories_data.hdf5")
-    if not os.path.exists(path):
+    if force or not os.path.exists(path):
         create_all_data()
 
     return path
 
 
-def get_all_trajectory_data() -> h5py.File:
+def get_all_trajectory_data(force: bool = False) -> h5py.File:
     """Access all the trajectories data.
+
+    Parameters
+    ----------
+    force : bool
+        Force the creation of new data no matter if data pre-exist.
 
     Returns
     -------
@@ -322,7 +334,7 @@ def get_all_trajectory_data() -> h5py.File:
         get_detailed_trajectory_data and get_summary_trajectory_data
 
     """
-    path = _ensure_trajectory_data_exist()
+    path = _ensure_trajectory_data_exist(force)
     f = h5py.File(path, "r")
     return f
 
