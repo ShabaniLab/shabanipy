@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # -----------------------------------------------------------------------------
-# Copyright 2019 by ShabaniPy Authors, see AUTHORS for more details.
+# Copyright 2019-2020 by ShabaniPy Authors, see AUTHORS for more details.
 #
 # Distributed under the terms of the MIT license.
 #
@@ -17,24 +17,23 @@ We use an explicit state to avoid relying on a global variable.
 
 """
 from collections import namedtuple
+from typing import Tuple
 
 import numpy as np
-from numba  import njit
+from numba import njit
 
 
-Ran1State = namedtuple('Ran1State', ['seed', 'iy', 'iv'])
+Ran1State = namedtuple("Ran1State", ["seed", "iy", "iv"])
 
 
 @njit(fastmath=True)
 def seed_ran1(seed: int) -> Ran1State:
-    """Create a new state based on a seed.
-
-    """
+    """Create a new state based on a seed."""
     return ran1(Ran1State(seed, 0, np.empty(1)))[1]
 
 
 @njit(fastmath=True)
-def ran1(state: Ran1State) -> (float, Ran1State):
+def ran1(state: Ran1State) -> Tuple[float, Ran1State]:
     """Ran1 implementation.
 
     Parameters
@@ -55,7 +54,7 @@ def ran1(state: Ran1State) -> (float, Ran1State):
     IQ = 127773
     IR = 2836
     NTAB = 32
-    NDIV = 1 + (IM-1) / NTAB
+    NDIV = 1 + (IM - 1) / NTAB
     EPS = 3.0e-16
     AM = 1.0 / IM
     RNMX = 1.0 - EPS
@@ -71,7 +70,7 @@ def ran1(state: Ran1State) -> (float, Ran1State):
 
         for j in range(NTAB + 7, -1, -1):
             k = int(seed / IQ)
-            seed = IA*(seed - k*IQ) - IR*k
+            seed = IA * (seed - k * IQ) - IR * k
 
             if seed < 0:
                 seed += IM
@@ -80,18 +79,18 @@ def ran1(state: Ran1State) -> (float, Ran1State):
 
         iy = iv[0]
 
-    k = int(seed/IQ)
-    seed = IA*(seed - k*IQ) - IR*k
+    k = int(seed / IQ)
+    seed = IA * (seed - k * IQ) - IR * k
     if seed < 0:
         seed += IM
-    j = int(iy /NDIV)
+    j = int(iy / NDIV)
     iy = iv[j]
     iv[j] = seed
-    temp = np.float64(np.float32(RNMX)) if AM*iy > RNMX else AM*iy
+    temp = np.float64(np.float32(RNMX)) if AM * iy > RNMX else AM * iy
     return temp, Ran1State(seed, iy, iv)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     state = seed_ran1(-1000)
     for i in range(3):
         value, state = ran1(state)

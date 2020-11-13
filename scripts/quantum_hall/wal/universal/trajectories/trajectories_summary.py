@@ -11,10 +11,10 @@
 """
 import matplotlib.pyplot as plt
 
-from shabanipy.quantum_hall.wal.universal.trajectories import get_trajectory_data
+from shabanipy.quantum_hall.wal.universal.trajectories import get_all_trajectory_data
 
 
-with get_trajectory_data("all") as f:
+with get_all_trajectory_data() as f:
 
     # Number of trajectories
     n_valid = len(f["valid"])
@@ -26,10 +26,11 @@ with get_trajectory_data("all") as f:
         f"match for {n_valid}, but disagree with {n_invalid}.\n"
     )
 
-    # Aggregate total length and cosj to plot distance to expected value
+    # Aggregate total length, surface and cosj to plot distance to expected value
     # Also identify how many trajectories have a different number of scattering
     n = []
     l = []
+    s = []
     cosj = []
     nscat = 0
     for g in f["invalid"]:
@@ -40,11 +41,12 @@ with get_trajectory_data("all") as f:
 
         n.append(int(group.name[group.name.index("=") + 1 :]))
         l.append(g.attrs["length"] - group.attrs["calculated_length"])
-        cosj.append(group.attrs["length"] - group.attrs["calculated_length"])
+        s.append(g.attrs["surface"] - group.attrs["calculated_surface"])
+        cosj.append(group.attrs["cosj"] - group.attrs["calculated_cosj"])
 
 if l:
 
-    f, (ax1, ax2) = plt.subplots(1, 2, constrained_layout=True)
+    f, (ax1, ax2, ax3) = plt.subplots(1, 3, constrained_layout=True)
 
     ax1.bar(n, l)
     ax1.axhline(0.005, color="k", linestyle="--")
@@ -52,16 +54,22 @@ if l:
     ax1.set_xlabel("Trajectory number")
     ax1.set_ylabel("L$_{paper}$ - L$_{calculated}$")
 
-    ax2.bar(n, cosj)
-    ax2.axhline(5e-6, color="k", linestyle="--")
-    ax2.axhline(-5e-6, color="k", linestyle="--")
+    ax2.bar(n, l)
+    ax2.axhline(0.005, color="k", linestyle="--")
+    ax2.axhline(-0.005, color="k", linestyle="--")
     ax2.set_xlabel("Trajectory number")
-    ax2.set_ylabel("cosj$_{paper}$ - cosj$_{calculated}$")
+    ax2.set_ylabel("S$_{paper}$ - S$_{calculated}$")
+
+    ax3.bar(n, cosj)
+    ax3.axhline(5e-6, color="k", linestyle="--")
+    ax3.axhline(-5e-6, color="k", linestyle="--")
+    ax3.set_xlabel("Trajectory number")
+    ax3.set_ylabel("cosj$_{paper}$ - cosj$_{calculated}$")
 
     plt.show()
 
 else:
     print(
         "No trajectory with the right number of scattering disagree based on "
-        "the total length or final angle."
+        "the total length, surface or final angle."
     )
