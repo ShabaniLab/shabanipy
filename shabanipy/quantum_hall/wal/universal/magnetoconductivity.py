@@ -10,30 +10,31 @@
 
 """
 from math import cos, exp, pi
+from typing import Union
 
 import numpy as np
-from numba import njit
+from numba import generated_jit, types
 
 #: Corrective factor in the magneto conductance calculation depending on the
 #: maximum number of scattering events considered.
 F = np.sum(1 / (np.arange(3, 5001) - 2))
 
 
-@njit(fastmath=True)
+@generated_jit(nopython=True, fastmath=True)
 def wal_magneto_conductance(
-    fields: np.ndarray,
+    fields: Union[float, np.ndarray],
     l_phi: float,
     traces: np.ndarray,
-    surfaces: np.ndarray,
     lengths: np.ndarray,
+    surfaces: np.ndarray,
     cosjs: np.ndarray,
-) -> float:
+) -> Union[float, np.ndarray]:
     """Compute the magneto conductance using precomputed trajectories traces.
 
     Parameters
     ----------
     fields : np.ndarray
-        1D array of the out of plane field (in rad/surface unit)
+        1D array of the out of plane field (in unit of B_tr)
     l_phi : float
         Spin phase coherence length.
     traces : np.ndarray
@@ -47,16 +48,28 @@ def wal_magneto_conductance(
 
     Returns
     -------
-    float
-        Conductance at the given field in unit of e^2/(2πh)
+    np.ndarray
+        Conductance at the given fields in unit of e^2/(2πh)
         Same unit as used in W. Knap et al., PRB. 53, 3912–3924 (1996).
 
     """
-    sigma = np.empty_like(fields)
-    for i, f in enumerate(fields):
-        xj = np.exp(-lengths / l_phi) * 0.5 * traces * (1 + cosjs)
-        a = xj * np.cos(f * surfaces)
+    if isinstance(fields, types.Float):
 
-        sigma[i] = -2 * F * np.sum(a) / len(traces)
+        def _inner(fields, l_phi, traces, lengths, surfaces, cosjs):
+            xj = np.exp(-lengths / l_phi) * 0.5 * traces * (1 + cosjs)
+            a = xj * np.cos(fields * surfaces)
+            return -2 * F * np.sum(a) / len(traces)
 
-    return sigma
+    else:
+
+        def _inner(fields, l_phi, traces, lengths, surfaces, cosjs):
+            sigma = np.empty_like(fields)
+            for i, f in enumerate(fields):
+                xj = np.exp(-lengths / l_phi) * 0.5 * traces * (1 + cosjs)
+                a = xj * np.cos(f * surfaces)
+
+                sigma[i] = -2 * F * np.sum(a) / len(traces)
+
+            return sigma
+
+    return _inner
