@@ -291,7 +291,7 @@ def create_all_data(verbose=False) -> None:
     os.rename(temp_file, os.path.join(dir_name, "trajectories_data.hdf5"))
 
 
-def _ensure_trajectory_data_exist(force: bool) -> str:
+def _ensure_trajectory_data_exist(force: bool = False) -> str:
     """Ensure that the trajectory data exist.
 
     Parameters
@@ -340,6 +340,7 @@ def get_all_trajectory_data(force: bool = False) -> h5py.File:
 
 
 def get_detailed_trajectory_data(
+    dtype: np.dtype = np.dtype("float32"),
     trajectory_number: Optional[int] = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Retrieve the length and angular properties of each segments of trajectories.
@@ -348,6 +349,9 @@ def get_detailed_trajectory_data(
 
     Parameters
     ----------
+    dtype : np.dtype, optional
+        Specify the dtype of the returned data, by default use 32 bits floating
+        points number to speed up subsequent computation.
     trajectory_number : Optional[int], optional
         Cap on the number of trajectories for which to return the information,
         by default None which will provide the data of all valid trajectories.
@@ -382,13 +386,20 @@ def get_detailed_trajectory_data(
             sl = slice(0, index[trajectory_number, 1])
         else:
             sl = slice(0, None)
-        l = group["l"][sl]
-        c_phi = group["c_phi"][sl]
-        c_3phi = group["c_3phi"][sl]
-        s_phi = group["s_phi"][sl]
-        s_3phi = group["s_3phi"][sl]
+        l = group["l"][sl].astype(dtype)
+        c_phi = group["c_phi"][sl].astype(dtype)
+        c_3phi = group["c_3phi"][sl].astype(dtype)
+        s_phi = group["s_phi"][sl].astype(dtype)
+        s_3phi = group["s_3phi"][sl].astype(dtype)
 
-    return index, l, c_phi, c_3phi, s_phi, s_3phi
+    return (
+        index[:trajectory_number] if trajectory_number is not None else index,
+        l,
+        c_phi,
+        c_3phi,
+        s_phi,
+        s_3phi,
+    )
 
 
 def get_summary_trajectory_data(
