@@ -12,10 +12,10 @@
 from math import cos, exp, pi
 
 import numpy as np
-from numba import njit, prange
+from numba import njit, prange, generated_jit, types
 
 
-@njit(fastmath=True)
+@generated_jit(nopython=True, fastmath=True)
 def _compute_single_trajectory_trace_no_zeeman(
     l: np.ndarray,
     c_phi: np.ndarray,
@@ -23,8 +23,8 @@ def _compute_single_trajectory_trace_no_zeeman(
     s_phi: np.ndarray,
     s_3phi: np.ndarray,
     theta_alpha: float,
-    theta_beta3: float,
     theta_beta1: float,
+    theta_beta3: float,
 ) -> float:
     """Find the trace of the matrix R_tot^2 for a single trajectory
 
@@ -53,51 +53,78 @@ def _compute_single_trajectory_trace_no_zeeman(
         The trace of the matrix R_tot^2
 
     """
-    rotations = np.empty((len(l), 2, 2), dtype=np.complex128)
+    if l.dtype == types.float32:
+        fcast = np.float32
+        ccast = np.complex64
+        inner_cdtype = np.dtype("complex64")
+    else:
+        fcast = np.float64
+        ccast = np.complex128
+        inner_cdtype = np.dtype("complex128")
 
-    B_x = theta_alpha * s_phi + theta_beta3 * c_3phi + theta_beta1 * c_phi
-    B_y = -theta_alpha * c_phi + theta_beta3 * s_3phi - theta_beta1 * s_phi
-    B = np.sqrt(B_x ** 2 + B_y ** 2)
-    theta = B * l
-    c_theta = np.cos(0.5 * theta)
-    s_theta = np.sin(0.5 * theta)
+    def _inner(
+        l: np.ndarray,
+        c_phi: np.ndarray,
+        c_3phi: np.ndarray,
+        s_phi: np.ndarray,
+        s_3phi: np.ndarray,
+        theta_alpha: float,
+        theta_beta1: float,
+        theta_beta3: float,
+    ):
+        rotations = np.empty((len(l), 2, 2), dtype=inner_cdtype)
 
-    psi1 = np.empty(len(l), dtype=np.complex128)
-    psi2 = np.empty(len(l), dtype=np.complex128)
-    for i, (b, bx, by) in enumerate(zip(B, B_x, B_y)):
-        if b != 0:
-            psi1[i] = -1j * (bx / b + 1j * by / b)
-            psi2[i] = -1j * (bx / b - 1j * by / b)
-        else:
-            psi1[i] = psi2[i] = 0
+        # Necessary cast to avoid upcasting to 64 bits
+        theta_alpha = fcast(theta_alpha)
+        theta_beta1 = fcast(theta_beta1)
+        theta_beta3 = fcast(theta_beta3)
+        B_x = theta_alpha * s_phi + theta_beta3 * c_3phi + theta_beta1 * c_phi
+        B_y = -theta_alpha * c_phi + theta_beta3 * s_3phi - theta_beta1 * s_phi
+        B = np.sqrt(B_x ** 2 + B_y ** 2)
+        theta = B * l
+        # Necessary cast to avoid upcasting to 64 bits
+        c_theta = np.cos(fcast(0.5) * theta)
+        s_theta = np.sin(fcast(0.5) * theta)
 
-    rotations[:, 0, 0] = c_theta
-    rotations[:, 0, 1] = psi1 * s_theta
-    rotations[:, 1, 0] = psi2 * s_theta
-    rotations[:, 1, 1] = c_theta
+        psi1 = np.empty(len(l), dtype=inner_cdtype)
+        psi2 = np.empty(len(l), dtype=inner_cdtype)
+        for i, (b, bx, by) in enumerate(zip(B, B_x, B_y)):
+            if b != 0:
+                # Necessary cast to avoid upcasting to 128 bits
+                psi1[i] = -ccast(1j) * (bx / b + ccast(1j) * by / b)
+                psi2[i] = -ccast(1j) * (bx / b - ccast(1j) * by / b)
+            else:
+                psi1[i] = psi2[i] = 0
 
-    # For 2x2 matrices calling BLAS matrix multiplication has a large overhead
-    # and the need to allocate the output matrix is likely to cause issue with
-    # parallelization of the code.
-    cw_rot = np.array([[1, 0], [0, 1]], dtype=np.complex128)
-    for i in range(0, len(l)):
-        # equivalent to cw_rot = r @ cw_rot
-        r = rotations[i]
-        a = r[0, 0] * cw_rot[0, 0] + r[0, 1] * cw_rot[1, 0]
-        b = r[0, 0] * cw_rot[0, 1] + r[0, 1] * cw_rot[1, 1]
-        c = r[1, 0] * cw_rot[0, 0] + r[1, 1] * cw_rot[1, 0]
-        d = r[1, 0] * cw_rot[0, 1] + r[1, 1] * cw_rot[1, 1]
-        cw_rot[0, 0] = a
-        cw_rot[0, 1] = b
-        cw_rot[1, 0] = c
-        cw_rot[1, 1] = d
+        rotations[:, 0, 0] = c_theta
+        rotations[:, 0, 1] = psi1 * s_theta
+        rotations[:, 1, 0] = psi2 * s_theta
+        rotations[:, 1, 1] = c_theta
 
-    return (
-        cw_rot[0, 0] * cw_rot[0, 0]
-        + cw_rot[0, 1] * cw_rot[1, 0]
-        + cw_rot[1, 0] * cw_rot[0, 1]
-        + cw_rot[1, 1] * cw_rot[1, 1]
-    ).real
+        # For 2x2 matrices calling BLAS matrix multiplication has a large overhead
+        # and the need to allocate the output matrix is likely to cause issue with
+        # parallelization of the code.
+        cw_rot = np.array([[1, 0], [0, 1]], dtype=inner_cdtype)
+        for i in range(0, len(l)):
+            # equivalent to cw_rot = r @ cw_rot
+            r = rotations[i]
+            a = r[0, 0] * cw_rot[0, 0] + r[0, 1] * cw_rot[1, 0]
+            b = r[0, 0] * cw_rot[0, 1] + r[0, 1] * cw_rot[1, 1]
+            c = r[1, 0] * cw_rot[0, 0] + r[1, 1] * cw_rot[1, 0]
+            d = r[1, 0] * cw_rot[0, 1] + r[1, 1] * cw_rot[1, 1]
+            cw_rot[0, 0] = a
+            cw_rot[0, 1] = b
+            cw_rot[1, 0] = c
+            cw_rot[1, 1] = d
+
+        return (
+            cw_rot[0, 0] * cw_rot[0, 0]
+            + cw_rot[0, 1] * cw_rot[1, 0]
+            + cw_rot[1, 0] * cw_rot[0, 1]
+            + cw_rot[1, 1] * cw_rot[1, 1]
+        ).real
+
+    return _inner  # type: ignore
 
 
 @njit(fastmath=True, parallel=True)
@@ -133,10 +160,13 @@ def compute_trajectory_traces_no_zeeman(
         Sinus of the triple angle of the trajectory on each segment.
     theta_alpha : float
         Rashba SOI induced rotation per unit length
-    theta_beta3 : float
-        Cubic Dresselhaus induced rotation per unit length
+        (see utils for conversion functions)
     theta_beta1 : float
+        Cubic Dresselhaus induced rotation per unit length
+        (see utils for conversion functions)
+    theta_beta3 : float
         Linear Dresselhaus induced rotation per unit length
+        (see utils for conversion functions)
     N_orbit : int
         Number of orbitals to use in the calculations.
 
@@ -159,8 +189,8 @@ def compute_trajectory_traces_no_zeeman(
                 s_phi[begin:end],
                 s_3phi[begin:end],
                 theta_alpha,
-                theta_beta3,
                 theta_beta1,
+                theta_beta3,
             )
             T[traj_id] = T_a
 
@@ -175,8 +205,8 @@ def _compute_single_trajectory_trace_zeeman(
     s_phi: np.ndarray,
     s_3phi: np.ndarray,
     theta_alpha: float,
-    theta_beta3: float,
     theta_beta1: float,
+    theta_beta3: float,
     B_zx: float,
     B_zy: float,
 ) -> float:
@@ -211,87 +241,126 @@ def _compute_single_trajectory_trace_zeeman(
         The trace of the matrix R_tot^2
 
     """
-    # Computation for the clockwise trajectory
-    rotations = np.empty((len(l), 2, 2), dtype=np.complex128)
+    if l.dtype == types.float32:
+        fcast = np.float32
+        ccast = np.complex64
+        inner_cdtype = np.dtype("complex64")
+    else:
+        fcast = np.float64
+        ccast = np.complex128
+        inner_cdtype = np.dtype("complex128")
 
-    B_x_cw = theta_alpha * s_phi + theta_beta3 * c_3phi + theta_beta1 * c_phi + B_zx
-    B_y_cw = -theta_alpha * c_phi + theta_beta3 * s_3phi - theta_beta1 * s_phi + B_zy
-    B_cw = np.sqrt(B_x_cw ** 2 + B_y_cw ** 2)
-    theta_cw = B_cw * l
-    c_theta_cw = np.cos(0.5 * theta_cw)
-    s_theta_cw = np.sin(0.5 * theta_cw)
+    def _inner(
+        l: np.ndarray,
+        c_phi: np.ndarray,
+        c_3phi: np.ndarray,
+        s_phi: np.ndarray,
+        s_3phi: np.ndarray,
+        theta_alpha: float,
+        theta_beta3: float,
+        theta_beta1: float,
+        B_zx: float,
+        B_zy: float,
+    ):
+        # Computation for the clockwise trajectory
+        rotations = np.empty((len(l), 2, 2), dtype=inner_cdtype)
 
-    psi1_cw = np.empty(len(l), dtype=np.complex128)
-    psi2_cw = np.empty(len(l), dtype=np.complex128)
-    for i, (b, bx, by) in enumerate(zip(B_cw, B_x_cw, B_y_cw)):
-        if b != 0:
-            psi1_cw[i] = -1j * (bx / b + 1j * by / b)
-            psi2_cw[i] = -1j * (bx / b - 1j * by / b)
-        else:
-            psi1_cw[i] = psi2_cw[i] = 0
+        # Necessary cast to avoid upcasting to 64 bits
+        theta_alpha = fcast(theta_alpha)
+        theta_beta1 = fcast(theta_beta1)
+        theta_beta3 = fcast(theta_beta3)
+        B_zx = fcast(B_zx)
+        B_zy = fcast(B_zy)
+        B_x_cw = theta_alpha * s_phi + theta_beta3 * c_3phi + theta_beta1 * c_phi + B_zx
+        B_y_cw = (
+            -theta_alpha * c_phi + theta_beta3 * s_3phi - theta_beta1 * s_phi + B_zy
+        )
+        B_cw = np.sqrt(B_x_cw ** 2 + B_y_cw ** 2)
+        theta_cw = B_cw * l
+        # Necessary cast to avoid upcasting to 64 bits
+        c_theta_cw = np.cos(fcast(0.5) * theta_cw)
+        s_theta_cw = np.sin(fcast(0.5) * theta_cw)
 
-    rotations[:, 0, 0] = c_theta_cw
-    rotations[:, 0, 1] = psi1_cw * s_theta_cw
-    rotations[:, 1, 0] = psi2_cw * s_theta_cw
-    rotations[:, 1, 1] = c_theta_cw
+        psi1_cw = np.empty(len(l), dtype=inner_cdtype)
+        psi2_cw = np.empty(len(l), dtype=inner_cdtype)
+        for i, (b, bx, by) in enumerate(zip(B_cw, B_x_cw, B_y_cw)):
+            if b != 0:
+                # Necessary cast to avoid upcasting to 128 bits
+                psi1_cw[i] = -ccast(1j) * (bx / b + ccast(1j) * by / b)
+                psi2_cw[i] = -ccast(1j) * (bx / b - ccast(1j) * by / b)
+            else:
+                psi1_cw[i] = psi2_cw[i] = 0
 
-    # For 2x2 matrices calling BLAS matrix multiplication has a large overhead
-    # and the need to allocate the output matrix is likely to cause issue with
-    # parallelization of the code.
-    cw_rot = np.array([[1, 0], [0, 1]], dtype=np.complex128)
-    for i in range(0, len(l)):
-        # equivalent to cw_rot = r @ cw_rot
-        r = rotations_cw[i]
-        a = r[0, 0] * cw_rot[0, 0] + r[0, 1] * cw_rot[1, 0]
-        b = r[0, 0] * cw_rot[0, 1] + r[0, 1] * cw_rot[1, 1]
-        c = r[1, 0] * cw_rot[0, 0] + r[1, 1] * cw_rot[1, 0]
-        d = r[1, 0] * cw_rot[0, 1] + r[1, 1] * cw_rot[1, 1]
-        cw_rot[0, 0] = a
-        cw_rot[0, 1] = b
-        cw_rot[1, 0] = c
-        cw_rot[1, 1] = d
+        rotations[:, 0, 0] = c_theta_cw
+        rotations[:, 0, 1] = psi1_cw * s_theta_cw
+        rotations[:, 1, 0] = psi2_cw * s_theta_cw
+        rotations[:, 1, 1] = c_theta_cw
 
-    # Computation for the counter clock wise trajectory
+        # For 2x2 matrices calling BLAS matrix multiplication has a large overhead
+        # and the need to allocate the output matrix is likely to cause issue with
+        # parallelization of the code.
+        cw_rot = np.array([[1, 0], [0, 1]], dtype=inner_cdtype)
+        for i in range(0, len(l)):
+            # equivalent to cw_rot = r @ cw_rot
+            r = rotations[i]
+            a = r[0, 0] * cw_rot[0, 0] + r[0, 1] * cw_rot[1, 0]
+            b = r[0, 0] * cw_rot[0, 1] + r[0, 1] * cw_rot[1, 1]
+            c = r[1, 0] * cw_rot[0, 0] + r[1, 1] * cw_rot[1, 0]
+            d = r[1, 0] * cw_rot[0, 1] + r[1, 1] * cw_rot[1, 1]
+            cw_rot[0, 0] = a
+            cw_rot[0, 1] = b
+            cw_rot[1, 0] = c
+            cw_rot[1, 1] = d
 
-    B_x_ccw = -theta_alpha * s_phi - theta_beta3 * c_3phi - theta_beta1 * c_phi + B_zx
-    B_y_ccw = theta_alpha * c_phi - theta_beta3 * s_3phi + theta_beta1 * s_phi + B_zy
-    B_ccw = np.sqrt(B_x_ccw ** 2 + B_y_ccw ** 2)
-    theta_ccw = B_ccw * l
-    c_theta_ccw = np.cos(0.5 * theta_ccw)
-    s_theta_ccw = np.sin(0.5 * theta_ccw)
+        # Computation for the counter clock wise trajectory
 
-    psi1_ccw = np.empty(len(l), dtype=np.complex128)
-    psi2_ccw = np.empty(len(l), dtype=np.complex128)
-    for i, (b, bx, by) in enumerate(zip(B_ccw, B_x_ccw, B_y_ccw)):
-        if b != 0:
-            psi1_ccw[i] = -1j * (bx / b + 1j * by / b)
-            psi2_ccw[i] = -1j * (bx / b - 1j * by / b)
-        else:
-            psi1_ccw[i] = psi2_ccw[i] = 0
+        B_x_ccw = (
+            -theta_alpha * s_phi - theta_beta3 * c_3phi - theta_beta1 * c_phi + B_zx
+        )
+        B_y_ccw = (
+            theta_alpha * c_phi - theta_beta3 * s_3phi + theta_beta1 * s_phi + B_zy
+        )
+        B_ccw = np.sqrt(B_x_ccw ** 2 + B_y_ccw ** 2)
+        theta_ccw = B_ccw * l
+        # Necessary cast to avoid upcasting to 64 bits
+        c_theta_ccw = np.cos(fcast(0.5) * theta_ccw)
+        s_theta_ccw = np.sin(fcast(0.5) * theta_ccw)
 
-    rotations[:, 0, 0] = c_theta_ccw
-    rotations[:, 0, 1] = psi1_ccw * s_theta_ccw
-    rotations[:, 1, 0] = psi2_ccw * s_theta_ccw
-    rotations[:, 1, 1] = c_theta_ccw
-    ccw_rot = np.array([[1, 0], [0, 1]], dtype=np.complex128)
-    for i in range(len(l) - 1, -1, -1):
-        # equivalent to ccw_rot = r @ ccw_rot
-        r = rotations_ccw[i]
-        a = r[0, 0] * ccw_rot[0, 0] + r[0, 1] * ccw_rot[1, 0]
-        b = r[0, 0] * ccw_rot[0, 1] + r[0, 1] * ccw_rot[1, 1]
-        c = r[1, 0] * ccw_rot[0, 0] + r[1, 1] * ccw_rot[1, 0]
-        d = r[1, 0] * ccw_rot[0, 1] + r[1, 1] * ccw_rot[1, 1]
-        ccw_rot[0, 0] = a
-        ccw_rot[0, 1] = b
-        ccw_rot[1, 0] = c
-        ccw_rot[1, 1] = d
+        psi1_ccw = np.empty(len(l), dtype=inner_cdtype)
+        psi2_ccw = np.empty(len(l), dtype=inner_cdtype)
+        for i, (b, bx, by) in enumerate(zip(B_ccw, B_x_ccw, B_y_ccw)):
+            if b != 0:
+                # Necessary cast to avoid upcasting to 128 bits
+                psi1_ccw[i] = -ccast(1j) * (bx / b + ccast(1j) * by / b)
+                psi2_ccw[i] = -ccast(1j) * (bx / b - ccast(1j) * by / b)
+            else:
+                psi1_ccw[i] = psi2_ccw[i] = 0
 
-    return (
-        ccw_rot[0, 0].conjugate() * cw_rot[0, 0]
-        + ccw_rot[1, 0].conjugate() * cw_rot[1, 0]
-        + ccw_rot[0, 1].conjugate() * cw_rot[0, 1]
-        + ccw_rot[1, 1].conjugate() * cw_rot[1, 1]
-    ).real
+        rotations[:, 0, 0] = c_theta_ccw
+        rotations[:, 0, 1] = psi1_ccw * s_theta_ccw
+        rotations[:, 1, 0] = psi2_ccw * s_theta_ccw
+        rotations[:, 1, 1] = c_theta_ccw
+        ccw_rot = np.array([[1, 0], [0, 1]], dtype=inner_cdtype)
+        for i in range(len(l) - 1, -1, -1):
+            # equivalent to ccw_rot = r @ ccw_rot
+            r = rotations[i]
+            a = r[0, 0] * ccw_rot[0, 0] + r[0, 1] * ccw_rot[1, 0]
+            b = r[0, 0] * ccw_rot[0, 1] + r[0, 1] * ccw_rot[1, 1]
+            c = r[1, 0] * ccw_rot[0, 0] + r[1, 1] * ccw_rot[1, 0]
+            d = r[1, 0] * ccw_rot[0, 1] + r[1, 1] * ccw_rot[1, 1]
+            ccw_rot[0, 0] = a
+            ccw_rot[0, 1] = b
+            ccw_rot[1, 0] = c
+            ccw_rot[1, 1] = d
+
+        return (
+            ccw_rot[0, 0].conjugate() * cw_rot[0, 0]
+            + ccw_rot[1, 0].conjugate() * cw_rot[1, 0]
+            + ccw_rot[0, 1].conjugate() * cw_rot[0, 1]
+            + ccw_rot[1, 1].conjugate() * cw_rot[1, 1]
+        ).real
+
+    return _inner  # type: ignore
 
 
 @njit(fastmath=True, parallel=True)
@@ -360,8 +429,8 @@ def compute_trajectory_traces_zeeman(
                 s_phi[begin:end],
                 s_3phi[begin:end],
                 theta_alpha,
-                theta_beta3,
                 theta_beta1,
+                theta_beta3,
                 B_zx,
                 B_zy,
             )
