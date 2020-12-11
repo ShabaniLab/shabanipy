@@ -181,8 +181,12 @@ class ProcessingStep(AnalysisStep):
             out = (out,)
 
         group = out_explorer.require_group(self.tier, classifiers)
+
         for n, d in zip(self.output_quantities, out):
-            dset = group.create_dataset(n, data=d, compression="gzip")
+            dset = group.create_dataset(n, data=d)
+            """If running with 2d array (bias in forward and backward directions) you 
+            can use compression="gzip" """
+            #dset = group.create_dataset(n, data=d, compression="gzip")
             dset.attrs["__step_name__"] = self.name
             dset.attrs.update(self.parameters)
 

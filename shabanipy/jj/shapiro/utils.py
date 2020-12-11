@@ -9,7 +9,7 @@
 """Routines used to study Shapiro steps.
 
 """
-from typing import Union
+from typing import Tuple, Optional, Union
 
 import numpy as np
 from scipy.signal import find_peaks
@@ -104,8 +104,8 @@ def correct_voltage_offset_per_power(
         for j, h in enumerate(histo):
 
             # Enforce that the peaks are at least of about 1 (ignore fractional steps)
-            # In some cases, height here may cause an issue (not large enough)
-            peaks, _ = find_peaks(h, distance=0.95 / step_fraction, height=max(h) / 2)
+            # In some cases, height here may cause an issue (not large enough or too large)
+            peaks, _ = find_peaks(h, distance=0.95 / step_fraction, height=max(h)/2)
 
             # Calculate deviation of each peak and average
             dev = np.average([volt_1d[i] - round(volt_1d[i]) for i in peaks])
