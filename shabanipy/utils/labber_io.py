@@ -123,6 +123,13 @@ class LogEntry:
     x_name: str = ""
 
 
+def maybe_decode(bytes_or_str: Union[str, bytes]) -> str:
+    """H5py return some string as bytes in 3.10 so convert them."""
+    if isinstance(bytes_or_str, bytes):
+        return bytes_or_str.decode("utf-8")
+    return bytes_or_str
+
+
 @dataclass
 class LabberData:
     """Labber save data in HDF5 files and organize them by channel.
@@ -207,6 +214,11 @@ class LabberData:
                 alternate,
                 *_,
             ) in self._file["Step list"]:
+
+                # Decode byte string from the hdf5 file
+                step = maybe_decode(step)
+                relation = maybe_decode(relation)
+
                 log_configs = [
                     f["Step config"][step]["Step items"]
                     for f in [self._file] + self._nested
@@ -293,7 +305,7 @@ class LabberData:
 
         if not self._logs:
             # Collect all logs names
-            names = [e[0] for e in self._file["Log list"]]
+            names = [maybe_decode(e[0]) for e in self._file["Log list"]]
 
             # Identify scalar complex data
             complex_scalars = [
@@ -610,7 +622,7 @@ class LabberData:
         if not self._file:
             raise RuntimeError("No file currently opened")
 
-        names = [n for n, _ in self._file["Data"]["Channel names"]]
+        names = [maybe_decode(n) for n, _ in self._file["Data"]["Channel names"]]
         if is_complex:
             re_index = names.index(channel_name)
             im_index = re_index + 1
