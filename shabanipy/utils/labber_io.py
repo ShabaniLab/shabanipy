@@ -489,8 +489,18 @@ class LabberData:
                 else:
                     steps_points.append(s.points_per_log)
 
+        # For vectorial data we add to the dimension of the vector at the end
+        # of the step points. We take as many as their are logs.
         if vectorial_data:
-            steps_points.append((vec_dim,) * len(steps_points[0]))
+            steps_points.append(
+                (vec_dim,) * (len(steps_points[0]) if steps_points else 1)
+            )
+
+        # If we get a single value because we are accessing a value defined through
+        # relations to channels we are filtering upon we can stop there and exit
+        # early.
+        if not steps_points:
+            return results[0]  # [np.array([value])]
 
         # Get expected shape per log
         shape_per_logs = np.array(steps_points).T
@@ -625,9 +635,7 @@ class LabberData:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
-        """ Close the underlying HDF5 file when used as a context manager.
-
-        """
+        """Close the underlying HDF5 file when used as a context manager."""
         self.close()
 
 

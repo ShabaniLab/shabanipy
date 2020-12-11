@@ -41,9 +41,7 @@ logger = logging.getLogger(__name__)
 
 
 class Classifier(NamedTuple):
-    """Column identified as a classifying value for the collected data
-
-    """
+    """Column identified as a classifying value for the collected data"""
 
     #: Name of the column in the dataset if relevant (classifiers based on measurement
     #: names do not set this value)
@@ -59,9 +57,7 @@ class Classifier(NamedTuple):
 
 @dataclass
 class NamePattern:
-    """Pattern use to match on a name (str).
-
-    """
+    """Pattern use to match on a name (str)."""
 
     #: List of names that can be matched
     # (allow to aggregate similar data acquired using a different instrument).
@@ -72,9 +68,7 @@ class NamePattern:
     regex: Optional[str] = None
 
     def match(self, name: str) -> bool:
-        """Match a name against the names and regex of the pattern.
-
-        """
+        """Match a name against the names and regex of the pattern."""
         match = False
         if self.names is not None:
             match |= name in self.names
@@ -86,9 +80,7 @@ class NamePattern:
 
 @dataclass
 class FilenamePattern(NamePattern):
-    """Name pattern allowing to extract information from a measurement name.
-
-    """
+    """Name pattern allowing to extract information from a measurement name."""
 
     #: Should the extracted information be used to classify the data.
     use_in_classification: bool = False
@@ -565,17 +557,15 @@ class DataClassifier:
         self._classified_datasets = classified_datasets
 
     def dump_dataset_classification(self):
-        """
-        """
+        """"""
         raise NotImplementedError
 
     def load_dataset_classification(self):
-        """
-        """
+        """"""
         raise NotImplementedError
 
     def consolidate_dataset(self, path: str) -> None:
-        """Consolidate all teh relevant data into a single file."""
+        """Consolidate all the relevant data into a single file."""
         if not self._classified_datasets:
             raise RuntimeError(
                 "No classified datasets to work on. Run `classify_datasets` or"
@@ -783,7 +773,10 @@ class DataClassifier:
                             # Delete the existing dataset and use teh more complete one.
                             del storage[n]
                             dset = storage.create_dataset(
-                                n, data=d, compression="gzip", compression_opts=6,
+                                n,
+                                data=d,
+                                compression="gzip",
+                                compression_opts=6,
                             )
                         else:
                             logger.info(
