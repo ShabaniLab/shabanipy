@@ -225,7 +225,7 @@ class LabberData:
                 ]
 
                 # A step is considered ramped if it has more than one config in any log,
-                # if the first ramp of amy log is ramped, if there is more than one
+                # if the first ramp of any log is ramped, if there is more than one
                 # value for a given constant accross different logs
                 # The format describing a single config is:
                 # ramped, unknown, set value, min, max, center, span, step,
@@ -238,12 +238,17 @@ class LabberData:
 
                 # We assume that if we have relations in one log we have them in all
                 if has_relation:
-                    rel_params = self._file["Step config"][step]["Relation parameters"]
+                    rel_params = {
+                        maybe_decode(k): maybe_decode(v)
+                        for k, v, _ in self._file["Step config"][step][
+                            "Relation parameters"
+                        ]
+                    }
                     relation = (
                         relation,
                         {
                             k: v
-                            for k, v, _ in rel_params
+                            for k, v in rel_params.items()
                             # Preserve only the parameters useful to the relation
                             # \W is a non word character (no letter no digit)
                             if re.match(
