@@ -13,6 +13,7 @@ import logging
 import os
 import re
 from collections import defaultdict, namedtuple
+from contextlib import contextmanager
 from dataclasses import astuple, dataclass, field, fields
 from itertools import product
 from typing import (
@@ -38,6 +39,46 @@ from .labber_io import LabberData, LogEntry, StepConfig
 logger = logging.getLogger(__name__)
 
 # XXX allow to make pattern strict (match all conditions) or tolerant (match one condition)
+
+
+@dataclass
+class SmartLogger:
+
+    #: Character used for indenting nested messages
+    indentation = "  "
+
+    #: Number of indentation to prepend to the message
+    indent_number = 0
+
+    @contextmanager
+    def indent(self) -> Iterator[None]:
+        self.indent_number += 1
+        yield
+        self.indent_number -= 1
+
+    def debug(self, msg: str) -> None:
+        """Log at debug level"""
+        logger.debug(self.indentation * self.indent_number + msg)
+
+    def info(self, msg: str) -> None:
+        """Log at info level"""
+        logger.info(self.indentation * self.indent_number + msg)
+
+
+class DummyLogger(SmartLogger):
+    """Dummy used when matching is performed as part of classification."""
+
+    @contextmanager
+    def indent(self) -> Iterator[None]:
+        yield
+
+    def debug(self, msg: str) -> None:
+        """Log at debug level"""
+        pass
+
+    def info(self, msg: str) -> None:
+        """Log at info level"""
+        pass
 
 
 class Classifier(NamedTuple):
@@ -67,13 +108,17 @@ class NamePattern:
     # XXX allow for multiple regexes
     regex: Optional[str] = None
 
-    def match(self, name: str) -> bool:
+    def match(self, name: str, logger: SmartLogger) -> bool:
         """Match a name against the names and regex of the pattern."""
         match = False
         if self.names is not None:
             match |= name in self.names
+            if not match:
+                logger.debug(f"- {name} not in {self.names}")
         if self.regex is not None:
             match |= bool(re.match(self.regex, name))
+            if not match:
+                logger.debug(f"- {name} does not match {self.regex}")
 
         return match
 
@@ -144,7 +189,7 @@ class ValuePattern:
         if all(getattr(self, f.name) is None for f in fields(self)):
             raise ValueError("At least one field of ValuePattern has to be non None")
 
-    def match(self, value: float) -> bool:
+    def match(self, value: float, logger: SmartLogger) -> bool:
         """Match the pattern against a scalar.
 
         If any condition is met the pattern is considered matched.
@@ -153,20 +198,34 @@ class ValuePattern:
         match = False
         if self.value:
             match |= value == self.value
+            if not match:
+                logger.debug(f"- {value} != {self.value}")
         if self.value_set:
             match |= value in self.value_set
+            if not match:
+                logger.debug(f"- {value} not in {self.value_set}")
         if self.smaller:
             match |= (
                 value < self.smaller
                 if self.strict_comparisons
                 else value <= self.smaller
             )
+            if not match:
+                logger.debug(
+                    f"- {value} {'>=' if self.strict_comparisons else '>'}"
+                    f"{self.smaller}"
+                )
         if self.greater:
             match |= (
                 value > self.greater
                 if self.strict_comparisons
                 else value >= self.greater
             )
+            if not match:
+                logger.debug(
+                    f"- {value} {'<=' if self.strict_comparisons else '<'}"
+                    f"{self.smaller}"
+                )
         return match
 
 
@@ -202,7 +261,9 @@ class RampPattern:
         """A ramp is considered generic if no specific pattern are provided."""
         return not any(getattr(self, f.name) for f in fields(self))
 
-    def match(self, start: float, stop: float, points: int) -> bool:
+    def match(
+        self, start: float, stop: float, points: int, logger: SmartLogger
+    ) -> bool:
         """Determine if a ramp match the pattern."""
         # Allow to match against any ramp.
         if self.is_generic:
@@ -212,10 +273,10 @@ class RampPattern:
         for name, value in zip(("start", "stop", "points"), (start, stop, points)):
             pattern = getattr(self, name)
             if pattern is not None:
-                match |= pattern.match(value)
+                match |= pattern.match(value, logger)
 
         if self.span is not None:
-            match |= self.span.match(abs(stop - start))
+            match |= self.span.match(abs(stop - start), logger)
 
         return match
 
@@ -228,6 +289,7 @@ class StepPattern:
     name: str
 
     #: Name pattern for the step or index of the step.
+    #: Only positive indexes are supported
     name_pattern: Union[NamePattern, int]
 
     #: Single value of the step.
@@ -252,12 +314,14 @@ class StepPattern:
         if isinstance(self.value, dict):
             self.value = ValuePattern(**self.value)
 
-    def match(self, index: int, config: StepConfig) -> bool:
+    def match(self, index: int, config: StepConfig, logger: SmartLogger) -> bool:
         """Match a step that meet all the specify pattern."""
+        logger.debug(f"Matching step {config.name}")
         if isinstance(self.name_pattern, int) and self.name_pattern != index:
+            logger.debug(f"- step index {index} != {self.name_pattern}")
             return False
         elif isinstance(self.name_pattern, NamePattern) and not self.name_pattern.match(
-            config.name
+            config.name, logger
         ):
             return False
 
@@ -265,7 +329,7 @@ class StepPattern:
         if (
             self.value
             and config.value is not None
-            and not self.value.match(config.value)
+            and not self.value.match(config.value, logger)
         ):
             return False
 
@@ -275,17 +339,23 @@ class StepPattern:
         # - finally that all all patterns match
         if self.ramps:
             if not config.ramps:
+                logger.debug(f"- step does not have ramps")
                 return False
             if len(self.ramps) == 1 and self.ramps[0].is_generic:
                 return True
             if len(config.ramps) != len(self.ramps):
+                logger.debug(
+                    f"- step has {len(config.ramps)} ramps,"
+                    f" expected {len(self.ramps)}"
+                )
                 return False
             if any(
-                not rp.match(*(rc.start, rc.stop, rc.steps))
+                not rp.match(*(rc.start, rc.stop, rc.steps), logger=logger)
                 for rc, rp in zip(config.ramps, self.ramps)
             ):
                 return False
 
+        logger.debug("- successful match")
         return True
 
     def extract(self, dataset: LabberData, config: StepConfig) -> tuple:
@@ -323,9 +393,13 @@ class LogPattern:
     name: str
 
     #: Name pattern or index in the log list entries
+    #: Only positive indexes are supported.
     pattern: Union[NamePattern, int]
 
-    #: Name to use for storing the x data of vector data.
+    #: Name to use for storing the x data of vector data. If multiple log data are
+    #: vectorial but refer to the same x, either specify the x_name for a single
+    #: one or use the same name for all. This will ensure that the extracted data
+    #: will be properly shaped to look like normal scans.
     x_name: Optional[str] = None
 
     def __post_init__(self):
@@ -337,22 +411,26 @@ class LogPattern:
                 f" {self.pattern, type(self.pattern)}"
             )
 
-    def match(self, index: int, entry: LogEntry) -> bool:
+    def match(self, index: int, entry: LogEntry, logger: SmartLogger) -> bool:
         """Match a log entry on its index or name.
 
         If a x_name is specified the data have to be vectorial.
 
         """
+        logger.debug(f"Matching log entry: {entry.name}")
         if isinstance(self.pattern, int) and self.pattern != index:
+            logger.debug(f"- log index {index} != {self.pattern}")
             return False
         elif isinstance(self.pattern, NamePattern) and not self.pattern.match(
-            entry.name
+            entry.name, logger
         ):
             return False
 
         if self.x_name and (not entry.is_vector):
+            logger.debug(f"- x_name specified but entry is not vectorial")
             return False
 
+        logger.debug("- successful match")
         return True
 
 
@@ -372,6 +450,11 @@ class MeasurementPattern:
     #: Logs channels that should be present in the measurement.
     logs: List[LogPattern] = field(default_factory=list)
 
+    #: Steps that should be excluded from the consolidated file. This applies to
+    #: to steps ramped due to relations but that are not relevant. Un-ramped steps
+    #: are always omitted.
+    excluded_steps: List[Union[NamePattern, int]] = field(default_factory=list)
+
     def __post_init__(self) -> None:
         if isinstance(self.filename_pattern, dict):
             self.filename_pattern = FilenamePattern(**self.filename_pattern)
@@ -385,26 +468,51 @@ class MeasurementPattern:
                 "No declared logs of interest, data consolidation would be empty."
             )
 
-    def match(self, dataset: LabberData) -> bool:
+    def match(self, dataset: LabberData, logger: SmartLogger) -> bool:
         """Determine if a given Labber file match the specified pattern."""
 
         # Check the filename and exit early if it fails
-        if self.filename_pattern and not self.filename_pattern.match(dataset.filename):
+        if self.filename_pattern and not self.filename_pattern.match(
+            dataset.filename, logger
+        ):
             return False
+
+        logger.debug(
+            f"Steps: {[s.name for s in dataset.list_steps()]}\n"
+            f"Logs: {[e.name for e in dataset.list_logs()]}"
+        )
 
         # Check all step patterns against the existing steps, if one fails exit early
         steps = dataset.list_steps()
         for pattern in self.steps:
-            if not any(pattern.match(i, step) for i, step in enumerate(steps)):
-                return False
+            logger.debug(f"Matching step pattern {pattern.name}")
+            with logger.indent():
+                if not any(
+                    pattern.match(i, step, logger) for i, step in enumerate(steps)
+                ):
+                    return False
 
         # Check all log patterns.
         logs = dataset.list_logs()
         for lpattern in self.logs:
-            if not any(lpattern.match(i, l) for i, l in enumerate(logs)):
-                return False
+            logger.debug(f"Matching log pattern {pattern.name}")
+            with logger.indent():
+                if not any(lpattern.match(i, l, logger) for i, l in enumerate(logs)):
+                    return False
 
         return True
+
+    def match_excluded_steps(
+        self, index: int, config: StepConfig, logger: SmartLogger
+    ) -> bool:
+        """Determine if a config match any of the excluded channels."""
+        for p in self.excluded_steps:
+            if isinstance(p, int) and p == index:
+                return True
+            elif isinstance(p, NamePattern) and p.match(config.name, logger):
+                return True
+
+        return False
 
     def extract_classifiers(
         self, dataset: LabberData
@@ -422,9 +530,10 @@ class MeasurementPattern:
                 )
             classifiers[self.filename_pattern.classifier_level] = value
 
+        dummy = DummyLogger()
         for pattern in (p for p in self.steps if p.use_in_classification):
             for i, step in enumerate(dataset.list_steps()):
-                if pattern.match(i, step):
+                if pattern.match(i, step, dummy):
                     classifiers[pattern.classifier_level][pattern.name] = Classifier(
                         step.name, pattern.extract(dataset, step), step.is_ramped
                     )
@@ -467,25 +576,36 @@ class DataClassifier:
     def identify_datasets(self, folders):
         """Identify the relevant datasets by scanning the content of a folder."""
         datasets = {p.name: [] for p in self.patterns}
+        logger = SmartLogger()
         for folder in folders:
-            logger.debug(f"Walking {folder}")
-            for root, dirs, files in os.walk(folder):
-                for datafile in (f for f in files if f.endswith(".hdf5")):
-                    path = os.path.join(root, datafile)
-                    try:
-                        with LabberData(path) as f:
-                            for p in self.patterns:
-                                if p.match(f):
-                                    datasets[p.name].append(path)
+            logger.info(f"Walking {folder}")
+            with logger.indent():
+                for root, dirs, files in os.walk(folder):
+                    for datafile in (f for f in files if f.endswith(".hdf5")):
+                        path = os.path.join(root, datafile)
+                        logger.info(f"Matching file {datafile}")
+                        logger.indent_number += 1
+                        try:
+                            with LabberData(path) as f:
+                                for p in self.patterns:
+                                    logger.info(f"Matching pattern {p.name}")
+                                    with logger.indent():
+                                        res = p.match(f, logger)
+                                    if res:
+                                        datasets[p.name].append(path)
+                                        logger.info(
+                                            f"- accepted {datafile} "
+                                            f"for measurement pattern {p.name}"
+                                        )
+                                        break
+                                else:
                                     logger.debug(
-                                        f"Accepted {datafile} "
-                                        f"for measurement pattern {p.name}"
+                                        f"- rejected {datafile} for all patterns"
                                     )
-                                    break
-                            else:
-                                logger.debug(f"Rejected {datafile} for all patterns")
-                    except OSError:
-                        logger.debug(f"Rejected {datafile}: file is corrupted")
+                        except OSError:
+                            logger.debug(f"- rejected {datafile}: file is corrupted")
+                        finally:
+                            logger.indent_number -= 1
 
         self._datasets = datasets
 
@@ -495,9 +615,10 @@ class DataClassifier:
         This function is mostly included for debugging purposes.
 
         """
+        logger = SmartLogger()
         with LabberData(path) as f:
             for p in self.patterns:
-                if p.match(f):
+                if p.match(f, logger):
                     return p
             else:
                 return None
@@ -663,6 +784,7 @@ class DataClassifier:
         vector_data_names = []
         x_vector_data_names = []
         to_store = {}
+        dummy = DummyLogger()
 
         with LabberData(path) as f:
             # Find and extract the relevant step channels (ie not used in classifying)
@@ -676,22 +798,22 @@ class DataClassifier:
                 # Check if a pattern match and if yes determine if we need to
                 # extract this parameter and if yes under what name
                 for pattern in meas_pattern.steps:
-                    if pattern.match(i, stepcf):
+                    if pattern.match(i, stepcf, dummy):
                         if pattern.use_in_classification:
                             should_skip = True
                             break
                         else:
                             name = pattern.name
 
-                # Skip steps used in classification
-                if should_skip:
+                # Skip steps used in classification and explicitely excluded
+                if should_skip or meas_pattern.match_excluded_steps(i, stepcf, dummy):
                     continue
 
                 # Get the data which are already in a meaningful shape (see
                 # LabberData.get_data)
                 to_store[name] = f.get_data(stepcf.name, filters=filters)
 
-            # Find and exctract the relevant log channels
+            # Find and extract the relevant log channels
             n_matched_logs = 0
             for i, entry in enumerate(f.list_logs()):
                 # Collect only requested log entries.
@@ -702,23 +824,26 @@ class DataClassifier:
                 # Check if a pattern match and if yes determine if we need to
                 # extract this log entry and if yes under what name
                 for lpattern in meas_pattern.logs:
-                    if lpattern.match(i, entry):
+                    if lpattern.match(i, entry, dummy):
                         n_matched_logs += 1
                         should_skip = False
                         name = lpattern.name
                         x_name = lpattern.x_name
 
-                # Skip steps used in classification
+                # Log entry was not requested
                 if should_skip:
                     continue
 
                 data = f.get_data(entry.name, filters=filters, get_x=x_name is not None)  # type: ignore
 
-                if x_name:
+                if entry.is_vector:
                     vector_data_names.append(name)
-                    x_vector_data_names.append(x_name)
-                    to_store[x_name] = data[0]
-                    to_store[name] = data[1]
+                    if x_name:
+                        x_vector_data_names.append(x_name)
+                        to_store[x_name] = data[0]
+                        to_store[name] = data[1]
+                    else:
+                        to_store[name] = data
                 else:
                     to_store[name] = data
 
@@ -730,26 +855,36 @@ class DataClassifier:
                 )
 
             # In the presence of vector data do the following
-            # - one vector, add a dummy dimension to all data sets to get something
-            #   reminiscent of a normal scan
-            # - two vector of more, do not do anything special
-            if len(vector_data_names) == 1:
+            # - one vector or vectors with the same length and a single x_name,
+            #   add a dummy dimension to all data sets to get something reminiscent
+            #   of a normal scan
+            # - two vectors or more with different x, do not do anything special
+            if len(vector_data_names) == 1 or (
+                all(
+                    to_store[vector_data_names[0]].shape[-1] == to_store[n].shape[-1]
+                    for n in vector_data_names[1:]
+                )
+                and len(set(x_vector_data_names)) < 2
+            ):
                 vec_dim = to_store[vector_data_names[0]].shape[-1]
 
                 for n, d in list(to_store.items()):
                     if n not in vector_data_names and n not in x_vector_data_names:
                         # Create a new array with an extra dimension
                         new_data = np.empty(list(d.shape) + [vec_dim], dtype=d.dtype)
+
                         # Create a view allowing to easily assign the same value
                         # on all elements of the last dimension.
                         v = np.moveaxis(new_data, -1, 0)
                         v[:] = d
-                        # Store the original data
+
+                        # Store the data
                         to_store[n] = new_data
 
             # If the data are empty, do not store anything.
             if any(v.shape == (0,) for v in to_store.values()):
                 return
+
             # Store the data
             for n, d in to_store.items():
                 # If data with similar classifers are already there check,
