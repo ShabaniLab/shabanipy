@@ -477,10 +477,8 @@ class MeasurementPattern:
         ):
             return False
 
-        logger.debug(
-            f"Steps: {[s.name for s in dataset.list_steps()]}\n"
-            f"Logs: {[e.name for e in dataset.list_logs()]}"
-        )
+        logger.debug(f"Steps: {[s.name for s in dataset.list_steps()]}")
+        logger.debug(f"Logs: {[e.name for e in dataset.list_logs()]}")
 
         # Check all step patterns against the existing steps, if one fails exit early
         steps = dataset.list_steps()
@@ -860,7 +858,8 @@ class DataClassifier:
             #   of a normal scan
             # - two vectors or more with different x, do not do anything special
             if len(vector_data_names) == 1 or (
-                all(
+                len(vector_data_names) > 1
+                and all(
                     to_store[vector_data_names[0]].shape[-1] == to_store[n].shape[-1]
                     for n in vector_data_names[1:]
                 )
@@ -908,10 +907,7 @@ class DataClassifier:
                             # Delete the existing dataset and use teh more complete one.
                             del storage[n]
                             dset = storage.create_dataset(
-                                n,
-                                data=d,
-                                compression="gzip",
-                                compression_opts=6,
+                                n, data=d, compression="gzip", compression_opts=6,
                             )
                         else:
                             logger.info(
