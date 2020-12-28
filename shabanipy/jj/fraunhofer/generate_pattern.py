@@ -8,11 +8,12 @@
 # -----------------------------------------------------------------------------
 """Generate a Fraunhofer pattern based on a current distribution."""
 import warnings
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 from numba import cfunc
 from numba.types import CPointer, float64, intc
+from numpy.fft import fft, fftfreq, fftshift
 from scipy import LowLevelCallable
 from scipy.integrate import IntegrationWarning, quad, romb
 from typing_extensions import Literal
@@ -144,3 +145,10 @@ def produce_fraunhofer_fast(
         g[i] = romb(cd * np.exp(1j * f2k * field * xs), dx)
 
     return g if ret_fourier else np.abs(g)
+
+
+def _produce_fraunhofer_dft(
+    j: np.ndarray, dx: float = 1, f2k: float = 1
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Generate Fraunhofer from current density using discrete Fourier transform."""
+    return np.abs(fftshift(fft(j))), 2 * np.pi / f2k * fftshift(fftfreq(len(j), dx))

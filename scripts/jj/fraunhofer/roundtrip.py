@@ -36,7 +36,7 @@ mpl.rcParams["lines.markersize"] = 0
 fig, ax = plt.subplots(constrained_layout=True)
 ax.set_ylabel("J(x)")
 fig2, ax2 = plt.subplots(constrained_layout=True)
-ax2.set_ylabel(r"$I_c(\beta)$")
+ax2.set_ylabel(r"$I_c(B)$")
 cmap = mpl.cm.get_cmap("inferno")
 
 # input current distribution
