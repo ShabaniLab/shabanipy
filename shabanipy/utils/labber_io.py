@@ -12,6 +12,7 @@
 import os
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union, overload
 from typing_extensions import Literal
 
@@ -140,7 +141,7 @@ class LabberData:
     """
 
     #: Path to the HDF5 file containing the data.
-    path: str
+    path: Union[str, Path]
 
     #: Name of the file (ie no directories)
     filename: str = field(init=False)
@@ -166,6 +167,8 @@ class LabberData:
     _logs: Optional[List[LogEntry]] = field(default=None, init=False)
 
     def __post_init__(self) -> None:
+        if isinstance(self.path, Path):
+            self.path = str(self.path)
         self.filename = self.path.rsplit(os.sep, 1)[-1]
 
     def open(self) -> None:
