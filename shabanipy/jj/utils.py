@@ -188,7 +188,7 @@ def extract_switching_current(
     bias: np.ndarray,
     volt_or_res: np.ndarray,
     threshold: float,
-    side: Literal["positive", "negative"],
+    side: Literal["positive", "negative"] = "positive",
     replace_zeros: Optional[float] = None,
     debug: bool = False,
 ) -> np.ndarray:
