@@ -9,7 +9,6 @@ Gates 1, 3, 5 are grounded; gates 2 and 4 are shorted.
 """
 
 import os
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -19,7 +18,6 @@ from scipy import constants as cs
 from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
     extract_current_distribution,
 )
-from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
 from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center, symmetrize_fraunhofer
 from shabanipy.jj.utils import extract_switching_current
 from shabanipy.utils.labber_io import LabberData
@@ -41,11 +39,13 @@ CH_RESIST = "VITracer - VI curve"
 CURR_TO_FIELD = 1 / 30
 
 # constants
-#####PHI0 = cs.h / (2 * cs.e)  # magnetic flux quantum
-#####jj_width = 4e-6
-#####jj_length = 1800e-9  # includes London penetration depths
-#####b2beta = 2 * np.pi * jj_length / PHI0  # B-field to beta factor
-#####fraunhofer_period = 2 * np.pi / (b2beta * jj_width)
+PHI0 = cs.h / (2 * cs.e)  # magnetic flux quantum
+JJ_WIDTH = 4e-6
+# the effective junction length is largely unknown due to thin-film penetration
+# depth and flux focusing effects; nominally 100nm
+JJ_LENGTH = 1800e-9
+FIELD_TO_WAVENUM = 2 * np.pi * JJ_LENGTH / PHI0  # B-field to beta wavenumber
+PERIOD = 2 * np.pi / (FIELD_TO_WAVENUM * JJ_WIDTH)
 
 
 with LabberData(DATA_FILE_PATH) as f:
@@ -63,11 +63,12 @@ with LabberData(DATA_FILE_PATH) as f:
     resist = f.get_data(CH_RESIST)
 
 # extract_switching_current chokes on 1D arrays, construct the ndarray of bias
-# sweeps for each (gate, field)
-bias = np.tile(bias, resist.shape[:-1] + (1,))
-ic = extract_switching_current(bias, resist, threshold=2.75e-3)
+# sweeps for each (gate, field) to match the shape of the resistance ndarray
+ic = extract_switching_current(
+    np.tile(bias, resist.shape[:-1] + (1,)), resist, threshold=2.75e-3
+)
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(constrained_layout=True)
 ax.set_xlabel(r"$B_\perp$ (mT)")
 ax.set_ylabel(r"$I_c$ (μA)")
 lines = ax.plot(field * 1e3, np.transpose(ic) * 1e6)
@@ -79,58 +80,23 @@ lines[-1].set_label(gate[-1])
 ax.legend(title="gate voltage (V)")
 plt.show()
 
-# TODO you are here
-sys.exit()
+fig, ax = plt.subplots(constrained_layout=True)
+ax.set_xlabel(r"$x$ (μm)")
+ax.set_ylabel(r"$J(x)$ (μA/μm)")
 
-# bias sweeps are the same for all gate values
-bias_min, bias_max = np.min(bias), np.max(bias)
-
-jss = [[0.05, 0.26, 0.1], [], [0.5, 0.26, 0.18], [], [0.9, 0.26, 0.4]]
-gate_V_selection = [-1, 0, 1]
-for gate_, xresistx_, ic_, js in zip(gate, xresistx, ic, jss):
-    if gate_ not in gate_V_selection:
-        continue
-
+# x = np.empty(shape=ic.shape)
+# jx = np.empty(shape=ic.shape)
+for idx, gate_ in enumerate(gate):
+    ic_ = ic[idx]
     field_ = field - find_fraunhofer_center(field, ic_)
     field_, ic_ = symmetrize_fraunhofer(field_, ic_)
-
-    # zero-padded uniform current distributions under variable gate widths
-    x = np.linspace(-4 * jj_width, 4 * jj_width, 513)
-    jx = np.zeros_like(x)
-    mask = np.abs(x) < jj_width / 2
-    jx[mask] = js[0]
-    mask = np.logical_and(mask, np.abs(x) < jj_width / 2.3)
-    jx[mask] = js[1]
-    mask = np.logical_and(mask, np.abs(x) < jj_width / 8)
-    jx[mask] = js[2]
-
-    gen_ic = produce_fraunhofer_fast(field_ / 1e3, b2beta, jx, x)
-
-    fig, ax = plt.subplots(constrained_layout=True)
-    ax.set_title(r"$V_{g,odd}$ = " + f"{gate_}")
-    ax.set_xlabel("Magnetic field (mT)")
-    ax.set_ylabel("Bias current (µA)")
-    ax.plot(field_, gen_ic * 1e6, label="generated")
-    ax.plot(field_, ic_, label="data")
-    ax.set_ylim(0, 1.6)
-    ax.legend()
-
-    x_data, jx_data = extract_current_distribution(
-        field_ / 1e3, ic_, b2beta, jj_width, 200
+    x_, jx_ = extract_current_distribution(
+        field_, ic_, FIELD_TO_WAVENUM, JJ_WIDTH, len(field_)
     )
-    x_gen, jx_gen = extract_current_distribution(
-        field_ / 1e3, gen_ic, b2beta, jj_width, 200
-    )
+    ax.plot(x_ * 1e6, jx_, color=cmap(idx / len(gate)))
 
-    fig2, ax2 = plt.subplots(constrained_layout=True)
-    ax2.set_title(r"$V_{g,odd}$ = " + f"{gate_}")
-    ax2.set_xlabel("x (µm)")
-    ax2.set_ylabel("Current density (µA/µm)")
-    ax2.plot(x[175:-175] * 1e6, jx[175:-175], color="black", label="manually optimized")
-    ax2.plot(x_gen * 1e6, jx_gen, label="from generated")
-    ax2.plot(x_data * 1e6, jx_data / 1e6, label="from data")
-    ax2.set_xlim(-3, 3)
-    ax2.set_ylim(-0.15, 1)
-    ax2.legend()
-
+lines = ax.get_lines()
+lines[0].set_label(gate[0])
+lines[-1].set_label(gate[-1])
+ax.legend(title="gate voltage(V)")
 plt.show()
