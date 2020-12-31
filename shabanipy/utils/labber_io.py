@@ -56,7 +56,7 @@ class StepConfig:
     #: Name of the step. Match the name of the dataset in the log file.
     name: str
 
-    #: Does that step contains more than a single value.
+    #: Does this step contain more than a single value.
     is_ramped: bool
 
     #: Relation this step has to other other steps. The tuple contains a
@@ -133,10 +133,10 @@ def maybe_decode(bytes_or_str: Union[str, bytes]) -> str:
 
 @dataclass
 class LabberData:
-    """Labber save data in HDF5 files and organize them by channel.
+    """Labber saves data in HDF5 files and organizes them by channel.
 
-    A channel is either a swept variable or a measured quantities. We use
-    either string or integers to identify channels.
+    A channel is either a swept variable or a measured quantity. We use either
+    strings or integers to identify channels.
 
     """
 

@@ -194,8 +194,9 @@ def extract_switching_current(
 ) -> np.ndarray:
     """Extract the switching current from a voltage or resistance map.
 
-    If more than 1D array input are used, the last dimension if assumed to be swept.
-    The current sweep does not have to be the same for all outer dimensions.
+    If more than 1D array inputs are used, the last dimension is assumed to be
+    swept.  The current sweep does not have to be the same for all outer
+    dimensions.
 
     Parameters
     ----------
