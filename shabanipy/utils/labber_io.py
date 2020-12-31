@@ -12,6 +12,7 @@
 import os
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union, overload
 from typing_extensions import Literal
 
@@ -55,7 +56,7 @@ class StepConfig:
     #: Name of the step. Match the name of the dataset in the log file.
     name: str
 
-    #: Does that step contains more than a single value.
+    #: Does this step contain more than a single value.
     is_ramped: bool
 
     #: Relation this step has to other other steps. The tuple contains a
@@ -132,15 +133,15 @@ def maybe_decode(bytes_or_str: Union[str, bytes]) -> str:
 
 @dataclass
 class LabberData:
-    """Labber save data in HDF5 files and organize them by channel.
+    """Labber saves data in HDF5 files and organizes them by channel.
 
-    A channel is either a swept variable or a measured quantities. We use
-    either string or integers to identify channels.
+    A channel is either a swept variable or a measured quantity. We use either
+    strings or integers to identify channels.
 
     """
 
     #: Path to the HDF5 file containing the data.
-    path: str
+    path: Union[str, Path]
 
     #: Name of the file (ie no directories)
     filename: str = field(init=False)
@@ -166,6 +167,8 @@ class LabberData:
     _logs: Optional[List[LogEntry]] = field(default=None, init=False)
 
     def __post_init__(self) -> None:
+        if isinstance(self.path, Path):
+            self.path = str(self.path)
         self.filename = self.path.rsplit(os.sep, 1)[-1]
 
     def open(self) -> None:
