@@ -20,7 +20,10 @@ LOGGER = logging.getLogger(__name__)
 
 
 def compute_voltage_offset(
-    current_bias: np.ndarray, measured_voltage: np.ndarray, n_peak_width: int
+    current_bias: np.ndarray, 
+    measured_voltage: np.ndarray,
+    n_peak_width: int,
+    bound: Optional[float] = None,
 ) -> Tuple[float, float]:
     """Compute the voltage offset in the VI characteristic of a JJ.
 
@@ -36,7 +39,9 @@ def compute_voltage_offset(
         Voltage accross the junction in V (1D array).
     n_peak_width : int
         Number of peak width to substract from the region between the peaks.
-
+    bound : Optional[float]
+        Bounds around midpoint to look for peaks (in uA)
+    
     Returns
     -------
     avg: float
@@ -45,33 +50,48 @@ def compute_voltage_offset(
         Standard deviation of the voltage around zero bias.
 
     """
+    
+    #Flip backward bias
+    if current_bias[0] > current_bias[1]:
+        current_bias = current_bias[::-1]
+        measured_voltage = measured_voltage[::-1]
+    
+    #Take entire bias range if there is no bounds
+    if bound is None:
+        bound = abs(current_bias[0])*1e6
+    
     # Determine the index of the zero current bias
     midpoint = np.argmin(abs(current_bias))
-
+    bound_l = np.argmin(abs(current_bias+bound*1e-6))
+    bound_r = np.argmin(abs(current_bias-bound*1e-6))
+    
     # Compute the derivative of the signal
     dydx = np.diff(measured_voltage)
     l_dydx = dydx[:midpoint]
     r_dydx = dydx[midpoint:]
 
     # Find the most prominent peaks on each side of the zero bias current
-    peaks_left, _ = find_peaks(l_dydx, max(dydx[:midpoint]) / 2)
-    peaks_right, _ = find_peaks(r_dydx, max(dydx[midpoint:]) / 2)
-
+    peaks_left, _ = find_peaks(l_dydx, max(l_dydx[bound_l:])/2)
+    peaks_right, _ = find_peaks(r_dydx, max(r_dydx[:bound_r-midpoint])/2)
+    
     # Manually evaluate the width of the peaks since they can be very asymetric
+    peak_l=peaks_left[-1]
+    peak_r=peaks_right[0]
     lw = 0
-    l_peak_value = l_dydx[peaks_left[-1]]
-    while l_dydx[peaks_left[-1] + lw] > l_peak_value / 2:
+    
+    l_peak_value = l_dydx[peak_l]
+    while l_dydx[peak_l + lw] > l_peak_value / 2:
         lw += 1
 
     rw = 0
-    r_peak_value = r_dydx[peaks_right[-1]]
-    while r_dydx[peaks_right[-1] - rw] > r_peak_value / 2:
+    r_peak_value = r_dydx[peak_r]
+    while r_dydx[peak_r - rw] > r_peak_value / 2:
         rw += 1
 
     # Keep only the data between the two peaks
     area = measured_voltage[
-        peaks_left[-1]
-        + lw * n_peak_width : peaks_right[0]
+        peak_l
+        + lw * n_peak_width : peak_r
         + midpoint
         - rw * n_peak_width
     ]
@@ -89,11 +109,11 @@ def compute_voltage_offset(
     else:
         return np.average(area), np.std(area)
 
-
 def correct_voltage_offset(
     current_bias: np.ndarray,
     measured_voltage: np.ndarray,
     n_peak_width: int,
+    bound: Optional[float] = None,
     index: Optional[Union[int, Tuple[int, ...]]] = None,
     debug: bool = False,
 ) -> np.ndarray:
@@ -112,6 +132,8 @@ def correct_voltage_offset(
         and look for peaks signaling the transition out of the superconducting
         domain. This parameter specifies how many width of the peaks to ignore
         when determining the actual zero voltage region.
+    bound : Optional[float]
+        Bounds around midpoint to look for peaks (in uA)
     index : Optional[Union[int, Tuple[int, ...]]
         Index to select only a single trace to use to determine the offset.
 
@@ -134,10 +156,10 @@ def correct_voltage_offset(
             for i in index:
                 cb = cb[i]
                 sv = mv[i]
-
-        avg, _ = compute_voltage_offset(cb, sv, n_peak_width)
+                
+        avg, _ = compute_voltage_offset(cb, sv, n_peak_width,bound)
         mv -= avg
-
+    
     # Substract the offset for each line
     else:
         it = np.nditer(current_bias[..., 0], ["multi_index"])
@@ -146,8 +168,9 @@ def correct_voltage_offset(
                 current_bias[it.multi_index],
                 measured_voltage[it.multi_index],
                 n_peak_width,
+                bound,
             )[0]
-
+    
     return mv
 
 

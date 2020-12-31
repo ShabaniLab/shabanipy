@@ -74,27 +74,30 @@ def extract_density(field, rxy, field_cutoffs, plot_fit=False):
     # Perform a linear fit in the specified field range and extract the slope
     for i in range(trace_number):
         start_field, stop_field = field_cutoffs[i]
-        start_ind = np.argmin(np.abs(field[i] - start_field))
-        stop_ind = np.argmin(np.abs(field[i] - stop_field))
-        start_ind, stop_ind =\
-            min(start_ind, stop_ind), max(start_ind, stop_ind)
-        f = field[i][start_ind:stop_ind]
-        r = rxy[i][start_ind:stop_ind]
+        # Filter out NaNs from 1D data
+        mask = ~np.isnan(field[i])
+        f = field[i][mask]
+        start_ind = np.argmin(np.abs(f - start_field))
+        stop_ind = np.argmin(np.abs(f - stop_field))
+        start_ind, stop_ind = min(start_ind, stop_ind), max(start_ind, stop_ind)
+        f = f[start_ind:stop_ind]
+        r = rxy[i][mask][start_ind:stop_ind]
         res = model.fit(r, x=f)
-        results[0, i] = 1/res.best_values['slope']/cs.e  # value in m^-2
-        results[1, i] = results[0, i] * (res.params['slope'].stderr /
-                                         res.best_values['slope'])
+        results[0, i] = 1 / res.best_values["slope"] / cs.e  # value in m^-2
+        results[1, i] = results[0, i] * (
+            res.params["slope"].stderr / res.best_values["slope"]
+        )
 
         # If requested plot the result in a dedicated window.
         if plot_fit:
             plt.figure()
-            plt.plot(f, r, '+')
+            plt.plot(f, r, "+")
             plt.plot(f, res.best_fit)
-            plt.xlabel('Field')
-            plt.ylabel('Rxy')
+            plt.xlabel("Field")
+            plt.ylabel("Rxy")
             plt.tight_layout()
 
     if input_is_1d:
         return results[:, 0]
     else:
-        return results.reshape((2, ) + original_shape)
+        return results.reshape((2,) + original_shape)

@@ -70,6 +70,9 @@ class StepConfig:
     #: List of ramps configuration describing the set points of the step.
     ramps: Optional[List[RampConfig]]
 
+    #: Is the direction of the ramp alternating
+    alternate_direction: bool
+
     #: Total number of set points for this step
     points: int = field(default=0, init=False)
 
@@ -118,6 +121,13 @@ class LogEntry:
 
     #: Name of the x axis for vectorial data with a provided x.
     x_name: str = ""
+
+
+def maybe_decode(bytes_or_str: Union[str, bytes]) -> str:
+    """H5py return some string as bytes in 3.10 so convert them."""
+    if isinstance(bytes_or_str, bytes):
+        return bytes_or_str.decode("utf-8")
+    return bytes_or_str
 
 
 @dataclass
@@ -191,26 +201,54 @@ class LabberData:
 
         if not self._steps:
             steps = []
-            for (step, _, _, _, _, has_relation, relation, *_) in self._file[
-                "Step list"
-            ]:
-                configs = [
+            for (
+                step,
+                _,  # unknown
+                _,  # unknown
+                _,  # 0 no sweep (ie direct update), 1 between points, 2 continuous
+                _,  # unknown
+                has_relation,
+                relation,
+                _,  # unknown
+                _,  # unknown
+                alternate,
+                *_,
+            ) in self._file["Step list"]:
+
+                # Decode byte string from the hdf5 file
+                step = maybe_decode(step)
+                relation = maybe_decode(relation)
+
+                log_configs = [
                     f["Step config"][step]["Step items"]
                     for f in [self._file] + self._nested
                 ]
+
+                # A step is considered ramped if it has more than one config in any log,
+                # if the first ramp of any log is ramped, if there is more than one
+                # value for a given constant accross different logs
+                # The format describing a single config is:
+                # ramped, unknown, set value, min, max, center, span, step,
+                # number of points, kind(ie linear, log, etc), sweep rate
                 is_ramped = (
-                    any(len(config) > 1 for config in configs)
-                    or any(bool(config[0][0]) for config in configs)
-                    or len({config[0][2] for config in configs}) > 1
+                    any(len(configs) > 1 for configs in log_configs)
+                    or any(bool(configs[0][0]) for configs in log_configs)
+                    or len({configs[0][2] for configs in log_configs}) > 1
                 )
+
                 # We assume that if we have relations in one log we have them in all
                 if has_relation:
-                    rel_params = self._file["Step config"][step]["Relation parameters"]
+                    rel_params = {
+                        maybe_decode(k): maybe_decode(v)
+                        for k, v, _ in self._file["Step config"][step][
+                            "Relation parameters"
+                        ]
+                    }
                     relation = (
                         relation,
                         {
                             k: v
-                            for k, v, _ in rel_params
+                            for k, v in rel_params.items()
                             # Preserve only the parameters useful to the relation
                             # \W is a non word character (no letter no digit)
                             if re.match(
@@ -226,7 +264,8 @@ class LabberData:
                         name=step,
                         is_ramped=is_ramped,
                         relation=relation,
-                        value=None if is_ramped else configs[0][0][2],
+                        value=None if is_ramped else log_configs[0][0][2],
+                        alternate_direction=alternate,
                         ramps=[
                             (
                                 RampConfig(
@@ -243,8 +282,8 @@ class LabberData:
                                     new_log=bool(i == 0),
                                 )
                             )
-                            for config in configs
-                            for i, cfg in enumerate(config)
+                            for configs in log_configs
+                            for i, cfg in enumerate(configs)
                         ]
                         if is_ramped
                         else None,
@@ -252,9 +291,10 @@ class LabberData:
                 )
 
             # Mark all channels with relation to a ramped channel as ramped.
+            # One can inspect ramps to know if a step is ramped outside of a relation.
             for step in steps:
                 if step.relation is not None:
-                    step.is_ramped = any(
+                    step.is_ramped |= any(
                         s.is_ramped
                         for s in steps
                         if s.name in step.relation[1].values()
@@ -270,7 +310,7 @@ class LabberData:
 
         if not self._logs:
             # Collect all logs names
-            names = [e[0] for e in self._file["Log list"]]
+            names = [maybe_decode(e[0]) for e in self._file["Log list"]]
 
             # Identify scalar complex data
             complex_scalars = [
@@ -400,6 +440,7 @@ class LabberData:
 
         # Filter the data based on the provided filters.
         filters = filters if filters is not None else {}
+
         # Only use positive indexes to describe filtering
         filters = {self._name_or_index_to_index(k): v for k, v in filters.items()}
         if filters:
@@ -416,12 +457,12 @@ class LabberData:
                     # If the mask is not empty, ensure we do not eliminate nans
                     # added by Labber to have complete sweeps
                     if np.any(mask):
-                        np.logical_or(mask, np.isnan(filter_data), mask)
+                        mask |= np.isnan(filter_data)
                     masks.append(mask)
 
                 mask = masks.pop()
                 for m in masks:
-                    np.logical_and(mask, m, mask)
+                    mask &= m
                 # For unclear reason vector data are not index in the same order
                 # as other data and require the mask to be transposed before being
                 # raveled
@@ -448,7 +489,12 @@ class LabberData:
         steps_points = []
         first_step_is_used = False
         for i, s in reversed(list(enumerate(self.list_steps()))):
-            if s.is_ramped and s.relation is None and i not in filters:
+
+            # Use ramps rather than is_ramped to consider only steps manually
+            # ramped and exclude steps with multiple values because they
+            # they have a relation to a ramped step but no ramp of their own
+            if s.ramps is not None and i not in filters:
+
                 # Labber stores scalar data as 3D:
                 # - the first dimension is the first step number of points
                 # - the second one refer to the channel
@@ -460,8 +506,18 @@ class LabberData:
                 else:
                     steps_points.append(s.points_per_log)
 
+        # For vectorial data we add to the dimension of the vector at the end
+        # of the step points. We take as many as their are logs.
         if vectorial_data:
-            steps_points.append((vec_dim,) * len(steps_points[0]))
+            steps_points.append(
+                (vec_dim,) * (len(steps_points[0]) if steps_points else 1)
+            )
+
+        # If we get a single value because we are accessing a value defined through
+        # relations to channels we are filtering upon we can stop there and exit
+        # early.
+        if not steps_points:
+            return results[0]  # [np.array([value])]
 
         # Get expected shape per log
         shape_per_logs = np.array(steps_points).T
@@ -473,10 +529,11 @@ class LabberData:
                 continue
 
             # The outer most dimension of the scan corresponds either to the first
-            # index if the first step was filtered on or, otherwise, to the second.
+            # index if the first step was filtered on (not first_step_is_used) or,
+            # otherwise, to the second.
             points_inner_dimensions = (
                 np.prod(shape[1:])
-                if first_step_is_used
+                if not first_step_is_used
                 else shape[0] * np.prod(shape[2:])
             )
             padding = np.prod(results[i].shape) % (points_inner_dimensions)
@@ -570,7 +627,7 @@ class LabberData:
         if not self._file:
             raise RuntimeError("No file currently opened")
 
-        names = [n for n, _ in self._file["Data"]["Channel names"]]
+        names = [maybe_decode(n) for n, _ in self._file["Data"]["Channel names"]]
         if is_complex:
             re_index = names.index(channel_name)
             im_index = re_index + 1
@@ -595,9 +652,7 @@ class LabberData:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
-        """ Close the underlying HDF5 file when used as a context manager.
-
-        """
+        """Close the underlying HDF5 file when used as a context manager."""
         self.close()
 
 
