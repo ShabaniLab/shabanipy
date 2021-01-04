@@ -1,11 +1,12 @@
 """Reconstruct current density distribution of Maryland multigate device.
 
 Device ID: JS311_2HB-2JJ-5MGJJ-MD-001_MG2.
-Scan ID: JS311-BHENL001-2JJ-2HB-5MGJJ-MG2-051.
+Scan ID: JS311-BHENL001-2JJ-2HB-5MGJJ-MG2-060.
 Fridge: vector9
 
 This scan contains Fraunhofer data for a linear multigate -1-2-3-4-5-
-Gates 1, 3, 5 are grounded; gates 2 and 4 are shorted.
+Gates 1 and 5 are grounded; gates 2 and 4 are shorted.
+Both Vg3 and Vg2(=Vg4) are swept.
 """
 
 import os
@@ -25,7 +26,7 @@ from shabanipy.utils.labber_io import LabberData
 LABBER_DATA_DIR = os.environ["LABBER_DATA_DIR"]
 DATA_FILE_PATH = (
     Path(LABBER_DATA_DIR)
-    / "2020/12/Data_1202/JS311-BHENL001-2JJ-2HB-5MGJJ-MG2-051.hdf5"
+    / "2020/12/Data_1202/JS311-BHENL001-2JJ-2HB-5MGJJ-MG2-060.hdf5"
 )
 
 # channel names
@@ -69,7 +70,7 @@ ic = extract_switching_current(
 )
 
 fig, ax = plt.subplots(constrained_layout=True)
-ax.set_title("JS311-BHENL001-2JJ-2HB-5MGJJ-MG2-051")
+ax.set_title("JS311-BHENL001-2JJ-2HB-5MGJJ-MG2-060")
 ax.set_xlabel(r"$B_\perp$ (mT)")
 ax.set_ylabel(r"$I_c$ (μA)")
 lines = ax.plot(field * 1e3, np.transpose(ic) * 1e6)
@@ -81,7 +82,7 @@ lines[-1].set_label(gate[-1])
 ax.legend(title=r"$V_\mathrm{g2,g4}$ (V)")
 
 fig, ax = plt.subplots(constrained_layout=True)
-ax.set_title("JS311-BHENL001-2JJ-2HB-5MGJJ-MG2-051")
+ax.set_title("JS311-BHENL001-2JJ-2HB-5MGJJ-MG2-060")
 ax.set_xlabel(r"$x$ (μm)")
 ax.set_ylabel(r"$J(x)$ (μA/μm)")
 
