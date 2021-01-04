@@ -78,7 +78,6 @@ for i, line in enumerate(lines):
 lines[0].set_label(gate[0])
 lines[-1].set_label(gate[-1])
 ax.legend(title="gate voltage (V)")
-plt.show()
 
 fig, ax = plt.subplots(constrained_layout=True)
 ax.set_xlabel(r"$x$ (μm)")
