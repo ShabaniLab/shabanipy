@@ -69,7 +69,7 @@ ic = extract_switching_current(
 )
 
 fig, ax = plt.subplots(constrained_layout=True)
-ax.set_title("JS311-BHENL001-2JJ-2HB-5MGJJ-MG2-051")
+ax.set_title(r"$V_\mathrm{g1,g3,g5} = 0$")
 ax.set_xlabel(r"$B_\perp$ (mT)")
 ax.set_ylabel(r"$I_c$ (μA)")
 lines = ax.plot(field * 1e3, np.transpose(ic) * 1e6)
@@ -81,7 +81,7 @@ lines[-1].set_label(gate[-1])
 ax.legend(title=r"$V_\mathrm{g2,g4}$ (V)")
 
 fig, ax = plt.subplots(constrained_layout=True)
-ax.set_title("JS311-BHENL001-2JJ-2HB-5MGJJ-MG2-051")
+ax.set_title(r"$V_\mathrm{g1,g3,g5} = 0$")
 ax.set_xlabel(r"$x$ (μm)")
 ax.set_ylabel(r"$J(x)$ (μA/μm)")
 
