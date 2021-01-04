@@ -64,7 +64,6 @@ with LabberData(DATA_FILE_PATH) as f:
     # via LabberData methods
     bias = np.unique(f._file["/Traces/VITracer - VI curve"][:, 1, :])
 
-    # TODO convert DMM volts to ohms
     resist = f.get_data(CH_RESIST)
 
 # extract_switching_current chokes on 1D arrays, construct the ndarray of bias
