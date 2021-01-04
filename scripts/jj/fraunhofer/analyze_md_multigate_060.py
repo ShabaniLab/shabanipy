@@ -10,6 +10,7 @@ Both Vg3 and Vg2(=Vg4) are swept.
 """
 
 import os
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -30,7 +31,8 @@ DATA_FILE_PATH = (
 )
 
 # channel names
-CH_GATE = "SM2 - Source voltage"
+CH_GATE_3 = "SM1 - Source voltage"
+CH_GATE_2_4 = "SM2 - Source voltage"
 CH_MAGNET = "Magnet Source - Source current"
 CH_RESIST = "VITracer - VI curve"
 
@@ -48,12 +50,14 @@ JJ_LENGTH = 1200e-9
 FIELD_TO_WAVENUM = 2 * np.pi * JJ_LENGTH / PHI0  # B-field to beta wavenumber
 PERIOD = 2 * np.pi / (FIELD_TO_WAVENUM * JJ_WIDTH)
 
-
 with LabberData(DATA_FILE_PATH) as f:
     # NOTE: The use of np.unique assumes the gate, field, and
     # bias values are identical for each sweep. This is true
     # for the current datafile but may not hold in general.
-    gate = np.unique(f.get_data(CH_GATE))
+    # NOTE: Also, in this case we have to manually correct some
+    # Labber shenanigans by flipping some data.
+    gate_3 = np.flip(np.unique(f.get_data(CH_GATE_3)))
+    gate_2_4 = np.flip(np.unique(f.get_data(CH_GATE_2_4)))
     field = np.unique(f.get_data(CH_MAGNET)) * CURR_TO_FIELD
 
     # bias current from the custom Labber driver VICurveTracer isn't available
@@ -66,20 +70,27 @@ with LabberData(DATA_FILE_PATH) as f:
 # extract_switching_current chokes on 1D arrays, construct the ndarray of bias
 # sweeps for each (gate, field) to match the shape of the resistance ndarray
 ic = extract_switching_current(
-    np.tile(bias, resist.shape[:-1] + (1,)), resist, threshold=2.75e-3
+    np.tile(bias, resist.shape[:-1] + (1,)), resist, threshold=2.96e-3,
 )
 
-fig, ax = plt.subplots(constrained_layout=True)
-ax.set_title("JS311-BHENL001-2JJ-2HB-5MGJJ-MG2-060")
-ax.set_xlabel(r"$B_\perp$ (mT)")
-ax.set_ylabel(r"$I_c$ (μA)")
-lines = ax.plot(field * 1e3, np.transpose(ic) * 1e6)
-cmap = plt.get_cmap("inferno")
-for i, line in enumerate(lines):
-    line.set_color(cmap(i / len(lines)))
-lines[0].set_label(gate[0])
-lines[-1].set_label(gate[-1])
-ax.legend(title=r"$V_\mathrm{g2,g4}$ (V)")
+# every other fraunhofer is flipped horizontally when compared
+# to Labber's Log Viewer
+ic[:, 1::2, :] = np.flip(ic[:, 1::2, :], axis=-1)
+
+# There are 11x10 fraunhofers, 1 for each of the 11 Vg3 and 10 Vg2(=Vg4) values.
+# Make 21 plots by fixing Vg3 and sweeping over Vg2, and vice versa.
+for i, g3 in enumerate(gate_3):
+    fig, ax = plt.subplots(constrained_layout=True)
+    ax.set_title(r"$V_\mathrm{g1,g5} = 0$, $V_\mathrm{g3} = $" + f"{g3} V")
+    ax.set_xlabel(r"$B_\perp$ (mT)")
+    ax.set_ylabel(r"$I_c$ (μA)")
+    lines = ax.plot(field * 1e3, np.transpose(ic[i]) * 1e6)
+    cmap = plt.get_cmap("inferno")
+    for i, line in enumerate(lines):
+        line.set_color(cmap(i / len(lines)))
+    ax.legend(gate_2_4, title=r"$V_\mathrm{g2,g4}$ (V)")
+
+sys.exit()
 
 fig, ax = plt.subplots(constrained_layout=True)
 ax.set_title("JS311-BHENL001-2JJ-2HB-5MGJJ-MG2-060")
