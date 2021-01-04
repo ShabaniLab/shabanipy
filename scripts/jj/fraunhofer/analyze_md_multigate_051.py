@@ -43,7 +43,7 @@ PHI0 = cs.h / (2 * cs.e)  # magnetic flux quantum
 JJ_WIDTH = 4e-6
 # the effective junction length is largely unknown due to thin-film penetration
 # depth and flux focusing effects; nominally 100nm
-JJ_LENGTH = 1800e-9
+JJ_LENGTH = 1200e-9
 FIELD_TO_WAVENUM = 2 * np.pi * JJ_LENGTH / PHI0  # B-field to beta wavenumber
 PERIOD = 2 * np.pi / (FIELD_TO_WAVENUM * JJ_WIDTH)
 
