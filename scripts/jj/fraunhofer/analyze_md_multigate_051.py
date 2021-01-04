@@ -69,6 +69,7 @@ ic = extract_switching_current(
 )
 
 fig, ax = plt.subplots(constrained_layout=True)
+ax.set_title("JS311-BHENL001-2JJ-2HB-5MGJJ-MG2-051")
 ax.set_xlabel(r"$B_\perp$ (mT)")
 ax.set_ylabel(r"$I_c$ (μA)")
 lines = ax.plot(field * 1e3, np.transpose(ic) * 1e6)
@@ -77,12 +78,14 @@ for i, line in enumerate(lines):
     line.set_color(cmap(i / len(lines)))
 lines[0].set_label(gate[0])
 lines[-1].set_label(gate[-1])
-ax.legend(title="gate voltage (V)")
+ax.legend(title=r"$V_\mathrm{g2,g4}$ (V)")
 
 fig, ax = plt.subplots(constrained_layout=True)
+ax.set_title("JS311-BHENL001-2JJ-2HB-5MGJJ-MG2-051")
 ax.set_xlabel(r"$x$ (μm)")
 ax.set_ylabel(r"$J(x)$ (μA/μm)")
 
+# save current reconstructions for further analysis
 # x = np.empty(shape=ic.shape)
 # jx = np.empty(shape=ic.shape)
 for idx, gate_ in enumerate(gate):
@@ -97,5 +100,5 @@ for idx, gate_ in enumerate(gate):
 lines = ax.get_lines()
 lines[0].set_label(gate[0])
 lines[-1].set_label(gate[-1])
-ax.legend(title="gate voltage(V)")
+ax.legend(title=r"$V_\mathrm{g2,g4}$ (V)")
 plt.show()
