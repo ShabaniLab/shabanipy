@@ -91,6 +91,17 @@ for i, g3 in enumerate(gate_3):
     for i, line in enumerate(lines):
         line.set_color(cmap(i / len(lines)))
     ax.legend(gate_2_4, title=r"$V_\mathrm{g2,g4}$ (V)")
+for i, g24 in enumerate(gate_2_4):
+    fig, ax = plt.subplots(constrained_layout=True)
+    ax.set_title(r"$V_\mathrm{g1,g5} = 0$, $V_\mathrm{g2,g4} = $" + f"{g24} V")
+    ax.set_xlabel(r"$B_\perp$ (mT)")
+    ax.set_ylabel(r"$I_c$ (μA)")
+    lines = ax.plot(field * 1e3, np.transpose(ic[:, i]) * 1e6)
+    cmap = plt.get_cmap("inferno")
+    for i, line in enumerate(lines):
+        line.set_color(cmap(i / len(lines)))
+    ax.legend(gate_3, title=r"$V_\mathrm{g3}$ (V)")
+
 
 sys.exit()
 
