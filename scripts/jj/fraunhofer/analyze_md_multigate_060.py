@@ -91,8 +91,8 @@ for i, g3 in enumerate(gate_3):
         x_, jx_ = extract_current_distribution(
             field_, ic_, FIELD_TO_WAVENUM, JJ_WIDTH, len(field_)
         )
-        x[i, j] = np.pad(x_, (POINTS - len(x_)) // 2)
-        jx[i, j] = np.pad(jx_, (POINTS - len(jx_)) // 2)
+        x[i, j] = np.pad(x_, (POINTS - len(x_)) // 2, mode="edge")
+        jx[i, j] = np.pad(jx_, (POINTS - len(jx_)) // 2, mode="edge")
 
 # There are 11x10 fraunhofers, 1 for each (Vg3, Vg2=Vg4) combination.
 # Make 21 plots by fixing Vg3 and sweeping over Vg2=Vg4, and vice versa.
@@ -107,6 +107,7 @@ for i, g3 in enumerate(gate_3):
         line.set_color(cmap(l / len(lines)))
     ax.legend(gate_2_4, title=r"$V_\mathrm{g2,g4}$ (V)")
     fig.savefig(f"plots/061_fraunhofer_Vg3{g3}.svg", format="svg")
+    plt.close(fig=fig)
 
     fig, ax = plt.subplots(constrained_layout=True)
     ax.set_title(r"$V_\mathrm{g1,g5} = 0$, $V_\mathrm{g3} = $" + f"{g3} V")
@@ -116,6 +117,7 @@ for i, g3 in enumerate(gate_3):
         ax.plot(x[i, j] * 1e6, jx[i, j], color=cmap(j / len(gate_2_4)))
     ax.legend(gate_2_4, title=r"$V_\mathrm{g2,g4}$ (V)")
     fig.savefig(f"plots/061_current-density_Vg3{g3}.svg", format="svg")
+    plt.close(fig=fig)
 
 for j, g24 in enumerate(gate_2_4):
     fig, ax = plt.subplots(constrained_layout=True)
@@ -127,6 +129,7 @@ for j, g24 in enumerate(gate_2_4):
         line.set_color(cmap(l / len(lines)))
     ax.legend(gate_3, title=r"$V_\mathrm{g3}$ (V)")
     fig.savefig(f"plots/061_fraunhofer_Vg24{g24}.svg", format="svg")
+    plt.close(fig=fig)
 
     fig, ax = plt.subplots(constrained_layout=True)
     ax.set_title(r"$V_\mathrm{g1,g5} = 0$, $V_\mathrm{g2,g4} = $" + f"{g24} V")
@@ -136,3 +139,4 @@ for j, g24 in enumerate(gate_2_4):
         ax.plot(x[i, j] * 1e6, jx[i, j], color=cmap(i / len(gate_3)))
     ax.legend(gate_3, title=r"$V_\mathrm{g3}$ (V)")
     fig.savefig(f"plots/061_current-density_Vg24{g24}.svg", format="svg")
+    plt.close(fig=fig)
