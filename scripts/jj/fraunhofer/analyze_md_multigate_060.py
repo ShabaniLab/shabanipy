@@ -105,7 +105,9 @@ for i, g3 in enumerate(gate_3):
     lines = ax.plot(field * 1e3, np.transpose(ic[i]) * 1e6)
     for l, line in enumerate(lines):
         line.set_color(cmap(l / len(lines)))
-    ax.legend(gate_2_4, title=r"$V_\mathrm{g2,g4}$ (V)")
+    lines[0].set_label(gate_2_4[0])
+    lines[-1].set_label(gate_2_4[-1])
+    ax.legend(title=r"$V_\mathrm{g2,g4}$ (V)")
     fig.savefig(f"plots/061_fraunhofer_Vg3{g3}.svg", format="svg")
     plt.close(fig=fig)
 
@@ -115,7 +117,10 @@ for i, g3 in enumerate(gate_3):
     ax.set_ylabel(r"$J(x)$ (μA/μm)")
     for j, g24 in enumerate(gate_2_4):
         ax.plot(x[i, j] * 1e6, jx[i, j], color=cmap(j / len(gate_2_4)))
-    ax.legend(gate_2_4, title=r"$V_\mathrm{g2,g4}$ (V)")
+    lines = ax.get_lines()
+    lines[0].set_label(gate_2_4[0])
+    lines[-1].set_label(gate_2_4[-1])
+    ax.legend(title=r"$V_\mathrm{g2,g4}$ (V)")
     fig.savefig(f"plots/061_current-density_Vg3{g3}.svg", format="svg")
     plt.close(fig=fig)
 
@@ -127,7 +132,9 @@ for j, g24 in enumerate(gate_2_4):
     lines = ax.plot(field * 1e3, np.transpose(ic[:, j]) * 1e6)
     for l, line in enumerate(lines):
         line.set_color(cmap(l / len(lines)))
-    ax.legend(gate_3, title=r"$V_\mathrm{g3}$ (V)")
+    lines[0].set_label(gate_3[0])
+    lines[-1].set_label(gate_3[-1])
+    ax.legend(title=r"$V_\mathrm{g3}$ (V)")
     fig.savefig(f"plots/061_fraunhofer_Vg24{g24}.svg", format="svg")
     plt.close(fig=fig)
 
@@ -137,6 +144,9 @@ for j, g24 in enumerate(gate_2_4):
     ax.set_ylabel(r"$J(x)$ (μA/μm)")
     for i, g3 in enumerate(gate_3):
         ax.plot(x[i, j] * 1e6, jx[i, j], color=cmap(i / len(gate_3)))
-    ax.legend(gate_3, title=r"$V_\mathrm{g3}$ (V)")
+    lines = ax.get_lines()
+    lines[0].set_label(gate_3[0])
+    lines[-1].set_label(gate_3[-1])
+    ax.legend(title=r"$V_\mathrm{g3}$ (V)")
     fig.savefig(f"plots/061_current-density_Vg24{g24}.svg", format="svg")
     plt.close(fig=fig)
