@@ -6,7 +6,7 @@ Fridge: vector9
 
 This scan contains Fraunhofer data for a linear multigate -1-2-3-4-5-
 Gates 1 and 5 are grounded; gates 2 and 4 are shorted.
-Both Vg3 and Vg2(=Vg4) are swept.
+Both Vg3 and Vg2(=Vg4) are swept independently.
 """
 
 import os
@@ -36,45 +36,48 @@ CH_GATE_2_4 = "SM2 - Source voltage"
 CH_MAGNET = "Magnet Source - Source current"
 CH_RESIST = "VITracer - VI curve"
 
-# coil current to B-field conversion factor
-# the new sample holder is perpendicular to the old one; the
-# conversion factor along the new axis is 30mA to 1mT
+# Coil current to B-field conversion factor.
+# The new sample holder is perpendicular to the old one;
+# the conversion factor along the new axis is 30mA to 1mT.
 CURR_TO_FIELD = 1 / 30
 
 # constants
 PHI0 = cs.h / (2 * cs.e)  # magnetic flux quantum
 JJ_WIDTH = 4e-6
-# the effective junction length is largely unknown due to thin-film penetration
-# depth and flux focusing effects; nominally 100nm
+# The effective junction length is largely unknown due to thin-film penetration depth
+# and flux focusing effects; nominally 100nm.
 JJ_LENGTH = 1200e-9
 FIELD_TO_WAVENUM = 2 * np.pi * JJ_LENGTH / PHI0  # B-field to beta wavenumber
 PERIOD = 2 * np.pi / (FIELD_TO_WAVENUM * JJ_WIDTH)
 
 with LabberData(DATA_FILE_PATH) as f:
-    # NOTE: The use of np.unique assumes the gate, field, and
-    # bias values are identical for each sweep. This is true
-    # for the current datafile but may not hold in general.
-    # NOTE: Also, in this case we have to manually correct some
-    # Labber shenanigans by flipping some data.
+    # NOTE: The use of np.unique assumes the gate, field, and bias values are identical
+    # for each sweep. This is true for the current datafile but may not hold in general.
+    # NOTE: Also, in this case we have to manually correct some Labber shenanigans by
+    # flipping some data.
     gate_3 = np.flip(np.unique(f.get_data(CH_GATE_3)))
     gate_2_4 = np.flip(np.unique(f.get_data(CH_GATE_2_4)))
     field = np.unique(f.get_data(CH_MAGNET)) * CURR_TO_FIELD
 
-    # bias current from the custom Labber driver VICurveTracer isn't available
-    # via LabberData methods
+    # Bias current from the custom Labber driver VICurveTracer isn't available via
+    # LabberData methods.
     bias = np.unique(f._file["/Traces/VITracer - VI curve"][:, 1, :])
 
     resist = f.get_data(CH_RESIST)
 
-# extract_switching_current chokes on 1D arrays, construct the ndarray of bias
-# sweeps for each (gate, field) to match the shape of the resistance ndarray
+# extract_switching_current chokes on 1D arrays. Construct the ndarray of bias sweeps
+# for each (gate, field) to match the shape of the resistance ndarray
 ic = extract_switching_current(
     np.tile(bias, resist.shape[:-1] + (1,)), resist, threshold=2.96e-3,
 )
 
-# every other fraunhofer is flipped horizontally when compared
-# to Labber's Log Viewer
-ic[:, 1::2, :] = np.flip(ic[:, 1::2, :], axis=-1)
+# NOTE: Here, every other fraunhofer appears flipped horizontally (i.e.  field B -> -B)
+# when compared to Labber's Log Viewer.  However, Labber's Log Viewer shows a field
+# offset that systematically changes sign on every other fraunhofer. This suggests that
+# the Log Viewer incorrectly flips every other fraunhofer.  To recover the data as
+# viewed in Log Viewer, uncomment this line.  The fraunhofers are centered and
+# symmetrized before current reconstruction, so it shouldn't matter.
+# ic[:, 1::2, :] = np.flip(ic[:, 1::2, :], axis=-1)
 
 # There are 11x10 fraunhofers, 1 for each of the 11 Vg3 and 10 Vg2(=Vg4) values.
 # Make 21 plots by fixing Vg3 and sweeping over Vg2, and vice versa.
