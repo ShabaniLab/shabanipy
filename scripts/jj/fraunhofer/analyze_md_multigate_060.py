@@ -10,7 +10,6 @@ Both Vg3 and Vg2(=Vg4) are swept independently.
 """
 
 import os
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -79,51 +78,61 @@ ic = extract_switching_current(
 # symmetrized before current reconstruction, so it shouldn't matter.
 # ic[:, 1::2, :] = np.flip(ic[:, 1::2, :], axis=-1)
 
-# There are 11x10 fraunhofers, 1 for each of the 11 Vg3 and 10 Vg2(=Vg4) values.
-# Make 21 plots by fixing Vg3 and sweeping over Vg2, and vice versa.
+# 183 is the largest number of points returned by symmetrize_fraunhofer
+# extract_current_distribution then returns max 183*2 = 366 points
+POINTS = 366
+x = np.empty(shape=ic.shape[:-1] + (POINTS,))
+jx = np.empty(shape=ic.shape[:-1] + (POINTS,))
+for i, g3 in enumerate(gate_3):
+    for j, g24 in enumerate(gate_2_4):
+        ic_ = ic[i, j]
+        field_ = field - find_fraunhofer_center(field, ic_)
+        field_, ic_ = symmetrize_fraunhofer(field_, ic_)
+        x_, jx_ = extract_current_distribution(
+            field_, ic_, FIELD_TO_WAVENUM, JJ_WIDTH, len(field_)
+        )
+        x[i, j] = np.pad(x_, (POINTS - len(x_)) // 2)
+        jx[i, j] = np.pad(jx_, (POINTS - len(jx_)) // 2)
+
+# There are 11x10 fraunhofers, 1 for each (Vg3, Vg2=Vg4) combination.
+# Make 21 plots by fixing Vg3 and sweeping over Vg2=Vg4, and vice versa.
+cmap = plt.get_cmap("inferno")
 for i, g3 in enumerate(gate_3):
     fig, ax = plt.subplots(constrained_layout=True)
     ax.set_title(r"$V_\mathrm{g1,g5} = 0$, $V_\mathrm{g3} = $" + f"{g3} V")
     ax.set_xlabel(r"$B_\perp$ (mT)")
     ax.set_ylabel(r"$I_c$ (μA)")
     lines = ax.plot(field * 1e3, np.transpose(ic[i]) * 1e6)
-    cmap = plt.get_cmap("inferno")
-    for i, line in enumerate(lines):
-        line.set_color(cmap(i / len(lines)))
+    for l, line in enumerate(lines):
+        line.set_color(cmap(l / len(lines)))
     ax.legend(gate_2_4, title=r"$V_\mathrm{g2,g4}$ (V)")
-for i, g24 in enumerate(gate_2_4):
+    fig.savefig(f"plots/061_fraunhofer_Vg3{g3}.svg", format="svg")
+
+    fig, ax = plt.subplots(constrained_layout=True)
+    ax.set_title(r"$V_\mathrm{g1,g5} = 0$, $V_\mathrm{g3} = $" + f"{g3} V")
+    ax.set_xlabel(r"$x$ (μm)")
+    ax.set_ylabel(r"$J(x)$ (μA/μm)")
+    for j, g24 in enumerate(gate_2_4):
+        ax.plot(x[i, j] * 1e6, jx[i, j], color=cmap(j / len(gate_2_4)))
+    ax.legend(gate_2_4, title=r"$V_\mathrm{g2,g4}$ (V)")
+    fig.savefig(f"plots/061_current-density_Vg3{g3}.svg", format="svg")
+
+for j, g24 in enumerate(gate_2_4):
     fig, ax = plt.subplots(constrained_layout=True)
     ax.set_title(r"$V_\mathrm{g1,g5} = 0$, $V_\mathrm{g2,g4} = $" + f"{g24} V")
     ax.set_xlabel(r"$B_\perp$ (mT)")
     ax.set_ylabel(r"$I_c$ (μA)")
-    lines = ax.plot(field * 1e3, np.transpose(ic[:, i]) * 1e6)
-    cmap = plt.get_cmap("inferno")
-    for i, line in enumerate(lines):
-        line.set_color(cmap(i / len(lines)))
+    lines = ax.plot(field * 1e3, np.transpose(ic[:, j]) * 1e6)
+    for l, line in enumerate(lines):
+        line.set_color(cmap(l / len(lines)))
     ax.legend(gate_3, title=r"$V_\mathrm{g3}$ (V)")
+    fig.savefig(f"plots/061_fraunhofer_Vg24{g24}.svg", format="svg")
 
-
-sys.exit()
-
-fig, ax = plt.subplots(constrained_layout=True)
-ax.set_title("JS311-BHENL001-2JJ-2HB-5MGJJ-MG2-060")
-ax.set_xlabel(r"$x$ (μm)")
-ax.set_ylabel(r"$J(x)$ (μA/μm)")
-
-# save current reconstructions for further analysis
-# x = np.empty(shape=ic.shape)
-# jx = np.empty(shape=ic.shape)
-for idx, gate_ in enumerate(gate):
-    ic_ = ic[idx]
-    field_ = field - find_fraunhofer_center(field, ic_)
-    field_, ic_ = symmetrize_fraunhofer(field_, ic_)
-    x_, jx_ = extract_current_distribution(
-        field_, ic_, FIELD_TO_WAVENUM, JJ_WIDTH, len(field_)
-    )
-    ax.plot(x_ * 1e6, jx_, color=cmap(idx / len(gate)))
-
-lines = ax.get_lines()
-lines[0].set_label(gate[0])
-lines[-1].set_label(gate[-1])
-ax.legend(title=r"$V_\mathrm{g2,g4}$ (V)")
-plt.show()
+    fig, ax = plt.subplots(constrained_layout=True)
+    ax.set_title(r"$V_\mathrm{g1,g5} = 0$, $V_\mathrm{g2,g4} = $" + f"{g24} V")
+    ax.set_xlabel(r"$x$ (μm)")
+    ax.set_ylabel(r"$J(x)$ (μA/μm)")
+    for i, g3 in enumerate(gate_3):
+        ax.plot(x[i, j] * 1e6, jx[i, j], color=cmap(i / len(gate_3)))
+    ax.legend(gate_3, title=r"$V_\mathrm{g3}$ (V)")
+    fig.savefig(f"plots/061_current-density_Vg24{g24}.svg", format="svg")
