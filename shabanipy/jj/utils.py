@@ -188,15 +188,14 @@ def extract_switching_current(
     bias: np.ndarray,
     volt_or_res: np.ndarray,
     threshold: float,
-    side: Literal["positive", "negative"],
+    side: Literal["positive", "negative"] = "positive",
     replace_zeros: Optional[float] = None,
     debug: bool = False,
 ) -> np.ndarray:
     """Extract the switching current from a voltage or resistance map.
-
-    If more than 1D array input are used, the last dimension if assumed to be swept.
-    The current sweep does not have to be the same for all outer dimensions.
-
+    If more than 1D array inputs are used, the last dimension is assumed to be
+    swept.  The current sweep does not have to be the same for all outer
+    dimensions.
     Parameters
     ----------
     bias : np.ndarray
@@ -210,12 +209,10 @@ def extract_switching_current(
         by default "positive"
     debug : bool, optional
         Should additional debug information be provided.
-
     Returns
     -------
     np.ndarray
         ND array of the extracted critical current.
-
     """
     if side not in ("positive", "negative"):
         raise ValueError(f"Side should be 'positive' or 'negative', found {side}.")
