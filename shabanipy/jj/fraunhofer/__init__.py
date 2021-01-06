@@ -11,4 +11,3 @@
 """
 from .generate_pattern import produce_fraunhofer
 from .deterministic_reconstruction import extract_current_distribution
-from .bayesian_reconstruction import rebuild_current_distribution

@@ -7,17 +7,18 @@
 # The full license is in the file LICENCE, distributed with this software.
 # -----------------------------------------------------------------------------
 """Generate a Fraunhofer pattern based on a current distribution."""
-from typing import Optional
 import warnings
+from typing import Optional, Tuple
 
 import numpy as np
 from numba import cfunc
 from numba.types import CPointer, float64, intc
+from numpy.fft import fft, fftfreq, fftshift
 from scipy import LowLevelCallable
-from scipy.integrate import romb, quad, IntegrationWarning
+from scipy.integrate import IntegrationWarning, quad, romb
 from typing_extensions import Literal
 
-from shabanipy.utils.integrate import resample_evenly, can_romberg
+from shabanipy.utils.integrate import can_romberg, resample_evenly
 
 warnings.filterwarnings("ignore", category=IntegrationWarning)
 
@@ -28,16 +29,12 @@ def generate_current_integrand(
     current_distribution: np.ndarray,
     phase_distribution: np.ndarray,
 ):
-    """Integrand to compute the current through a junction at a given field.
-
-    """
+    """Integrand to compute the current through a junction at a given field."""
     step = width / len(current_distribution)
 
     @cfunc(float64(intc, CPointer(float64)))
     def real_current_integrand(n, args):
-        """Cfunc to be used with quad to calculate the current from the distribution.
-
-        """
+        """Cfunc to be used with quad to calculate the current from the distribution."""
         pos, field = args[0], args[1]
         x = int(pos // step)
         return current_distribution[x] * np.cos(
@@ -46,9 +43,7 @@ def generate_current_integrand(
 
     @cfunc(float64(intc, CPointer(float64)))
     def imag_current_integrand(n, args):
-        """Cfunc to be used with quad to calculate the current from the distribution.
-
-        """
+        """Cfunc to be used with quad to calculate the current from the distribution."""
         pos, field = args[0], args[1]
         x = int(pos // step)
         return current_distribution[x] * np.sin(
@@ -134,7 +129,7 @@ def produce_fraunhofer_fast(
     f2k: float,  # field-to-wavevector conversion factor
     cd: np.ndarray,  # current distribution
     xs: np.ndarray,
-    ret_fourier: Optional[bool] = False
+    ret_fourier: Optional[bool] = False,
 ) -> np.ndarray:
     """Generate Fraunhofer from current density using Romberg integration.
 
@@ -150,3 +145,10 @@ def produce_fraunhofer_fast(
         g[i] = romb(cd * np.exp(1j * f2k * field * xs), dx)
 
     return g if ret_fourier else np.abs(g)
+
+
+def _produce_fraunhofer_dft(
+    j: np.ndarray, dx: float = 1, f2k: float = 1
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Generate Fraunhofer from current density using discrete Fourier transform."""
+    return np.abs(fftshift(fft(j))), 2 * np.pi / f2k * fftshift(fftfreq(len(j), dx))

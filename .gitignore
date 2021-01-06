@@ -109,3 +109,11 @@ venv.bak/
 
 # Vscode
 .vscode/
+
+# pre-commit framework
+.pre-commit-config.yaml
+
+# ctags
+tags
+
+pyproject.toml
