@@ -117,3 +117,6 @@ venv.bak/
 tags
 
 pyproject.toml
+
+# macOS
+.DS_Store
