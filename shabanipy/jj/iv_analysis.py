@@ -189,6 +189,7 @@ def extract_critical_current(
     measured_voltage: np.ndarray,
     debug: bool = False,
 )-> Tuple[np.ndarray]:
+#Comment
     """Extract the critical current
 
     All values are extracted for cold and hot electrons. The cold side is the
