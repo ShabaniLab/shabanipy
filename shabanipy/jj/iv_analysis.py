@@ -12,7 +12,10 @@
 from typing import Tuple
 
 import numpy as np
+import math
 import matplotlib.pyplot as plt
+from scipy.signal import find_peaks
+from scipy.ndimage import gaussian_filter
 from lmfit.models import LinearModel
 
 from .utils import correct_voltage_offset
@@ -179,3 +182,88 @@ def analyse_vi_curve(
         ie_h[m_index] = hot_value(iexe_p, iexe_n)
 
     return (rn_c, rn_h, ic_c, ic_h, ie_c, ie_h)
+
+
+def extract_critical_current(    
+    current_bias: np.ndarray,
+    measured_voltage: np.ndarray,
+    debug: bool = False,
+)-> Tuple[np.ndarray]:
+    """Extract the critical current
+
+    All values are extracted for cold and hot electrons. The cold side is the
+    one on which the bias is ramped from 0 to large value, the hot one the one
+    on which bias is ramped towards 0.
+
+    Parameters
+    ----------
+    current_bias : np.ndarray
+        N+1D array of the current bias applied on the junction in A.
+    measured_voltage : np.ndarray
+        N+1D array of the voltage accross the junction in V.
+
+    Returns
+    -------
+    Ic_c : np.ndarray
+        Critical current evaluated on the cold electron side. ND array
+
+    """
+    ic_c = np.empty(current_bias.shape[:-1])
+
+    # Iterate on additional dimensions
+    it = np.nditer(current_bias[..., 0], ["multi_index"])
+
+    for b in it:
+        m_index = it.multi_index
+
+        # Extract the relevant sweeps.
+        cb = current_bias[m_index]
+        mv = measured_voltage[m_index]
+
+        # Determine the hot and cold electron side
+        if cb[0] < 0.0:
+            cold_value = lambda p, n: abs(p)
+            hot_value = lambda p, n: abs(n)
+        else:
+            cold_value = lambda p, n: abs(n)
+            hot_value = lambda p, n: abs(p)
+
+        # Sort the data so that the bias always go from negative to positive
+        sorting_index = np.argsort(cb)
+        cb = cb[sorting_index]
+        mv = mv[sorting_index]
+
+        # Index at which the bias current is zero
+        index = np.argmin(np.abs(cb))
+
+        # Extract the critical current on the positive and negative branch
+        
+        didv = np.diff(mv)/np.diff(cb)
+        didv = gaussian_filter(didv,3)
+        
+        # l_limit = 10
+        # r_limit = 180
+        # ldidv = didv[l_limit:index]
+        # rdidv = didv[index:index+r_limit]
+        ldidv = didv[:index]
+        rdidv = didv[index:]
+
+        lpeak, _ = find_peaks(ldidv, height = math.floor(max(ldidv[:-20]))*0.2) 
+        rpeak, _ = find_peaks(rdidv, height = math.floor(max(rdidv[:-20]))*0.2)
+        
+        print(m_index,lpeak,rpeak)
+        ic_n = abs(cb[lpeak[-1]])
+        ic_p = abs(cb[rpeak[0]+index])
+        # if lpeak.size != 0:
+        #     ic_n = abs(cb[lpeak[-1]+l_limit])
+        # else:
+        #     ic_n = abs(cb[np.argmax(didv[:index])+l_limit])
+        # if rpeak.size != 0:
+        #     ic_p = abs(cb[rpeak[0]+index])
+        # else:
+        #     ic_p = abs(cb[np.argmax(didv[index:])+index])
+
+        ic_c[m_index] = cold_value(ic_p,ic_n)
+        
+    return ic_c
+
