@@ -7,6 +7,7 @@
 # The full license is in the file LICENCE, distributed with this software.
 # -----------------------------------------------------------------------------
 """Routines to analyse data taken on JJ.
+
 """
 import logging
 from typing import Tuple, Optional, Union
@@ -19,6 +20,7 @@ from lmfit.models import GaussianModel
 
 def f2k_from_periodicity_and_width(periodicty: float, width: float) -> float:
     """Field to k estimate from the periodicity of a pattern and the assumed width.
+
     """
     return 2 * np.pi / (periodicty * width)
 
@@ -27,16 +29,19 @@ def find_fraunhofer_center(
     field: np.ndarray, ic: np.ndarray, debug: bool = False
 ) -> float:
     """Extract the field at which the Fraunhofer is centered.
+
     Parameters
     ----------
     field : np.ndarray
         1D array of the magnetic field applied of the JJ.
     ic : np.ndarray
         1D array of the JJ critical current.
+
     Returns
     -------
     float
         Field at which the center of the pattern is located.
+
     """
     max_loc = np.argmax(ic)
     width, *_ = peak_widths(ic, [max_loc], rel_height=0.5)
@@ -60,6 +65,7 @@ def recenter_fraunhofer(
     field: np.ndarray, ic: np.ndarray, debug: bool = False
 ) -> np.ndarray:
     """Correct the offset in field of a Fraunhofer pattern.
+
     Parameters
     ----------
     field : np.ndarray
@@ -67,10 +73,12 @@ def recenter_fraunhofer(
         expected to be swept.
     ic : np.ndarray
         ND array of the JJ critical current.
+
     Returns
     -------
     np.ndarray
         Field array from which the offset has been removed.
+
     """
     it = np.nditer(field[..., 0], ["multi_index"])
     res = np.copy(field)
@@ -86,7 +94,9 @@ def symmetrize_fraunhofer(
     field: np.ndarray, ic: np.ndarray, debug: bool = False
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Symmetrize a Fraunhofer pattern.
+
     We conserve the side on which more lobes are visible and perform a mirror.
+
     Parameters
     ----------
     field : np.ndarray
@@ -94,12 +104,14 @@ def symmetrize_fraunhofer(
         expected to be swept. The field should be offset free.
     ic : np.ndarray
         1D array of the JJ critical current.
+
     Returns
     -------
     np.ndarray
         New field array which has been symmetrizes.
     np.ndarray
         Critical current symmetrized with respect to 0 field.
+
     """
     # Ensure we get increasing value of field
     if field[0] > field[1]:

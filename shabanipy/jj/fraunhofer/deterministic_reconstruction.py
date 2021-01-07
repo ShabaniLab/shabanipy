@@ -7,17 +7,17 @@
 # The full license is in the file LICENCE, distributed with this software.
 # -----------------------------------------------------------------------------
 """Deterministic reconstruction of the j(x) in a JJ from a Fraunhofer pattern.
+
 The method implemented here is based on:
     [1] Dynes, R. C. & Fulton, T. A.  Supercurrent Density Distribution in
     Josephson Junctions.  Phys. Rev. B 3, 3015–3023 (1971).
-<<<<<<< HEAD
-=======
 
->>>>>>> master
 This method has the advantage of being algebraic but can suffer from a lack of
 precision due to the finite extend of the measured Fraunhofer pattern.
+
 We need to use the more complex approach of the paper since we are interested
 in non-symmetric current distributions.
+
 """
 from typing import Optional, Tuple
 
@@ -39,18 +39,12 @@ def extract_theta(
     method: Optional[Literal["romb", "quad", "hilbert"]] = "hilbert",
 ) -> np.ndarray:
     """Compute the phase as the Hilbert transform of ln(I_c).
-<<<<<<< HEAD
-=======
 
->>>>>>> master
     Note the integral expressions for θ(β) implemented here differ from Eq. (5)
     [1] by a factor of 2, but give the correct output. (The source of this
     discrepancy is as yet unknown. But note the Hilbert transform is usually
     defined, as below, with a prefactor 1/π.)
-<<<<<<< HEAD
-=======
 
->>>>>>> master
     Parameters
     ----------
     fields : np.ndarray
@@ -68,10 +62,7 @@ def extract_theta(
         numerical integration methods (note `quad` is particularly slow), while
         `hilbert` uses `scipy.signal.hilbert` to compute the discrete Hilbert
         transform.
-<<<<<<< HEAD
-=======
 
->>>>>>> master
     Returns
     -------
     np.ndarray
@@ -79,10 +70,7 @@ def extract_theta(
         the current distribution. The phases are shifted by a factor
         `field * jj_width / 2` to give a reconstructed current density centered
         about the origin.
-<<<<<<< HEAD
-=======
 
->>>>>>> master
     """
     # scale B to beta first; then forget about it
     fields = fields * f2k
@@ -156,6 +144,7 @@ def extract_current_distribution(
     theta: Optional[np.ndarray] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Extract the current distribution from Ic(B).
+
     Parameters
     ----------
     fields : np.ndarray
@@ -173,12 +162,14 @@ def extract_current_distribution(
     theta : np.ndarray, optional
         Phase distribution to use in the current reconstruction. If None, it
         will be extracted from the given Fraunhofer pattern.
+
     Returns
     -------
     np.ndarray
         Positions at which the current density was calculated.
     np.ndarray
         Current density.
+
     """
     if not can_romberg(fields):
         fine_fields, fine_ics = resample_evenly(fields, ics)
