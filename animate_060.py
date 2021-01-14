@@ -1,4 +1,9 @@
-"""Reconstruct current density distribution of Maryland multigate device.
+"""Animate current density distribution of Maryland multigate device.
+
+Forked from:
+    Repository: github.com/shabanilab/shabanipy
+    Script:     scripts/jj/fraunhofer/analyze_md_multigate
+    Commit SHA: 3a23cfdc32180e639e0d69bbec2185fd37f7f52c
 
 Device ID: JS311_2HB-2JJ-5MGJJ-MD-001_MG2.
 Scan ID: JS311-BHENL001-2JJ-2HB-5MGJJ-MG2-060.
