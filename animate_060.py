@@ -131,7 +131,15 @@ def update(frame, ic, lines_ic, x, jx, lines_jx):
         line.set_data(x[frame, l], jx[frame, l])
     return lines_ic + lines_jx
 
-ani = animation.FuncAnimation(fig, update, frames=len(gate_3), fargs=[ic, lines_ic, x, jx, lines_jx], interval=200, blit=True)
+ani = animation.FuncAnimation(
+    fig,
+    update,
+    frames=[i for i, _ in enumerate(gate_3)]
+    + [i for i, _ in reversed(list(enumerate(gate_3)))],
+    fargs=[ic, lines_ic, x, jx, lines_jx],
+    interval=200,
+    blit=True,
+)
 ani.save('test.gif')
 plt.show()
 
