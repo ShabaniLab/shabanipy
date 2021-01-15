@@ -103,20 +103,23 @@ for i, g3 in enumerate(gate_3):
 # Make 2 animations: one where Vg3 is swept, another where Vg2=Vg4 is swept.
 
 cmap = plt.get_cmap("inferno")
+field = field * 1e3
+ic = ic * 1e6
 
 # sweep Vg3 with time
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5), constrained_layout=True)
 ax1.set_xlabel(r"$B_\perp$ (mT)")
 ax1.set_ylabel(r"$I_c$ (μA)")
+ax1.set_ylim(0, 2.5)
 ax2.set_xlabel(r"$x$ (μm)")
 ax2.set_ylabel(r"$J(x)$ (μA/μm)")
-lines = ax1.plot(field * 1e3, np.transpose(ic[0]) * 1e6)
+lines = ax1.plot(field, np.transpose(ic[0]))
 for l, line in enumerate(lines):
     line.set_color(cmap(l / len(lines)))
 
 def update(frame, ic, lines):
     for l, line in enumerate(lines):
-        line.set_ydata(ic[frame, l] * 1e6)
+        line.set_ydata(ic[frame, l])
     return lines
 
 ani = animation.FuncAnimation(fig, update, frames=len(gate_3), fargs=[ic, lines], interval=1000, blit=True)
