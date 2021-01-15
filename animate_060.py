@@ -100,20 +100,23 @@ for i, g3 in enumerate(gate_3):
         jx[i, j] = np.pad(jx_, (POINTS - len(jx_)) // 2, mode="edge")
 
 # There are 11x10 fraunhofers, 1 for each (Vg3, Vg2=Vg4) combination.
-# Make 2 animations: one where Vg3 is swept, another where Vg2=Vg4 is swept.
+# Make 2 animations:
+#     1. Plot all Vg2=Vg4 traces and sweep Vg3 with time;
+#     2. Plot all Vg3 traces and sweep Vg2=Vg4 with time.
 
 cmap = plt.get_cmap("inferno")
 field = field * 1e3
 ic = ic * 1e6
 x = x * 1e6
 
-# sweep Vg3 with time
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5), constrained_layout=True)
 ax1.set_xlabel(r"$B_\perp$ (mT)")
 ax1.set_ylabel(r"$I_c$ (μA)")
-ax1.set_ylim(0, 2.5)
 ax2.set_xlabel(r"$x$ (μm)")
 ax2.set_ylabel(r"$J(x)$ (μA/μm)")
+ax1.set_ylim(0, 2.5)
+ax2.set_ylim(-0.25, 1.75)
+
 lines_ic = ax1.plot(field, np.transpose(ic[0]))
 for l, line in enumerate(lines_ic):
     line.set_color(cmap(l / len(lines_ic)))
@@ -121,17 +124,14 @@ for k, g24 in enumerate(gate_2_4):
     ax2.plot(x[0, k], jx[0, k], color=cmap(k / len(gate_2_4)))
 lines_jx = ax2.get_lines()
 
-plt.show()
-
-import sys
-sys.exit()
-
-def update(frame, ic, lines):
-    for l, line in enumerate(lines):
+def update(frame, ic, lines_ic, x, jx, lines_jx):
+    for l, line in enumerate(lines_ic):
         line.set_ydata(ic[frame, l])
-    return lines
+    for l, line in enumerate(lines_jx):
+        line.set_data(x[frame, l], jx[frame, l])
+    return lines_ic + lines_jx
 
-ani = animation.FuncAnimation(fig, update, frames=len(gate_3), fargs=[ic, lines], interval=1000, blit=True)
+ani = animation.FuncAnimation(fig, update, frames=len(gate_3), fargs=[ic, lines_ic, x, jx, lines_jx], interval=200, blit=True)
 ani.save('test.gif')
 plt.show()
 
