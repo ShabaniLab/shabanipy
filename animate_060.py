@@ -105,6 +105,7 @@ for i, g3 in enumerate(gate_3):
 cmap = plt.get_cmap("inferno")
 field = field * 1e3
 ic = ic * 1e6
+x = x * 1e6
 
 # sweep Vg3 with time
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5), constrained_layout=True)
@@ -113,9 +114,17 @@ ax1.set_ylabel(r"$I_c$ (μA)")
 ax1.set_ylim(0, 2.5)
 ax2.set_xlabel(r"$x$ (μm)")
 ax2.set_ylabel(r"$J(x)$ (μA/μm)")
-lines = ax1.plot(field, np.transpose(ic[0]))
-for l, line in enumerate(lines):
-    line.set_color(cmap(l / len(lines)))
+lines_ic = ax1.plot(field, np.transpose(ic[0]))
+for l, line in enumerate(lines_ic):
+    line.set_color(cmap(l / len(lines_ic)))
+for k, g24 in enumerate(gate_2_4):
+    ax2.plot(x[0, k], jx[0, k], color=cmap(k / len(gate_2_4)))
+lines_jx = ax2.get_lines()
+
+plt.show()
+
+import sys
+sys.exit()
 
 def update(frame, ic, lines):
     for l, line in enumerate(lines):
@@ -128,15 +137,7 @@ plt.show()
 
 import sys
 sys.exit()
-    fig, ax = plt.subplots(constrained_layout=True)
-    for j, g24 in enumerate(gate_2_4):
-        ax.plot(x[i, j] * 1e6, jx[i, j], color=cmap(j / len(gate_2_4)))
-    lines = ax.get_lines()
-    lines[0].set_label(gate_2_4[0])
-    lines[-1].set_label(gate_2_4[-1])
-    ax.legend(title=r"$V_\mathrm{g2,g4}$ (V)")
-    fig.savefig(f"plots/061_current-density_Vg3={g3}.pdf", format="pdf")
-    plt.close(fig=fig)
+
 
 for j, g24 in enumerate(gate_2_4):
     fig, ax = plt.subplots(constrained_layout=True)
