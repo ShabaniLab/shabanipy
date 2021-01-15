@@ -18,7 +18,7 @@ import os
 from pathlib import Path
 
 import numpy as np
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, animation
 from scipy import constants as cs
 
 from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
@@ -100,26 +100,32 @@ for i, g3 in enumerate(gate_3):
         jx[i, j] = np.pad(jx_, (POINTS - len(jx_)) // 2, mode="edge")
 
 # There are 11x10 fraunhofers, 1 for each (Vg3, Vg2=Vg4) combination.
-# Make 21 plots by fixing Vg3 and sweeping over Vg2=Vg4, and vice versa.
-cmap = plt.get_cmap("inferno")
-for i, g3 in enumerate(gate_3):
-    fig, ax = plt.subplots(constrained_layout=True)
-    ax.set_title(r"$V_\mathrm{g1,g5} = 0$, $V_\mathrm{g3} = $" + f"{g3} V")
-    ax.set_xlabel(r"$B_\perp$ (mT)")
-    ax.set_ylabel(r"$I_c$ (μA)")
-    lines = ax.plot(field * 1e3, np.transpose(ic[i]) * 1e6)
-    for l, line in enumerate(lines):
-        line.set_color(cmap(l / len(lines)))
-    lines[0].set_label(gate_2_4[0])
-    lines[-1].set_label(gate_2_4[-1])
-    ax.legend(title=r"$V_\mathrm{g2,g4}$ (V)")
-    fig.savefig(f"plots/061_fraunhofer_Vg3={g3}.pdf", format="pdf")
-    plt.close(fig=fig)
+# Make 2 animations: one where Vg3 is swept, another where Vg2=Vg4 is swept.
 
+cmap = plt.get_cmap("inferno")
+
+# sweep Vg3 with time
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5), constrained_layout=True)
+ax1.set_xlabel(r"$B_\perp$ (mT)")
+ax1.set_ylabel(r"$I_c$ (μA)")
+ax2.set_xlabel(r"$x$ (μm)")
+ax2.set_ylabel(r"$J(x)$ (μA/μm)")
+lines = ax1.plot(field * 1e3, np.transpose(ic[0]) * 1e6)
+for l, line in enumerate(lines):
+    line.set_color(cmap(l / len(lines)))
+
+def update(frame, ic, lines):
+    for l, line in enumerate(lines):
+        line.set_ydata(ic[frame, l] * 1e6)
+    return lines
+
+ani = animation.FuncAnimation(fig, update, frames=len(gate_3), fargs=[ic, lines], interval=1000, blit=True)
+ani.save('test.gif')
+plt.show()
+
+import sys
+sys.exit()
     fig, ax = plt.subplots(constrained_layout=True)
-    ax.set_title(r"$V_\mathrm{g1,g5} = 0$, $V_\mathrm{g3} = $" + f"{g3} V")
-    ax.set_xlabel(r"$x$ (μm)")
-    ax.set_ylabel(r"$J(x)$ (μA/μm)")
     for j, g24 in enumerate(gate_2_4):
         ax.plot(x[i, j] * 1e6, jx[i, j], color=cmap(j / len(gate_2_4)))
     lines = ax.get_lines()
