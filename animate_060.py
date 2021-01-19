@@ -113,6 +113,10 @@ field = field * 1e3
 ic = ic * 1e6
 x = x * 1e6
 
+########################
+# V_g3 sweep animation #
+########################
+
 fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(14, 4), gridspec_kw={'width_ratios': [1, 1, 0.5]}, constrained_layout=True)
 ax1.set_xlabel(r"$B_\perp$ (mT)")
 ax1.set_ylabel(r"$I_c$ (μA)")
@@ -151,13 +155,20 @@ for ax, num in zip([ax_g2, ax_g3, ax_g4], [2, 3, 4]):
     ax.set_anchor('SW')
 for ax in [ax_g2, ax_g4]:
     ax.imshow(np.transpose([np.flip(gate_2_4)]), cmap=cmap, aspect=1 / 2)
-ax_g2.set_yticks(np.arange(len(gate_2_4)))
-ax_g2.set_yticklabels(gate_2_4)
-for ax in [ax_g3, ax_g4]:
-    ax.yaxis.set_visible(False)
+    ax.set_yticks(np.arange(len(gate_2_4)))
+    ax.set_yticklabels(gate_2_4)
+    ax.tick_params(length=0, pad=-22, colors='white')
+    for ticklabel in ax.yaxis.get_majorticklabels()[-2:]:
+        ticklabel.set_color('black')
 ax_g3.set_xlim((0, 1))
 ax_g3.set_ylim((np.min(gate_3), np.max(gate_3)))
-rect_g3 = Rectangle(xy=(0, 0), width=1, height=gate_3_fine[0], color='k')
+ax_g3.set_yticks([np.min(gate_3) + 0.2, np.max(gate_3) - 0.3])
+ax_g3.set_yticklabels([np.min(gate_3), np.max(gate_3)])
+ax_g3.tick_params(length=0, pad=-22)
+ticklabels = ax_g3.yaxis.get_majorticklabels()
+ticklabels[0].set_color('black')
+ticklabels[1].set_color('white')
+rect_g3 = Rectangle(xy=(0, 0), width=1, height=gate_3_fine[0], color='black')
 ax_g3.add_patch(rect_g3)
 ax3_bbox = ax3.get_position()
 ax_g2.set_position([ax3_bbox.x0 + 0.099, ax3_bbox.y0 + 0.4, 0.026, 0.4])
@@ -185,6 +196,10 @@ print('saving gate_3.gif...', end='', flush=True)
 ani.save('gate_3.gif')
 print('done', flush=True)
 plt.close(fig)
+
+#############################
+# V_g2=V_g4 sweep animation #
+#############################
 
 fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(14, 4), gridspec_kw={'width_ratios': [1, 1, 0.5]}, constrained_layout=True)
 ax1.set_xlabel(r"$B_\perp$ (mT)")
@@ -225,21 +240,26 @@ for ax, num in zip([ax_g2, ax_g3, ax_g4], [2, 3, 4]):
 ax_g3.imshow(np.transpose([np.flip(gate_3)]), cmap=cmap, aspect=1 / 2.2)
 ax_g3.set_yticks(np.arange(len(gate_3)))
 ax_g3.set_yticklabels(gate_3)
-ax_g3.tick_params(length=0, pad=-21, colors='w')
+ax_g3.tick_params(length=0, pad=-21, colors='white')
+for ticklabel in ax_g3.yaxis.get_majorticklabels()[-2:]:
+    ticklabel.set_color('black')
 for ax in [ax_g2, ax_g4]:
-    ax.yaxis.set_visible(False)
     ax.set_xlim((0, 1))
     ax.set_ylim((np.min(gate_2_4), np.max(gate_2_4)))
-rect_g2 = Rectangle(xy=(0, 0), width=1, height=gate_2_4_fine[0], color='k')
-rect_g4 = Rectangle(xy=(0, 0), width=1, height=gate_2_4_fine[0], color='k')
+    ax.set_yticks([np.min(gate_2_4) + 0.3, np.max(gate_2_4) - 0.4])
+    ax.set_yticklabels([np.min(gate_2_4), np.max(gate_2_4)])
+    ax.tick_params(length=0, pad=-23)
+    ticklabels = ax.yaxis.get_majorticklabels()
+    ticklabels[0].set_color('black')
+    ticklabels[1].set_color('white')
+rect_g2 = Rectangle(xy=(0, 0), width=1, height=gate_2_4_fine[0], color='black')
+rect_g4 = Rectangle(xy=(0, 0), width=1, height=gate_2_4_fine[0], color='black')
 ax_g2.add_patch(rect_g2)
 ax_g4.add_patch(rect_g4)
 ax3_bbox = ax3.get_position()
 ax_g2.set_position([ax3_bbox.x0 + 0.099, ax3_bbox.y0 + 0.4, 0.026, 0.4])
 ax_g3.set_position([ax3_bbox.x0 + 0.134, ax3_bbox.y0 + 0.4, 0.026, 0.4])
 ax_g4.set_position([ax3_bbox.x0 + 0.1705, ax3_bbox.y0 + 0.4, 0.026, 0.4])
-for ticklabel in ax_g3.yaxis.get_majorticklabels()[-2:]:
-    ticklabel.set_color('k')
 
 def update(frame_num, ic, lines_ic, x, jx, lines_jx):
     for l, line in enumerate(lines_ic):
