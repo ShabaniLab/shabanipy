@@ -138,7 +138,7 @@ for k, g24 in enumerate(gate_2_4):
     ax2.plot(x_interp[0, k], jx_interp[0, k], color=cmap((k + 1) / len(gate_2_4)))
 lines_jx = ax2.get_lines()
 
-# plot the multigate schematic and gate voltage legends
+# plot the multigate schematic and gate voltage legends for V_g3 sweep
 ax3.imshow(plt.imread('./multigateJJ.png'))
 ax3.set_axis_off()
 ax3.set_anchor('S')
@@ -164,7 +164,6 @@ ax_g2.set_position([ax3_bbox.x0 + 0.099, ax3_bbox.y0 + 0.4, 0.026, 0.4])
 ax_g3.set_position([ax3_bbox.x0 + 0.134, ax3_bbox.y0 + 0.4, 0.026, 0.4])
 ax_g4.set_position([ax3_bbox.x0 + 0.1705, ax3_bbox.y0 + 0.4, 0.026, 0.4])
 
-# frame update function for FuncAnimation
 def update(frame_num, ic, lines_ic, x, jx, lines_jx):
     for l, line in enumerate(lines_ic):
         line.set_ydata(ic[frame_num, l])
@@ -187,7 +186,7 @@ ani.save('gate_3.gif')
 print('done', flush=True)
 plt.close(fig)
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5), constrained_layout=True)
+fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(14, 4), gridspec_kw={'width_ratios': [1, 1, 0.5]}, constrained_layout=True)
 ax1.set_xlabel(r"$B_\perp$ (mT)")
 ax1.set_ylabel(r"$I_c$ (μA)")
 ax2.set_xlabel(r"$x$ (μm)")
@@ -195,6 +194,7 @@ ax2.set_ylabel(r"$J(x)$ (μA/μm)")
 ax1.set_ylim(0, 2.5)
 ax2.set_ylim(-0.25, 1.75)
 
+# interpolate along V_g2(=V_g4) to smooth frame transitions
 gate_2_4_fine = np.linspace(gate_2_4[0], gate_2_4[-1], len(gate_2_4) * 10)
 interp_func = interp1d(gate_2_4, ic, axis=1)
 ic_interp = interp_func(gate_2_4_fine)
@@ -203,19 +203,52 @@ x_interp = interp_func(gate_2_4_fine)
 interp_func = interp1d(gate_2_4, jx, axis=1)
 jx_interp = interp_func(gate_2_4_fine)
 
+# plot initial frame for V_g2(=V_g4) fraunhofer and current distribution
 lines_ic = ax1.plot(field, np.transpose(ic_interp[:, 0]))
 for l, line in enumerate(lines_ic):
-    line.set_color(cmap(l / len(lines_ic)))
+    line.set_color(cmap((l+1) / len(lines_ic)))
 for k, g3 in enumerate(gate_3):
-    ax2.plot(x_interp[k, 0], jx_interp[k, 0], color=cmap(k / len(gate_3)))
+    ax2.plot(x_interp[k, 0], jx_interp[k, 0], color=cmap((k+1) / len(gate_3)))
 lines_jx = ax2.get_lines()
+
+# plot the multigate schematic and gate voltage legends for V_g2(=V_g4) sweep
+ax3.imshow(plt.imread('./multigateJJ.png'))
+ax3.set_axis_off()
+ax3.set_anchor('S')
+ax_g2 = fig.add_axes([0, 0, 0, 0], label='gate2_cbar')
+ax_g3 = fig.add_axes([0, 0, 0, 0], label='gate3_cbar')
+ax_g4 = fig.add_axes([0, 0, 0, 0], label='gate4_cbar')
+for ax, num in zip([ax_g2, ax_g3, ax_g4], [2, 3, 4]):
+    ax.set_title(r'$V_\mathrm{' + f'g{num}' + r'}$')
+    ax.xaxis.set_visible(False)
+    ax.set_anchor('SW')
+ax_g3.imshow(np.transpose([np.flip(gate_3)]), cmap=cmap, aspect=1 / 2.2)
+ax_g3.set_yticks(np.arange(len(gate_3)))
+ax_g3.set_yticklabels(gate_3)
+ax_g3.tick_params(length=0, pad=-21, colors='w')
+for ax in [ax_g2, ax_g4]:
+    ax.yaxis.set_visible(False)
+    ax.set_xlim((0, 1))
+    ax.set_ylim((np.min(gate_2_4), np.max(gate_2_4)))
+rect_g2 = Rectangle(xy=(0, 0), width=1, height=gate_2_4_fine[0], color='k')
+rect_g4 = Rectangle(xy=(0, 0), width=1, height=gate_2_4_fine[0], color='k')
+ax_g2.add_patch(rect_g2)
+ax_g4.add_patch(rect_g4)
+ax3_bbox = ax3.get_position()
+ax_g2.set_position([ax3_bbox.x0 + 0.099, ax3_bbox.y0 + 0.4, 0.026, 0.4])
+ax_g3.set_position([ax3_bbox.x0 + 0.134, ax3_bbox.y0 + 0.4, 0.026, 0.4])
+ax_g4.set_position([ax3_bbox.x0 + 0.1705, ax3_bbox.y0 + 0.4, 0.026, 0.4])
+for ticklabel in ax_g3.yaxis.get_majorticklabels()[-2:]:
+    ticklabel.set_color('k')
 
 def update(frame_num, ic, lines_ic, x, jx, lines_jx):
     for l, line in enumerate(lines_ic):
         line.set_ydata(ic[l, frame_num])
     for l, line in enumerate(lines_jx):
         line.set_data(x_interp[l, frame_num], jx_interp[l, frame_num])
-    return lines_ic + lines_jx
+    rect_g2.set_height(gate_2_4_fine[frame_num])
+    rect_g4.set_height(gate_2_4_fine[frame_num])
+    return lines_ic + lines_jx + [rect_g2, rect_g4]
 
 ani = animation.FuncAnimation(
     fig,
@@ -229,4 +262,3 @@ ani = animation.FuncAnimation(
 print('saving gate_2_4.gif...', end='', flush=True)
 ani.save('gate_2_4.gif')
 print('done', flush=True)
-plt.close(fig)
