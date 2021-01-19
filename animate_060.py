@@ -20,6 +20,7 @@ from pathlib import Path
 import numpy as np
 from matplotlib import pyplot as plt, animation
 from scipy import constants as cs
+from scipy.interpolate import interp1d
 
 from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
     extract_current_distribution,
@@ -117,27 +118,31 @@ ax2.set_ylabel(r"$J(x)$ (μA/μm)")
 ax1.set_ylim(0, 2.5)
 ax2.set_ylim(-0.25, 1.75)
 
-lines_ic = ax1.plot(field, np.transpose(ic[0]))
+interp_func = interp1d(gate_3, ic, axis=0)
+gate_3_fine = np.linspace(gate_3[0], gate_3[-1], len(gate_3) * 10)
+ic_interp = interp_func(gate_3_fine)
+
+lines_ic = ax1.plot(field, np.transpose(ic_interp[0]))
 for l, line in enumerate(lines_ic):
     line.set_color(cmap(l / len(lines_ic)))
 for k, g24 in enumerate(gate_2_4):
     ax2.plot(x[0, k], jx[0, k], color=cmap(k / len(gate_2_4)))
 lines_jx = ax2.get_lines()
 
-def update(frame, ic, lines_ic, x, jx, lines_jx):
+def update(frame_num, ic, lines_ic, x, jx, lines_jx):
     for l, line in enumerate(lines_ic):
-        line.set_ydata(ic[frame, l])
-    for l, line in enumerate(lines_jx):
-        line.set_data(x[frame, l], jx[frame, l])
-    return lines_ic + lines_jx
+        line.set_ydata(ic[frame_num, l])
+    #for l, line in enumerate(lines_jx):
+    #    line.set_data(x[frame, l], jx[frame, l])
+    return lines_ic# + lines_jx
 
 ani = animation.FuncAnimation(
     fig,
     update,
-    frames=[i for i, _ in enumerate(gate_3)]
-    + [i for i, _ in reversed(list(enumerate(gate_3)))],
-    fargs=[ic, lines_ic, x, jx, lines_jx],
-    interval=200,
+    frames=[i for i, _ in enumerate(gate_3_fine)]
+    + [i for i, _ in reversed(list(enumerate(gate_3_fine)))],
+    fargs=[ic_interp, lines_ic, x, jx, lines_jx],
+    interval=20,
     blit=True,
 )
 ani.save('test.gif')
