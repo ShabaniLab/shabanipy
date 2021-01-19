@@ -19,6 +19,7 @@ from pathlib import Path
 
 import numpy as np
 from matplotlib import pyplot as plt, animation
+from matplotlib.patches import Rectangle
 from scipy import constants as cs
 from scipy.interpolate import interp1d
 
@@ -112,7 +113,7 @@ field = field * 1e3
 ic = ic * 1e6
 x = x * 1e6
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5), constrained_layout=True)
+fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(14, 4), gridspec_kw={'width_ratios': [1, 1, 0.5]}, constrained_layout=True)
 ax1.set_xlabel(r"$B_\perp$ (mT)")
 ax1.set_ylabel(r"$I_c$ (μA)")
 ax2.set_xlabel(r"$x$ (μm)")
@@ -120,6 +121,7 @@ ax2.set_ylabel(r"$J(x)$ (μA/μm)")
 ax1.set_ylim(0, 2.5)
 ax2.set_ylim(-0.25, 1.75)
 
+# interpolate along V_g3 to smooth frame transitions
 gate_3_fine = np.linspace(gate_3[0], gate_3[-1], len(gate_3) * 10)
 interp_func = interp1d(gate_3, ic, axis=0)
 ic_interp = interp_func(gate_3_fine)
@@ -128,19 +130,48 @@ x_interp = interp_func(gate_3_fine)
 interp_func = interp1d(gate_3, jx, axis=0)
 jx_interp = interp_func(gate_3_fine)
 
+# plot initial frame for V_g3 fraunhofer and current distribution
 lines_ic = ax1.plot(field, np.transpose(ic_interp[0]))
 for l, line in enumerate(lines_ic):
-    line.set_color(cmap(l / len(lines_ic)))
+    line.set_color(cmap((l + 1) / len(lines_ic)))
 for k, g24 in enumerate(gate_2_4):
-    ax2.plot(x_interp[0, k], jx_interp[0, k], color=cmap(k / len(gate_2_4)))
+    ax2.plot(x_interp[0, k], jx_interp[0, k], color=cmap((k + 1) / len(gate_2_4)))
 lines_jx = ax2.get_lines()
 
+# plot the multigate schematic and gate voltage legends
+ax3.imshow(plt.imread('./multigateJJ.png'))
+ax3.set_axis_off()
+ax3.set_anchor('S')
+ax_g2 = fig.add_axes([0, 0, 0, 0], label='gate2_cbar')
+ax_g3 = fig.add_axes([0, 0, 0, 0], label='gate3_cbar')
+ax_g4 = fig.add_axes([0, 0, 0, 0], label='gate4_cbar')
+for ax, num in zip([ax_g2, ax_g3, ax_g4], [2, 3, 4]):
+    ax.set_title(r'$V_\mathrm{' + f'g{num}' + r'}$')
+    ax.xaxis.set_visible(False)
+    ax.set_anchor('SW')
+for ax in [ax_g2, ax_g4]:
+    ax.imshow(np.transpose([np.flip(gate_2_4)]), cmap=cmap, aspect=1 / 2)
+ax_g2.set_yticks(np.arange(len(gate_2_4)))
+ax_g2.set_yticklabels(gate_2_4)
+for ax in [ax_g3, ax_g4]:
+    ax.yaxis.set_visible(False)
+ax_g3.set_xlim((0, 1))
+ax_g3.set_ylim((np.min(gate_3), np.max(gate_3)))
+rect_g3 = Rectangle(xy=(0, 0), width=1, height=gate_3_fine[0], color='k')
+ax_g3.add_patch(rect_g3)
+ax3_bbox = ax3.get_position()
+ax_g2.set_position([ax3_bbox.x0 + 0.099, ax3_bbox.y0 + 0.4, 0.026, 0.4])
+ax_g3.set_position([ax3_bbox.x0 + 0.134, ax3_bbox.y0 + 0.4, 0.026, 0.4])
+ax_g4.set_position([ax3_bbox.x0 + 0.1705, ax3_bbox.y0 + 0.4, 0.026, 0.4])
+
+# frame update function for FuncAnimation
 def update(frame_num, ic, lines_ic, x, jx, lines_jx):
     for l, line in enumerate(lines_ic):
         line.set_ydata(ic[frame_num, l])
     for l, line in enumerate(lines_jx):
         line.set_data(x_interp[frame_num, l], jx_interp[frame_num, l])
-    return lines_ic + lines_jx
+    rect_g3.set_height(gate_3_fine[frame_num])
+    return lines_ic + lines_jx + [rect_g3]
 
 ani = animation.FuncAnimation(
     fig,
