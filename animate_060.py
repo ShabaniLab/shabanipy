@@ -154,31 +154,48 @@ ani = animation.FuncAnimation(
 print('saving gate_3.gif...', end='', flush=True)
 ani.save('gate_3.gif')
 print('done', flush=True)
+plt.close(fig)
 
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5), constrained_layout=True)
+ax1.set_xlabel(r"$B_\perp$ (mT)")
+ax1.set_ylabel(r"$I_c$ (μA)")
+ax2.set_xlabel(r"$x$ (μm)")
+ax2.set_ylabel(r"$J(x)$ (μA/μm)")
+ax1.set_ylim(0, 2.5)
+ax2.set_ylim(-0.25, 1.75)
 
-for j, g24 in enumerate(gate_2_4):
-    fig, ax = plt.subplots(constrained_layout=True)
-    ax.set_title(r"$V_\mathrm{g1,g5} = 0$, $V_\mathrm{g2,g4} = $" + f"{g24} V")
-    ax.set_xlabel(r"$B_\perp$ (mT)")
-    ax.set_ylabel(r"$I_c$ (μA)")
-    lines = ax.plot(field * 1e3, np.transpose(ic[:, j]) * 1e6)
-    for l, line in enumerate(lines):
-        line.set_color(cmap(l / len(lines)))
-    lines[0].set_label(gate_3[0])
-    lines[-1].set_label(gate_3[-1])
-    ax.legend(title=r"$V_\mathrm{g3}$ (V)")
-    fig.savefig(f"plots/061_fraunhofer_Vg24={g24}.pdf", format="pdf")
-    plt.close(fig=fig)
+gate_2_4_fine = np.linspace(gate_2_4[0], gate_2_4[-1], len(gate_2_4) * 10)
+interp_func = interp1d(gate_2_4, ic, axis=1)
+ic_interp = interp_func(gate_2_4_fine)
+interp_func = interp1d(gate_2_4, x, axis=1)
+x_interp = interp_func(gate_2_4_fine)
+interp_func = interp1d(gate_2_4, jx, axis=1)
+jx_interp = interp_func(gate_2_4_fine)
 
-    fig, ax = plt.subplots(constrained_layout=True)
-    ax.set_title(r"$V_\mathrm{g1,g5} = 0$, $V_\mathrm{g2,g4} = $" + f"{g24} V")
-    ax.set_xlabel(r"$x$ (μm)")
-    ax.set_ylabel(r"$J(x)$ (μA/μm)")
-    for i, g3 in enumerate(gate_3):
-        ax.plot(x[i, j] * 1e6, jx[i, j], color=cmap(i / len(gate_3)))
-    lines = ax.get_lines()
-    lines[0].set_label(gate_3[0])
-    lines[-1].set_label(gate_3[-1])
-    ax.legend(title=r"$V_\mathrm{g3}$ (V)")
-    fig.savefig(f"plots/061_current-density_Vg24={g24}.pdf", format="pdf")
-    plt.close(fig=fig)
+lines_ic = ax1.plot(field, np.transpose(ic_interp[:, 0]))
+for l, line in enumerate(lines_ic):
+    line.set_color(cmap(l / len(lines_ic)))
+for k, g3 in enumerate(gate_3):
+    ax2.plot(x_interp[k, 0], jx_interp[k, 0], color=cmap(k / len(gate_3)))
+lines_jx = ax2.get_lines()
+
+def update(frame_num, ic, lines_ic, x, jx, lines_jx):
+    for l, line in enumerate(lines_ic):
+        line.set_ydata(ic[l, frame_num])
+    for l, line in enumerate(lines_jx):
+        line.set_data(x_interp[l, frame_num], jx_interp[l, frame_num])
+    return lines_ic + lines_jx
+
+ani = animation.FuncAnimation(
+    fig,
+    update,
+    frames=[i for i, _ in enumerate(gate_2_4_fine)]
+    + [i for i, _ in reversed(list(enumerate(gate_2_4_fine)))],
+    fargs=[ic_interp, lines_ic, x_interp, jx_interp, lines_jx],
+    interval=20,
+    blit=True,
+)
+print('saving gate_2_4.gif...', end='', flush=True)
+ani.save('gate_2_4.gif')
+print('done', flush=True)
+plt.close(fig)
