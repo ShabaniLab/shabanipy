@@ -84,6 +84,7 @@ ic = extract_switching_current(
 # symmetrized before current reconstruction, so it shouldn't matter.
 # ic[:, 1::2, :] = np.flip(ic[:, 1::2, :], axis=-1)
 
+print('reconstructing current distributions...', end='', flush=True)
 # 183 is the largest number of points returned by symmetrize_fraunhofer
 # extract_current_distribution then returns max 183*2 = 366 points
 POINTS = 366
@@ -99,6 +100,7 @@ for i, g3 in enumerate(gate_3):
         )
         x[i, j] = np.pad(x_, (POINTS - len(x_)) // 2, mode="edge")
         jx[i, j] = np.pad(jx_, (POINTS - len(jx_)) // 2, mode="edge")
+print('done', flush=True)
 
 # There are 11x10 fraunhofers, 1 for each (Vg3, Vg2=Vg4) combination.
 # Make 2 animations:
@@ -118,13 +120,11 @@ ax2.set_ylabel(r"$J(x)$ (μA/μm)")
 ax1.set_ylim(0, 2.5)
 ax2.set_ylim(-0.25, 1.75)
 
-interp_func = interp1d(gate_3, ic, axis=0)
 gate_3_fine = np.linspace(gate_3[0], gate_3[-1], len(gate_3) * 10)
+interp_func = interp1d(gate_3, ic, axis=0)
 ic_interp = interp_func(gate_3_fine)
-
 interp_func = interp1d(gate_3, x, axis=0)
 x_interp = interp_func(gate_3_fine)
-
 interp_func = interp1d(gate_3, jx, axis=0)
 jx_interp = interp_func(gate_3_fine)
 
@@ -151,11 +151,9 @@ ani = animation.FuncAnimation(
     interval=20,
     blit=True,
 )
-ani.save('test.gif')
-plt.show()
-
-import sys
-sys.exit()
+print('saving gate_3.gif...', end='', flush=True)
+ani.save('gate_3.gif')
+print('done', flush=True)
 
 
 for j, g24 in enumerate(gate_2_4):
