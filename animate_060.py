@@ -138,8 +138,9 @@ jx_interp = interp_func(gate_3_fine)
 lines_ic = ax1.plot(field, np.transpose(ic_interp[0]))
 for l, line in enumerate(lines_ic):
     line.set_color(cmap((l + 1) / len(lines_ic)))
+    line.set_zorder(-l)
 for k, g24 in enumerate(gate_2_4):
-    ax2.plot(x_interp[0, k], jx_interp[0, k], color=cmap((k + 1) / len(gate_2_4)))
+    ax2.plot(x_interp[0, k], jx_interp[0, k], color=cmap((k + 1) / len(gate_2_4)), zorder=-k)
 lines_jx = ax2.get_lines()
 
 # plot the multigate schematic and gate voltage legends for V_g3 sweep
@@ -224,8 +225,9 @@ jx_interp = interp_func(gate_2_4_fine)
 lines_ic = ax1.plot(field, np.transpose(ic_interp[:, 0]))
 for l, line in enumerate(lines_ic):
     line.set_color(cmap((l+1) / len(lines_ic)))
+    line.set_zorder(-l)
 for k, g3 in enumerate(gate_3):
-    ax2.plot(x_interp[k, 0], jx_interp[k, 0], color=cmap((k+1) / len(gate_3)))
+    ax2.plot(x_interp[k, 0], jx_interp[k, 0], color=cmap((k+1) / len(gate_3)), zorder=-k)
 lines_jx = ax2.get_lines()
 
 # plot the multigate schematic and gate voltage legends for V_g2(=V_g4) sweep
