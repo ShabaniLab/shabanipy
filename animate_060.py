@@ -194,8 +194,8 @@ ani = animation.FuncAnimation(
 )
 # showing before saving irons out some positioning issues
 plt.show()
-print('saving gate_3.gif...', end='', flush=True)
-ani.save('gate_3_new.gif')
+print('saving gate_3_new.mp4...', end='', flush=True)
+ani.save('gate_3_new.mp4', dpi=200)
 print('done', flush=True)
 plt.close(fig)
 
@@ -283,6 +283,6 @@ ani = animation.FuncAnimation(
 )
 # showing before saving irons out some positioning issues
 plt.show()
-print('saving gate_2_4.gif...', end='', flush=True)
-ani.save('gate_2_4_new.gif')
+print('saving gate_2_4_new.mp4...', end='', flush=True)
+ani.save('gate_2_4_new.mp4', dpi=200)
 print('done', flush=True)
