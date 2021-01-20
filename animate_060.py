@@ -192,8 +192,10 @@ ani = animation.FuncAnimation(
     interval=20,
     blit=True,
 )
+# showing before saving irons out some positioning issues
+plt.show()
 print('saving gate_3.gif...', end='', flush=True)
-ani.save('gate_3.gif')
+ani.save('gate_3_new.gif')
 print('done', flush=True)
 plt.close(fig)
 
@@ -279,6 +281,8 @@ ani = animation.FuncAnimation(
     interval=20,
     blit=True,
 )
+# showing before saving irons out some positioning issues
+plt.show()
 print('saving gate_2_4.gif...', end='', flush=True)
-ani.save('gate_2_4.gif')
+ani.save('gate_2_4_new.gif')
 print('done', flush=True)
