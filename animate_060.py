@@ -123,7 +123,7 @@ ax1.set_ylabel(r"$I_c$ (μA)")
 ax2.set_xlabel(r"$x$ (μm)")
 ax2.set_ylabel(r"$J(x)$ (μA/μm)")
 ax1.set_ylim(0, 2.5)
-ax2.set_ylim(-0.25, 1.75)
+ax2.set_ylim(-0.25, 1.85)
 
 # interpolate along V_g3 to smooth frame transitions
 gate_3_fine = np.linspace(gate_3[0], gate_3[-1], len(gate_3) * 10)
@@ -142,6 +142,13 @@ for l, line in enumerate(lines_ic):
 for k, g24 in enumerate(gate_2_4):
     ax2.plot(x_interp[0, k], jx_interp[0, k], color=cmap((k + 1) / len(gate_2_4)), zorder=-k)
 lines_jx = ax2.get_lines()
+
+# add gate pixels in current density plot
+yr, w, h = 1.75, 0.45, 0.1
+for i in range(5):
+    xr = -2.1 + i*0.65
+    ax2.add_patch(Rectangle(xy=(xr, yr), width=w, height=h, color='#f8d957'))
+    ax2.annotate(f'g{i+1}', (xr + w / 2, yr + h / 2), ha='center', va='center')
 
 # plot the multigate schematic and gate voltage legends for V_g3 sweep
 ax3.imshow(plt.imread('./multigateJJ.png'))
@@ -210,7 +217,7 @@ ax1.set_ylabel(r"$I_c$ (μA)")
 ax2.set_xlabel(r"$x$ (μm)")
 ax2.set_ylabel(r"$J(x)$ (μA/μm)")
 ax1.set_ylim(0, 2.5)
-ax2.set_ylim(-0.25, 1.75)
+ax2.set_ylim(-0.25, 1.85)
 
 # interpolate along V_g2(=V_g4) to smooth frame transitions
 gate_2_4_fine = np.linspace(gate_2_4[0], gate_2_4[-1], len(gate_2_4) * 10)
@@ -229,6 +236,13 @@ for l, line in enumerate(lines_ic):
 for k, g3 in enumerate(gate_3):
     ax2.plot(x_interp[k, 0], jx_interp[k, 0], color=cmap((k+1) / len(gate_3)), zorder=-k)
 lines_jx = ax2.get_lines()
+
+# add gate pixels in current density plot
+yr, w, h = 1.75, 0.45, 0.1
+for i in range(5):
+    xr = -2.1 + i*0.65
+    ax2.add_patch(Rectangle(xy=(xr, yr), width=w, height=h, color='#f8d957'))
+    ax2.annotate(f'g{i+1}', (xr + w / 2, yr + h / 2), ha='center', va='center')
 
 # plot the multigate schematic and gate voltage legends for V_g2(=V_g4) sweep
 ax3.imshow(plt.imread('./multigateJJ.png'))
