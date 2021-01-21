@@ -18,11 +18,11 @@ import os
 from pathlib import Path
 
 import numpy as np
-from matplotlib import pyplot as plt, animation
+from matplotlib import animation
+from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 from scipy import constants as cs
 from scipy.interpolate import interp1d
-
 from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
     extract_current_distribution,
 )
@@ -85,7 +85,7 @@ ic = extract_switching_current(
 # symmetrized before current reconstruction, so it shouldn't matter.
 # ic[:, 1::2, :] = np.flip(ic[:, 1::2, :], axis=-1)
 
-print('reconstructing current distributions...', end='', flush=True)
+print("reconstructing current distributions...", end="", flush=True)
 # 183 is the largest number of points returned by symmetrize_fraunhofer
 # extract_current_distribution then returns max 183*2 = 366 points
 POINTS = 366
@@ -101,7 +101,7 @@ for i, g3 in enumerate(gate_3):
         )
         x[i, j] = np.pad(x_, (POINTS - len(x_)) // 2, mode="edge")
         jx[i, j] = np.pad(jx_, (POINTS - len(jx_)) // 2, mode="edge")
-print('done', flush=True)
+print("done", flush=True)
 
 # There are 11x10 fraunhofers, 1 for each (Vg3, Vg2=Vg4) combination.
 # Make 2 animations:
@@ -117,7 +117,13 @@ x = x * 1e6
 # V_g3 sweep animation #
 ########################
 
-fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(14, 4), gridspec_kw={'width_ratios': [1, 1, 0.5]}, constrained_layout=True)
+fig, (ax1, ax2, ax3) = plt.subplots(
+    nrows=1,
+    ncols=3,
+    figsize=(14, 4),
+    gridspec_kw={"width_ratios": [1, 1, 0.5]},
+    constrained_layout=True,
+)
 ax1.set_xlabel(r"$B_\perp$ (mT)")
 ax1.set_ylabel(r"$I_c$ (μA)")
 ax2.set_xlabel(r"$x$ (μm)")
@@ -140,48 +146,51 @@ for l, line in enumerate(lines_ic):
     line.set_color(cmap((l + 1) / len(lines_ic)))
     line.set_zorder(-l)
 for k, g24 in enumerate(gate_2_4):
-    ax2.plot(x_interp[0, k], jx_interp[0, k], color=cmap((k + 1) / len(gate_2_4)), zorder=-k)
+    ax2.plot(
+        x_interp[0, k], jx_interp[0, k], color=cmap((k + 1) / len(gate_2_4)), zorder=-k
+    )
 lines_jx = ax2.get_lines()
 
 # add gate pixels in current density plot
 yr, w, h = 1.75, 0.45, 0.1
 for i in range(5):
-    xr = -2.1 + i*0.65
-    ax2.add_patch(Rectangle(xy=(xr, yr), width=w, height=h, color='#f8d957'))
-    ax2.annotate(f'g{i+1}', (xr + w / 2, yr + h / 2), ha='center', va='center')
+    xr = -2.1 + i * 0.65
+    ax2.add_patch(Rectangle(xy=(xr, yr), width=w, height=h, color="#f8d957"))
+    ax2.annotate(f"g{i+1}", (xr + w / 2, yr + h / 2), ha="center", va="center")
 
 # plot the multigate schematic and gate voltage legends for V_g3 sweep
-ax3.imshow(plt.imread('./multigateJJ.png'))
+ax3.imshow(plt.imread("./multigateJJ.png"))
 ax3.set_axis_off()
-ax3.set_anchor('S')
-ax_g2 = fig.add_axes([0, 0, 0, 0], label='gate2_cbar')
-ax_g3 = fig.add_axes([0, 0, 0, 0], label='gate3_cbar')
-ax_g4 = fig.add_axes([0, 0, 0, 0], label='gate4_cbar')
+ax3.set_anchor("S")
+ax_g2 = fig.add_axes([0, 0, 0, 0], label="gate2_cbar")
+ax_g3 = fig.add_axes([0, 0, 0, 0], label="gate3_cbar")
+ax_g4 = fig.add_axes([0, 0, 0, 0], label="gate4_cbar")
 for ax, num in zip([ax_g2, ax_g3, ax_g4], [2, 3, 4]):
-    ax.set_title(r'$V_\mathrm{' + f'g{num}' + r'}$')
+    ax.set_title(r"$V_\mathrm{" + f"g{num}" + r"}$")
     ax.xaxis.set_visible(False)
-    ax.set_anchor('SW')
+    ax.set_anchor("SW")
 for ax in [ax_g2, ax_g4]:
     ax.imshow(np.transpose([np.flip(gate_2_4)]), cmap=cmap, aspect=1 / 2)
     ax.set_yticks(np.arange(len(gate_2_4)))
     ax.set_yticklabels(gate_2_4)
-    ax.tick_params(length=0, pad=-22, colors='white')
+    ax.tick_params(length=0, pad=-22, colors="white")
     for ticklabel in ax.yaxis.get_majorticklabels()[-2:]:
-        ticklabel.set_color('black')
+        ticklabel.set_color("black")
 ax_g3.set_xlim((0, 1))
 ax_g3.set_ylim((np.min(gate_3), np.max(gate_3)))
 ax_g3.set_yticks([np.min(gate_3) + 0.2, np.max(gate_3) - 0.3])
 ax_g3.set_yticklabels([np.min(gate_3), np.max(gate_3)])
 ax_g3.tick_params(length=0, pad=-22)
 ticklabels = ax_g3.yaxis.get_majorticklabels()
-ticklabels[0].set_color('black')
-ticklabels[1].set_color('white')
-rect_g3 = Rectangle(xy=(0, 0), width=1, height=gate_3_fine[0], color='black')
+ticklabels[0].set_color("black")
+ticklabels[1].set_color("white")
+rect_g3 = Rectangle(xy=(0, 0), width=1, height=gate_3_fine[0], color="black")
 ax_g3.add_patch(rect_g3)
 ax3_bbox = ax3.get_position()
 ax_g2.set_position([ax3_bbox.x0 + 0.098, ax3_bbox.y0 + 0.4, 0.026, 0.4])
 ax_g3.set_position([ax3_bbox.x0 + 0.134, ax3_bbox.y0 + 0.4, 0.026, 0.4])
 ax_g4.set_position([ax3_bbox.x0 + 0.1705, ax3_bbox.y0 + 0.4, 0.026, 0.4])
+
 
 def update(frame_num, ic, lines_ic, x, jx, lines_jx):
     for l, line in enumerate(lines_ic):
@@ -190,6 +199,7 @@ def update(frame_num, ic, lines_ic, x, jx, lines_jx):
         line.set_data(x_interp[frame_num, l], jx_interp[frame_num, l])
     rect_g3.set_height(gate_3_fine[frame_num])
     return lines_ic + lines_jx + [rect_g3]
+
 
 ani = animation.FuncAnimation(
     fig,
@@ -202,16 +212,22 @@ ani = animation.FuncAnimation(
 )
 # showing before saving irons out some positioning issues
 plt.show()
-print('saving gate_3_new.mp4...', end='', flush=True)
-ani.save('gate_3_new.mp4', dpi=200)
-print('done', flush=True)
+print("saving gate_3_new.mp4...", end="", flush=True)
+ani.save("gate_3_new.mp4", dpi=200)
+print("done", flush=True)
 plt.close(fig)
 
 #############################
 # V_g2=V_g4 sweep animation #
 #############################
 
-fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(14, 4), gridspec_kw={'width_ratios': [1, 1, 0.5]}, constrained_layout=True)
+fig, (ax1, ax2, ax3) = plt.subplots(
+    nrows=1,
+    ncols=3,
+    figsize=(14, 4),
+    gridspec_kw={"width_ratios": [1, 1, 0.5]},
+    constrained_layout=True,
+)
 ax1.set_xlabel(r"$B_\perp$ (mT)")
 ax1.set_ylabel(r"$I_c$ (μA)")
 ax2.set_xlabel(r"$x$ (μm)")
@@ -231,36 +247,38 @@ jx_interp = interp_func(gate_2_4_fine)
 # plot initial frame for V_g2(=V_g4) fraunhofer and current distribution
 lines_ic = ax1.plot(field, np.transpose(ic_interp[:, 0]))
 for l, line in enumerate(lines_ic):
-    line.set_color(cmap((l+1) / len(lines_ic)))
+    line.set_color(cmap((l + 1) / len(lines_ic)))
     line.set_zorder(-l)
 for k, g3 in enumerate(gate_3):
-    ax2.plot(x_interp[k, 0], jx_interp[k, 0], color=cmap((k+1) / len(gate_3)), zorder=-k)
+    ax2.plot(
+        x_interp[k, 0], jx_interp[k, 0], color=cmap((k + 1) / len(gate_3)), zorder=-k
+    )
 lines_jx = ax2.get_lines()
 
 # add gate pixels in current density plot
 yr, w, h = 1.75, 0.45, 0.1
 for i in range(5):
-    xr = -2.1 + i*0.65
-    ax2.add_patch(Rectangle(xy=(xr, yr), width=w, height=h, color='#f8d957'))
-    ax2.annotate(f'g{i+1}', (xr + w / 2, yr + h / 2), ha='center', va='center')
+    xr = -2.1 + i * 0.65
+    ax2.add_patch(Rectangle(xy=(xr, yr), width=w, height=h, color="#f8d957"))
+    ax2.annotate(f"g{i+1}", (xr + w / 2, yr + h / 2), ha="center", va="center")
 
 # plot the multigate schematic and gate voltage legends for V_g2(=V_g4) sweep
-ax3.imshow(plt.imread('./multigateJJ.png'))
+ax3.imshow(plt.imread("./multigateJJ.png"))
 ax3.set_axis_off()
-ax3.set_anchor('S')
-ax_g2 = fig.add_axes([0, 0, 0, 0], label='gate2_cbar')
-ax_g3 = fig.add_axes([0, 0, 0, 0], label='gate3_cbar')
-ax_g4 = fig.add_axes([0, 0, 0, 0], label='gate4_cbar')
+ax3.set_anchor("S")
+ax_g2 = fig.add_axes([0, 0, 0, 0], label="gate2_cbar")
+ax_g3 = fig.add_axes([0, 0, 0, 0], label="gate3_cbar")
+ax_g4 = fig.add_axes([0, 0, 0, 0], label="gate4_cbar")
 for ax, num in zip([ax_g2, ax_g3, ax_g4], [2, 3, 4]):
-    ax.set_title(r'$V_\mathrm{' + f'g{num}' + r'}$')
+    ax.set_title(r"$V_\mathrm{" + f"g{num}" + r"}$")
     ax.xaxis.set_visible(False)
-    ax.set_anchor('SW')
+    ax.set_anchor("SW")
 ax_g3.imshow(np.transpose([np.flip(gate_3)]), cmap=cmap, aspect=1 / 2.2)
 ax_g3.set_yticks(np.arange(len(gate_3)))
 ax_g3.set_yticklabels(gate_3)
-ax_g3.tick_params(length=0, pad=-21, colors='white')
+ax_g3.tick_params(length=0, pad=-21, colors="white")
 for ticklabel in ax_g3.yaxis.get_majorticklabels()[-2:]:
-    ticklabel.set_color('black')
+    ticklabel.set_color("black")
 for ax in [ax_g2, ax_g4]:
     ax.set_xlim((0, 1))
     ax.set_ylim((np.min(gate_2_4), np.max(gate_2_4)))
@@ -268,16 +286,17 @@ for ax in [ax_g2, ax_g4]:
     ax.set_yticklabels([np.min(gate_2_4), np.max(gate_2_4)])
     ax.tick_params(length=0, pad=-23)
     ticklabels = ax.yaxis.get_majorticklabels()
-    ticklabels[0].set_color('black')
-    ticklabels[1].set_color('white')
-rect_g2 = Rectangle(xy=(0, 0), width=1, height=gate_2_4_fine[0], color='black')
-rect_g4 = Rectangle(xy=(0, 0), width=1, height=gate_2_4_fine[0], color='black')
+    ticklabels[0].set_color("black")
+    ticklabels[1].set_color("white")
+rect_g2 = Rectangle(xy=(0, 0), width=1, height=gate_2_4_fine[0], color="black")
+rect_g4 = Rectangle(xy=(0, 0), width=1, height=gate_2_4_fine[0], color="black")
 ax_g2.add_patch(rect_g2)
 ax_g4.add_patch(rect_g4)
 ax3_bbox = ax3.get_position()
 ax_g2.set_position([ax3_bbox.x0 + 0.097, ax3_bbox.y0 + 0.4, 0.026, 0.4])
 ax_g3.set_position([ax3_bbox.x0 + 0.134, ax3_bbox.y0 + 0.4, 0.026, 0.4])
 ax_g4.set_position([ax3_bbox.x0 + 0.1705, ax3_bbox.y0 + 0.4, 0.026, 0.4])
+
 
 def update(frame_num, ic, lines_ic, x, jx, lines_jx):
     for l, line in enumerate(lines_ic):
@@ -287,6 +306,7 @@ def update(frame_num, ic, lines_ic, x, jx, lines_jx):
     rect_g2.set_height(gate_2_4_fine[frame_num])
     rect_g4.set_height(gate_2_4_fine[frame_num])
     return lines_ic + lines_jx + [rect_g2, rect_g4]
+
 
 ani = animation.FuncAnimation(
     fig,
@@ -299,6 +319,6 @@ ani = animation.FuncAnimation(
 )
 # showing before saving irons out some positioning issues
 plt.show()
-print('saving gate_2_4_new.mp4...', end='', flush=True)
-ani.save('gate_2_4_new.mp4', dpi=200)
-print('done', flush=True)
+print("saving gate_2_4_new.mp4...", end="", flush=True)
+ani.save("gate_2_4_new.mp4", dpi=200)
+print("done", flush=True)
