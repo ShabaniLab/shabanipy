@@ -15,6 +15,7 @@ from scipy import constants as cs
 from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
     extract_current_distribution,
 )
+from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center, symmetrize_fraunhofer
 from shabanipy.jj.utils import extract_switching_current
 from shabanipy.utils.labber_io import LabberData
 
@@ -34,7 +35,7 @@ CURR_TO_FIELD = 1 / 30
 # constants
 PHI0 = cs.h / (2 * cs.e)  # magnetic flux quantum
 JJ_WIDTH = 4e-6
-JJ_LENGTH = 1200e-9  # effective length (>> nominal length)
+JJ_LENGTH = 900e-9  # effective length (>> nominal length)
 FIELD_TO_WAVENUM = 2 * np.pi * JJ_LENGTH / PHI0  # B-field to beta wavenumber
 
 with LabberData(DATA_FILE_PATH) as f:
@@ -127,4 +128,4 @@ ax.set_xlabel(r"$x$ (μm)")
 ax.set_ylabel(r"$J(x)$ (μA/μm)")
 ax.plot(x * 1e6, jx)
 plt.show()
-# fig.savefig('077_hi-res-current-density.pdf')
+# fig.savefig("077_hi-res-current-density.pdf")
