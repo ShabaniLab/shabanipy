@@ -124,7 +124,7 @@ class PreProcessingStep(AnalysisStep):
         # Get actual numpy arrays as otherwise the differences may be slightly surprising
         data = [group[k][...] for k in self.input_quantities]
         p = self.populate_parameters(group, classifiers)
-        out = self.routine(*data, **p, debug=True)
+        out = self.routine(*data, **p, debug=debug)
         if len(self.output_quantities) > 1 and len(out) != len(self.output_quantities):
             raise ValueError(
                 f"Got {len(out)} output but {len(self.output_quantities)}."
@@ -227,7 +227,7 @@ class SummarizingStep(AnalysisStep):
             os.makedirs(dir_path)
         p["directory"] = dir_path
         p["classifiers"] = classifiers
-        self.routine(*data, **p, debug=True)
+        self.routine(*data, **p, debug=debug)
 
 
 @dataclass
