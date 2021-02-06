@@ -6,7 +6,7 @@
 #
 # The full license is in the file LICENCE, distributed with this software.
 # -----------------------------------------------------------------------------
-"""Routines to automate analysing large set of data.
+"""Routines to automate analysing a large set of data.
 
 Data are expected to have been aggregated using DataClassifier.
 
@@ -116,9 +116,9 @@ class PreProcessingStep(AnalysisStep):
     def run(
         self, group: Group, classifiers: Dict[int, Dict[str, Any]], debug: bool = False
     ) -> None:
-        """Run the routine and save the produce data.
+        """Run the routine and save the produced data.
 
-        The name of the step and the parameters values are saved in the datasets attrs.
+        The name of the step and the parameters' values are saved in the dataset's attrs.
 
         """
         # Get actual numpy arrays as otherwise the differences may be slightly surprising
@@ -139,9 +139,9 @@ class PreProcessingStep(AnalysisStep):
 
 @dataclass
 class ProcessingStep(AnalysisStep):
-    """Step processing data and saving teh result in a new file per tier.
+    """Step processing data and saving the result in a new file per tier.
 
-    Data may require multiple processing step (extraction, fit, ...) which can be stored
+    Data may require multiple processing steps (extraction, fit, ...) which can be stored
     under different tiers.
 
     """
@@ -150,7 +150,7 @@ class ProcessingStep(AnalysisStep):
     tier: str
 
     #: From where should the input data be pulled.
-    #: Currently support raw@{measurement} for data stored in the original data
+    #: Currently supports raw@{measurement} for data stored in the original data
     #: aggregate, processed@{tier} for data created by a previous processing step.
     input_origin: str
 
@@ -165,9 +165,9 @@ class ProcessingStep(AnalysisStep):
         out_explorer: DataExplorer,
         debug: bool = False,
     ) -> None:
-        """Run the routine and save the produce data.
+        """Run the routine and save the produced data.
 
-        The name of the step and the parameters values are saved in the datasets attrs.
+        The name of the step and the parameters' values are saved in the dataset's attrs.
 
         """
         data = [origin[k][...] for k in self.input_quantities]

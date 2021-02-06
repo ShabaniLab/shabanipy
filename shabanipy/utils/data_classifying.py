@@ -336,7 +336,7 @@ class StepPattern:
         # If ramps are specified:
         # - check that the config is ramped
         # - that we have a single generic ramp or that the number of ramps match
-        # - finally that all all patterns match
+        # - finally that all patterns match
         if self.ramps:
             if not config.ramps:
                 logger.debug(f"- step does not have ramps")
@@ -407,7 +407,7 @@ class LogPattern:
             self.pattern = NamePattern(**self.pattern)
         if not isinstance(self.pattern, (int, NamePattern)):
             raise ValueError(
-                "The pattern of a Logpattern should be int or NamePattern got:"
+                "The pattern of a Logpattern should be int or NamePattern. got:"
                 f" {self.pattern, type(self.pattern)}"
             )
 
@@ -447,10 +447,10 @@ class MeasurementPattern:
     #: Steps that should be present in the measurement.
     steps: List[StepPattern] = field(default_factory=list)
 
-    #: Logs channels that should be present in the measurement.
+    #: Log channels that should be present in the measurement.
     logs: List[LogPattern] = field(default_factory=list)
 
-    #: Steps that should be excluded from the consolidated file. This applies to
+    #: Steps that should be excluded from the consolidated file. This applies
     #: to steps ramped due to relations but that are not relevant. Un-ramped steps
     #: are always omitted.
     excluded_steps: List[Union[NamePattern, int]] = field(default_factory=list)
@@ -469,7 +469,7 @@ class MeasurementPattern:
             )
 
     def match(self, dataset: LabberData, logger: SmartLogger) -> bool:
-        """Determine if a given Labber file match the specified pattern."""
+        """Determine if a given Labber file matches the specified pattern."""
 
         # Check the filename and exit early if it fails
         if self.filename_pattern and not self.filename_pattern.match(
@@ -503,7 +503,7 @@ class MeasurementPattern:
     def match_excluded_steps(
         self, index: int, config: StepConfig, logger: SmartLogger
     ) -> bool:
-        """Determine if a config match any of the excluded channels."""
+        """Determine if a config matches any of the excluded channels."""
         for p in self.excluded_steps:
             if isinstance(p, int) and p == index:
                 return True
@@ -544,25 +544,25 @@ class MeasurementPattern:
 class DataClassifier:
     """Object used to identify and consolidate measurements in a single location.
 
-    Measurements are identified using patterns matching on the filename, the steps
-    involved in the measurement, the logged channels. In order to consolidate the data
-    we first classify the data based on values extracted from the filename and some
+    Measurements are identified using pattern matching on the filename, the steps
+    involved in the measurement, and the logged channels. In order to consolidate the
+    data we first classify the data based on values extracted from the filename and some
     of the steps. Classifiers can have different levels, allowing for example to
     distinguish first by sample and then by gate voltage. It is also possible to
     do the contrary and have both those information on the same level. This becomes
     relevant for data analysis.
-    Finally we can rewrite all the relevant data into the single HDF5 file. The file
+    Finally we can rewrite all the relevant data into a single HDF5 file. The file
     has a nested structure with the first level being the kind of measurement and
     each lower level corresponding to a classifier level. The resulting files can easily
-    be explored and used through the `data_exploring.DataExplorer` class
+    be explored and used through the `data_exploring.DataExplorer` class.
 
     """
 
     #: List of measurement patterns to identify. Having more than one can allow to
-    #: group together characterization measurement with the measurements of interest.
+    #: group together characterization measurements with the measurements of interest.
     patterns: List[MeasurementPattern]
 
-    #: Identified dataset as a list of path for each measurement pattern.
+    #: Identified dataset as a list of paths for each measurement pattern.
     _datasets: Dict[str, List[str]] = field(init=False)
 
     #: Classifiers found for each dataset previously identified. Organized per
@@ -717,7 +717,7 @@ class DataClassifier:
         classifiers: List[Dict[str, Classifier]],
         filters: Optional[Dict[str, float]] = None,
     ) -> None:
-        """Create group for each level of classifiers and each values."""
+        """Create group for each level of classifiers and each value."""
 
         # If we exhausted the classifiers we are ready to pull the data we care about
         # and store them.
@@ -739,11 +739,11 @@ class DataClassifier:
         ]
         all_values = [clf[k].values for k in names]
 
-        # This assumes that all combination of classifiers exist which may not be true
+        # This assumes that all combinations of classifiers exist which may not be true
         # if the measurement was interrupted.
         # XXX this could be optimized for relation that enforce equality
         for values in product(*all_values):
-            # Create a new group and store classifiers values on attrs
+            # Create a new group and store classifier's values on attrs
             group_name = make_group_name(dict(zip(names, values)))
             group = storage.require_group(group_name)
             group.attrs.update(dict(zip(names, values)))
@@ -793,7 +793,7 @@ class DataClassifier:
                 should_skip = False
                 name = stepcf.name
 
-                # Check if a pattern match and if yes determine if we need to
+                # Check if a pattern matches and if yes determine if we need to
                 # extract this parameter and if yes under what name
                 for pattern in meas_pattern.steps:
                     if pattern.match(i, stepcf, dummy):
@@ -803,7 +803,7 @@ class DataClassifier:
                         else:
                             name = pattern.name
 
-                # Skip steps used in classification and explicitely excluded
+                # Skip steps used in classification and explicitly excluded
                 if should_skip or meas_pattern.match_excluded_steps(i, stepcf, dummy):
                     continue
 
@@ -819,7 +819,7 @@ class DataClassifier:
                 name = entry.name
                 x_name = None
 
-                # Check if a pattern match and if yes determine if we need to
+                # Check if a pattern matches and if yes determine if we need to
                 # extract this log entry and if yes under what name
                 for lpattern in meas_pattern.logs:
                     if lpattern.match(i, entry, dummy):
@@ -886,8 +886,8 @@ class DataClassifier:
 
             # Store the data
             for n, d in to_store.items():
-                # If data with similar classifers are already there check,
-                # if there are the same shape. If yes and one of them contains less nan
+                # If data with similar classifiers are already there check
+                # if they are the same shape. If yes and one of them contains less nan
                 # than the other keep the most complete set, otherwise log the issue
                 # and do not store the new one.
                 if n in storage:
@@ -904,7 +904,7 @@ class DataClassifier:
                             )
                     elif dset.shape[1:] == d.shape[1:]:
                         if dset.shape[0] < d.shape[0]:
-                            # Delete the existing dataset and use teh more complete one.
+                            # Delete the existing dataset and use the more complete one.
                             del storage[n]
                             dset = storage.create_dataset(
                                 n, data=d, compression="gzip", compression_opts=6,
