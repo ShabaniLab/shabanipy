@@ -8,6 +8,9 @@ As noted by Zappe, the current distribution J(x) returned will be the one whose
 Fourier transform is a minimum-phase function whose modulus is the Fraunhofer.
 Also noted by Zappe, a decorrelation algorithm such as the one we use cannot
 distinguish J(x) from J(-x), as illustrated below.
+
+How might this change if J(x) is everywhere smooth and differentiable? E.g. use a sum of
+gennorms instead of square waves.
 """
 
 import numpy as np
