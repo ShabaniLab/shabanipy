@@ -13,8 +13,8 @@ from typing import Optional, Tuple
 import numpy as np
 from numba import cfunc
 from numba.types import CPointer, float64, intc
-from numpy.fft import fft, fftfreq, fftshift
 from scipy import LowLevelCallable
+from scipy.fftpack import fft, fftfreq, fftshift
 from scipy.integrate import IntegrationWarning, quad, romb
 from typing_extensions import Literal
 
@@ -148,7 +148,9 @@ def produce_fraunhofer_fast(
 
 
 def _produce_fraunhofer_dft(
-    j: np.ndarray, dx: float = 1, f2k: float = 1
+    j: np.ndarray, dx: float = 1, f2k: float = 1, ret_fourier: Optional[bool] = False,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Generate Fraunhofer from current density using discrete Fourier transform."""
-    return np.abs(fftshift(fft(j))), 2 * np.pi / f2k * fftshift(fftfreq(len(j), dx))
+    j_fourier = fftshift(fft(j))
+    b = 2 * np.pi / f2k * fftshift(fftfreq(len(j), dx))
+    return (b, j_fourier) if ret_fourier else (b, np.abs(j_fourier))
