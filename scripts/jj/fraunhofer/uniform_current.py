@@ -41,6 +41,8 @@ ax.plot(
     linewidth=0,
     marker=".",
     markersize=3,
+    markerfacecolor='tab:red',
+    markeredgecolor='tab:red',
 )
 ax.set_xlim([-260, 260])
 ax.legend()
