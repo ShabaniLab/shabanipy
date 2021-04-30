@@ -12,7 +12,7 @@ import sys
 import numpy as np
 from matplotlib import pyplot as plt
 
-from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
+from shabanipy.jj.fraunhofer.dynesfulton import (
     extract_current_distribution,
 )
 from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast

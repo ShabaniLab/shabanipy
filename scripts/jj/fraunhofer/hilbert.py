@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from scipy.integrate import quad
 from scipy.interpolate import interp1d
 
-from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
+from shabanipy.jj.fraunhofer.dynesfulton import (
     _extract_theta_hilbert,
     _extract_theta_quad,
     _extract_theta_romb,

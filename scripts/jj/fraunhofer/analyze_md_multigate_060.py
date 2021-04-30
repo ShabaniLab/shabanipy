@@ -16,7 +16,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy import constants as cs
 
-from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
+from shabanipy.jj.fraunhofer.dynesfulton import (
     extract_current_distribution,
 )
 from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center, symmetrize_fraunhofer
