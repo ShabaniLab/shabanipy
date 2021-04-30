@@ -31,7 +31,7 @@ from typing_extensions import Literal
 from shabanipy.utils.integrate import can_romberg, resample_evenly
 
 
-def extract_theta(
+def fourier_phase(
     fields: np.ndarray,
     ics: np.ndarray,
     f2k: float,
@@ -76,18 +76,18 @@ def extract_theta(
     fields = fields * f2k
 
     if method == "romb":
-        theta = _extract_theta_romb(fields, ics)
+        theta = _fourier_phase_romb(fields, ics)
     elif method == "quad":
-        theta = _extract_theta_quad(fields, ics)
+        theta = _fourier_phase_quad(fields, ics)
     elif method == "hilbert":
-        theta = _extract_theta_hilbert(ics)
+        theta = _fourier_phase_hilbert(ics)
     else:
         raise ValueError(f"Method '{method}' unsupported")
 
     return theta - fields * jj_width / 2
 
 
-def _extract_theta_romb(fields: np.ndarray, ics: np.ndarray) -> np.ndarray:
+def _fourier_phase_romb(fields: np.ndarray, ics: np.ndarray) -> np.ndarray:
     """Compute Eq. (5) of [1] using Romberg integration."""
     if not can_romberg(fields):
         fine_fields, fine_ics = resample_evenly(fields, ics)
@@ -105,7 +105,7 @@ def _extract_theta_romb(fields: np.ndarray, ics: np.ndarray) -> np.ndarray:
     return theta
 
 
-def _extract_theta_quad(fields: np.ndarray, ics: np.ndarray) -> np.ndarray:
+def _fourier_phase_quad(fields: np.ndarray, ics: np.ndarray) -> np.ndarray:
     """Compute Eq. (5) of [1] using scipy.integrate.quad."""
     ics_interp = interp1d(fields, ics, "cubic")
 
@@ -129,7 +129,7 @@ def _extract_theta_quad(fields: np.ndarray, ics: np.ndarray) -> np.ndarray:
     return theta
 
 
-def _extract_theta_hilbert(ics: np.ndarray) -> np.ndarray:
+def _fourier_phase_hilbert(ics: np.ndarray) -> np.ndarray:
     """Compute Eq. (5) of [1] using a discrete Hilbert transform."""
     return hilbert(np.log(ics)).imag
 
@@ -183,7 +183,7 @@ def critical_current_density(
     fine_ics[np.less_equal(fine_ics, 1e-10)] = 1e-10
 
     if fine_theta is None:
-        fine_theta = extract_theta(fine_fields, fine_ics, f2k, jj_width)
+        fine_theta = fourier_phase(fine_fields, fine_ics, f2k, jj_width)
 
     # scale from B to beta
     fine_fields = f2k * fine_fields

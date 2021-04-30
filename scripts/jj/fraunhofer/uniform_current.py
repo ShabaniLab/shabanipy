@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 
 from shabanipy.jj.fraunhofer.dynesfulton import (
     critical_current_density,
-    extract_theta,
+    fourier_phase,
 )
 from shabanipy.jj.fraunhofer.generate_pattern import (
     _produce_fraunhofer_dft,
@@ -48,9 +48,9 @@ ax.set_xlim([-260, 260])
 ax.legend()
 
 # compare true and reconstructed phase distributions
-theta_r = extract_theta(b, ic, b2beta, jj_width, method="romb")
-theta_q = extract_theta(b, ic, b2beta, jj_width, method="quad")
-theta_h = extract_theta(b, ic, b2beta, jj_width, method="hilbert")
+theta_r = fourier_phase(b, ic, b2beta, jj_width, method="romb")
+theta_q = fourier_phase(b, ic, b2beta, jj_width, method="quad")
+theta_h = fourier_phase(b, ic, b2beta, jj_width, method="hilbert")
 theta_true = np.angle(g)
 
 fig2, ax2 = plt.subplots(constrained_layout=True)

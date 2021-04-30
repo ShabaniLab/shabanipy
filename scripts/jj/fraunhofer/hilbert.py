@@ -1,6 +1,6 @@
 """Test Hilbert transform implementation against a known analytical example.
 
-Note that our _extract_theta* subroutines implement the Hilbert transform of
+Note that our _fourier_phase* subroutines implement the Hilbert transform of
 the *logarithm* of the input.
 """
 import matplotlib as mpl
@@ -10,9 +10,9 @@ from scipy.integrate import quad
 from scipy.interpolate import interp1d
 
 from shabanipy.jj.fraunhofer.dynesfulton import (
-    _extract_theta_hilbert,
-    _extract_theta_quad,
-    _extract_theta_romb,
+    _fourier_phase_hilbert,
+    _fourier_phase_quad,
+    _fourier_phase_romb,
 )
 
 
@@ -37,17 +37,17 @@ mpl.rcParams["lines.marker"] = "."
 
 # test currently-implemented routines
 ax.plot(
-    xs, _extract_theta_hilbert(np.exp(f(xs))), label="scipy.signal.hilbert",
+    xs, _fourier_phase_hilbert(np.exp(f(xs))), label="scipy.signal.hilbert",
 )
 ax.plot(
-    xs, _extract_theta_romb(xs, np.exp(f(xs))), label="scipy.integrate.romb",
+    xs, _fourier_phase_romb(xs, np.exp(f(xs))), label="scipy.integrate.romb",
 )
 ax.plot(
-    xs, _extract_theta_quad(xs, np.exp(f(xs))), label="scipy.integrate.quad",
+    xs, _fourier_phase_quad(xs, np.exp(f(xs))), label="scipy.integrate.quad",
 )
 
 # try implementation based on weights
-def _extract_theta_quad_weight(fields: np.ndarray, ics: np.ndarray) -> np.ndarray:
+def _fourier_phase_quad_weight(fields: np.ndarray, ics: np.ndarray) -> np.ndarray:
     """Compute Eq. (5) of Dynes & Fulton (1971) using quad with cauchy weights."""
     ics_interp = interp1d(fields, ics, "cubic")
 
@@ -82,7 +82,7 @@ def _extract_theta_quad_weight(fields: np.ndarray, ics: np.ndarray) -> np.ndarra
 
 
 ax.plot(
-    xs, _extract_theta_quad_weight(xs, np.exp(f(xs))), label="quad (cauchy weight)",
+    xs, _fourier_phase_quad_weight(xs, np.exp(f(xs))), label="quad (cauchy weight)",
 )
 ax.legend()
 plt.show()
