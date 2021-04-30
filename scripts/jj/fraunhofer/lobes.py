@@ -5,6 +5,10 @@ In particular, how do
     2) the number of points per lobe (i.e. B-field resolution)
 in the Fraunhofer pattern I_c(B) impact the fidelity of a reconstructed
 uniform, Guassian, or generalized normal current density J(x).
+
+WARNING:  The current density chosen for testing below turns out *not* to be a
+minimum-phase function; see Zappe PRB 11 2535 (1975) and script zappe.py.  Therefore
+this script is NOT to be trusted in its current form.
 """
 import os
 import sys
