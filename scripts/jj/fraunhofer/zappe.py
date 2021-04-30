@@ -19,7 +19,7 @@ from matplotlib import pyplot as plt
 from shabanipy.jj.fraunhofer.dynesfulton import (
     critical_current_density,
 )
-from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
+from shabanipy.jj.fraunhofer.generate_pattern import fraunhofer
 
 N = 1000
 JJ_WIDTH = 2
@@ -39,8 +39,8 @@ ax.legend()
 
 B2BETA = 4
 b = np.linspace(-10, 10, N)
-g1 = produce_fraunhofer_fast(b, B2BETA, jx1, x, ret_fourier=True)
-g2 = produce_fraunhofer_fast(b, B2BETA, jx2, x, ret_fourier=True)
+g1 = fraunhofer(b, B2BETA, jx1, x, ret_fourier=True)
+g2 = fraunhofer(b, B2BETA, jx2, x, ret_fourier=True)
 ic1, ic2 = np.abs(g1), np.abs(g2)
 
 fig, ax = plt.subplots()

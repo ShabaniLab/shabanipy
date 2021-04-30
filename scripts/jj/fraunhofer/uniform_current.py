@@ -7,8 +7,8 @@ from shabanipy.jj.fraunhofer.dynesfulton import (
     fourier_phase,
 )
 from shabanipy.jj.fraunhofer.generate_pattern import (
-    _produce_fraunhofer_dft,
-    produce_fraunhofer_fast,
+    _fraunhofer_dft,
+    fraunhofer,
 )
 
 # constants
@@ -25,8 +25,8 @@ jx[np.where(np.abs(x) < jj_width / 2)] = 1
 
 # generate fraunhofer
 b = np.linspace(-0.25, 0.25, 513)
-g = produce_fraunhofer_fast(b, b2beta, jx, x, ret_fourier=True)
-b_dft, g_dft = _produce_fraunhofer_dft(jx, x[1] - x[0], b2beta, ret_fourier=True)
+g = fraunhofer(b, b2beta, jx, x, ret_fourier=True)
+b_dft, g_dft = _fraunhofer_dft(jx, x[1] - x[0], b2beta, ret_fourier=True)
 ic = np.abs(g)
 ic_dft = np.abs(g_dft)
 

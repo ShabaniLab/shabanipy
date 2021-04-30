@@ -9,7 +9,7 @@ from scipy import constants as cs
 from shabanipy.jj.fraunhofer.dynesfulton import (
     critical_current_density,
 )
-from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
+from shabanipy.jj.fraunhofer.generate_pattern import fraunhofer
 from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center, symmetrize_fraunhofer
 from shabanipy.jj.utils import extract_switching_current
 from shabanipy.utils.labber_io import LabberData
@@ -81,7 +81,7 @@ for gate_, resist_, ic_, js in zip(gate, resist, ic, jss):
     mask = np.logical_and(mask, np.abs(x) < jj_width / 8)
     jx[mask] = js[2]
 
-    gen_ic = produce_fraunhofer_fast(field_ / 1e3, b2beta, jx, x)
+    gen_ic = fraunhofer(field_ / 1e3, b2beta, jx, x)
 
     fig, ax = plt.subplots(constrained_layout=True)
     ax.set_title(r"$V_{g,odd}$ = " + f"{gate_}")

@@ -15,7 +15,7 @@ from matplotlib import pyplot as plt
 from shabanipy.jj.fraunhofer.dynesfulton import (
     critical_current_density,
 )
-from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
+from shabanipy.jj.fraunhofer.generate_pattern import fraunhofer
 
 # enable import from current_profiles.py in this directory
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
@@ -56,7 +56,7 @@ should_plot = [(4, 40), (7, 60), (9, 30), (11, 40), (14, 40)]
 for i, n_node in enumerate(n_nodes):
     for j, n_ppl in enumerate(n_ppls):
         b = np.linspace(-n_node * B_NODE, n_node * B_NODE, n_ppl * n_node * 2)
-        ic = produce_fraunhofer_fast(b, B2BETA, jx, x)
+        ic = fraunhofer(b, B2BETA, jx, x)
         x_out, j_out = critical_current_density(b, ic, B2BETA, JJ_WIDTH, 100)
         fidelity[i, j] = np.sqrt(np.mean((j_out - j_true(x_out)) ** 2))
 

@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from shabanipy.jj.fraunhofer.dynesfulton import (
     critical_current_density,
 )
-from shabanipy.jj.fraunhofer.generate_pattern import _produce_fraunhofer_dft
+from shabanipy.jj.fraunhofer.generate_pattern import _fraunhofer_dft
 
 # enable import from current_profiles.py in this directory
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
@@ -52,7 +52,7 @@ ax.plot(xs, js, label="input")
 # )
 
 # generate Fraunhofer
-ics, bs = _produce_fraunhofer_dft(js, abs(xs[0] - xs[1]), B2BETA)
+ics, bs = _fraunhofer_dft(js, abs(xs[0] - xs[1]), B2BETA)
 ax2.plot(bs, ics, label="generated")
 
 # reconstruct current density

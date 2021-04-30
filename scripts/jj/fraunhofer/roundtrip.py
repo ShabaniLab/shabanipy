@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 from shabanipy.jj.fraunhofer.dynesfulton import (
     critical_current_density,
 )
-from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
+from shabanipy.jj.fraunhofer.generate_pattern import fraunhofer
 
 # enable import from current_profiles.py in this directory
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
@@ -59,7 +59,7 @@ bs = np.linspace(-N_NODES * B_NODE, N_NODES * B_NODE, N_POINTS)
 TRIPS = 50
 for i in range(TRIPS):
     # generate Fraunhofer
-    ics = produce_fraunhofer_fast(bs, B2BETA, js, xs)
+    ics = fraunhofer(bs, B2BETA, js, xs)
     ax2.plot(bs, ics, label=f"{2*i + 1}", color=cmap((2 * i + 1) / (2 * TRIPS)))
 
     # reconstruct current density

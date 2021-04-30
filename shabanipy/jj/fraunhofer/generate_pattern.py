@@ -23,7 +23,7 @@ from shabanipy.utils.integrate import can_romberg, resample_evenly
 warnings.filterwarnings("ignore", category=IntegrationWarning)
 
 
-def produce_fraunhofer_fast(
+def fraunhofer(
     magnetic_field: np.ndarray,
     f2k: float,  # field-to-wavevector conversion factor
     cd: np.ndarray,  # current distribution
@@ -46,7 +46,7 @@ def produce_fraunhofer_fast(
     return g if ret_fourier else np.abs(g)
 
 
-def _produce_fraunhofer_dft(
+def _fraunhofer_dft(
     j: np.ndarray, dx: float = 1, f2k: float = 1, ret_fourier: Optional[bool] = False,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Generate Fraunhofer from current density using discrete Fourier transform."""
