@@ -6,7 +6,7 @@ from shabanipy.jj.fraunhofer.dynesfulton import (
     critical_current_density,
     fourier_phase,
 )
-from shabanipy.jj.fraunhofer.generate_pattern import (
+from shabanipy.jj.fraunhofer.dynesfulton import (
     _fraunhofer_dft,
     fraunhofer,
 )

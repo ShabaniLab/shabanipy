@@ -9,7 +9,7 @@ from scipy import constants as cs
 from shabanipy.jj.fraunhofer.dynesfulton import (
     critical_current_density,
 )
-from shabanipy.jj.fraunhofer.generate_pattern import fraunhofer
+from shabanipy.jj.fraunhofer.dynesfulton import fraunhofer
 from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center, symmetrize_fraunhofer
 from shabanipy.jj.utils import extract_switching_current
 from shabanipy.utils.labber_io import LabberData

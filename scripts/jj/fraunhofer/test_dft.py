@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from shabanipy.jj.fraunhofer.dynesfulton import (
     critical_current_density,
 )
-from shabanipy.jj.fraunhofer.generate_pattern import _fraunhofer_dft
+from shabanipy.jj.fraunhofer.dynesfulton import _fraunhofer_dft
 
 # enable import from current_profiles.py in this directory
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
