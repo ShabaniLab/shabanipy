@@ -10,7 +10,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from shabanipy.jj.fraunhofer.dynesfulton import (
-    extract_current_distribution,
+    critical_current_density,
 )
 from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
 
@@ -63,7 +63,7 @@ for i in range(TRIPS):
     ax2.plot(bs, ics, label=f"{2*i + 1}", color=cmap((2 * i + 1) / (2 * TRIPS)))
 
     # reconstruct current density
-    xs, js = extract_current_distribution(bs, ics, B2BETA, JJ_WIDTH, len(xs) / 2)
+    xs, js = critical_current_density(bs, ics, B2BETA, JJ_WIDTH, len(xs) / 2)
     ax.plot(xs, js, label=f"{2*i + 2}", color=cmap((2 * i + 2) / (2 * TRIPS)))
 
 

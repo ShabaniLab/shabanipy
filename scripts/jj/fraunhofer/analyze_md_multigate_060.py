@@ -17,7 +17,7 @@ from matplotlib import pyplot as plt
 from scipy import constants as cs
 
 from shabanipy.jj.fraunhofer.dynesfulton import (
-    extract_current_distribution,
+    critical_current_density,
 )
 from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center, symmetrize_fraunhofer
 from shabanipy.jj.utils import extract_switching_current
@@ -79,7 +79,7 @@ ic = extract_switching_current(
 # ic[:, 1::2, :] = np.flip(ic[:, 1::2, :], axis=-1)
 
 # 183 is the largest number of points returned by symmetrize_fraunhofer
-# extract_current_distribution then returns max 183*2 = 366 points
+# critical_current_density then returns max 183*2 = 366 points
 POINTS = 366
 x = np.empty(shape=ic.shape[:-1] + (POINTS,))
 jx = np.empty(shape=ic.shape[:-1] + (POINTS,))
@@ -88,7 +88,7 @@ for i, g3 in enumerate(gate_3):
         ic_ = ic[i, j]
         field_ = field - find_fraunhofer_center(field, ic_)
         field_, ic_ = symmetrize_fraunhofer(field_, ic_)
-        x_, jx_ = extract_current_distribution(
+        x_, jx_ = critical_current_density(
             field_, ic_, FIELD_TO_WAVENUM, JJ_WIDTH, len(field_)
         )
         x[i, j] = np.pad(x_, (POINTS - len(x_)) // 2, mode="edge")

@@ -17,7 +17,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from shabanipy.jj.fraunhofer.dynesfulton import (
-    extract_current_distribution,
+    critical_current_density,
 )
 from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
 
@@ -48,8 +48,8 @@ ax.plot(b, ic1, label="from input 1")
 ax.plot(b, ic2, label="from input 2", linestyle="-.")
 ax.legend()
 
-x1_ex, j1_ex = extract_current_distribution(b, ic1, B2BETA, JJ_WIDTH, N)
-x2_ex, j2_ex = extract_current_distribution(b, ic2, B2BETA, JJ_WIDTH, N)
+x1_ex, j1_ex = critical_current_density(b, ic1, B2BETA, JJ_WIDTH, N)
+x2_ex, j2_ex = critical_current_density(b, ic2, B2BETA, JJ_WIDTH, N)
 
 fig, ax = plt.subplots()
 ax.plot(x1_ex, j1_ex, label="output 1")

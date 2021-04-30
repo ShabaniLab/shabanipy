@@ -13,7 +13,7 @@ from matplotlib import pyplot as plt
 from scipy import constants as cs
 
 from shabanipy.jj.fraunhofer.dynesfulton import (
-    extract_current_distribution,
+    critical_current_density,
     extract_theta,
 )
 from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center, symmetrize_fraunhofer
@@ -123,7 +123,7 @@ plt.show()
 # field, ic = symmetrize_fraunhofer(field, ic)
 
 # Reconstruct supercurrent distribution and plot
-x, jx = extract_current_distribution(field, ic, FIELD_TO_WAVENUM, JJ_WIDTH, len(field))
+x, jx = critical_current_density(field, ic, FIELD_TO_WAVENUM, JJ_WIDTH, len(field))
 fig, ax = plt.subplots(constrained_layout=True)
 ax.set_xlabel(r"$x$ (μm)")
 ax.set_ylabel(r"$J(x)$ (μA/μm)")
@@ -142,7 +142,7 @@ ax.plot(x * 1e6, jx, label="all lobes")
 theta = extract_theta(field, ic, FIELD_TO_WAVENUM, JJ_WIDTH)
 cutoff = 750e-6
 mask = np.logical_and(field > -cutoff, field < cutoff)
-x2, jx2 = extract_current_distribution(
+x2, jx2 = critical_current_density(
     field[mask],
     ic[mask],
     FIELD_TO_WAVENUM,

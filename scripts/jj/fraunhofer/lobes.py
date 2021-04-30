@@ -13,7 +13,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from shabanipy.jj.fraunhofer.dynesfulton import (
-    extract_current_distribution,
+    critical_current_density,
 )
 from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
 
@@ -57,7 +57,7 @@ for i, n_node in enumerate(n_nodes):
     for j, n_ppl in enumerate(n_ppls):
         b = np.linspace(-n_node * B_NODE, n_node * B_NODE, n_ppl * n_node * 2)
         ic = produce_fraunhofer_fast(b, B2BETA, jx, x)
-        x_out, j_out = extract_current_distribution(b, ic, B2BETA, JJ_WIDTH, 100)
+        x_out, j_out = critical_current_density(b, ic, B2BETA, JJ_WIDTH, 100)
         fidelity[i, j] = np.sqrt(np.mean((j_out - j_true(x_out)) ** 2))
 
         if (n_node, n_ppl) in should_plot:

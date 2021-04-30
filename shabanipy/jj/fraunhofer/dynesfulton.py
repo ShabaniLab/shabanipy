@@ -134,7 +134,7 @@ def _extract_theta_hilbert(ics: np.ndarray) -> np.ndarray:
     return hilbert(np.log(ics)).imag
 
 
-def extract_current_distribution(
+def critical_current_density(
     fields: np.ndarray,
     ics: np.ndarray,
     f2k: float,
@@ -143,7 +143,7 @@ def extract_current_distribution(
     debug: bool = False,
     theta: Optional[np.ndarray] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Extract the current distribution from Ic(B).
+    """Extract the critical current density J_c(x) from a Fraunhofer pattern I_c(B).
 
     Parameters
     ----------

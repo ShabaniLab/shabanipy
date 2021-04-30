@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from scipy import constants as cs
 
 from shabanipy.jj.fraunhofer.dynesfulton import (
-    extract_current_distribution,
+    critical_current_density,
 )
 from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
 from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center, symmetrize_fraunhofer
@@ -92,10 +92,10 @@ for gate_, resist_, ic_, js in zip(gate, resist, ic, jss):
     ax.set_ylim(0, 1.6)
     ax.legend()
 
-    x_data, jx_data = extract_current_distribution(
+    x_data, jx_data = critical_current_density(
         field_ / 1e3, ic_, b2beta, jj_width, 200
     )
-    x_gen, jx_gen = extract_current_distribution(
+    x_gen, jx_gen = critical_current_density(
         field_ / 1e3, gen_ic, b2beta, jj_width, 200
     )
 

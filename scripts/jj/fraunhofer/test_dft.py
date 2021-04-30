@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from shabanipy.jj.fraunhofer.dynesfulton import (
-    extract_current_distribution,
+    critical_current_density,
 )
 from shabanipy.jj.fraunhofer.generate_pattern import _produce_fraunhofer_dft
 
@@ -56,7 +56,7 @@ ics, bs = _produce_fraunhofer_dft(js, abs(xs[0] - xs[1]), B2BETA)
 ax2.plot(bs, ics, label="generated")
 
 # reconstruct current density
-# xs, js = extract_current_distribution(bs, ics, B2BETA, JJ_WIDTH, len(xs) / 2)
+# xs, js = critical_current_density(bs, ics, B2BETA, JJ_WIDTH, len(xs) / 2)
 # ax.plot(js)
 
 fig.legend()

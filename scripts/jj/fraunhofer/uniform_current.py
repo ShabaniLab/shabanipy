@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from shabanipy.jj.fraunhofer.dynesfulton import (
-    extract_current_distribution,
+    critical_current_density,
     extract_theta,
 )
 from shabanipy.jj.fraunhofer.generate_pattern import (
@@ -80,10 +80,10 @@ ax2.plot(
 ax2.legend()
 
 # compare current reconstruction using true vs. reconstructed phases
-x_r, jx_r = extract_current_distribution(b, ic, b2beta, jj_width, 100, theta=theta_r)
-x_q, jx_q = extract_current_distribution(b, ic, b2beta, jj_width, 100, theta=theta_q)
-x_h, jx_h = extract_current_distribution(b, ic, b2beta, jj_width, 100, theta=theta_h)
-x_true, jx_true = extract_current_distribution(
+x_r, jx_r = critical_current_density(b, ic, b2beta, jj_width, 100, theta=theta_r)
+x_q, jx_q = critical_current_density(b, ic, b2beta, jj_width, 100, theta=theta_q)
+x_h, jx_h = critical_current_density(b, ic, b2beta, jj_width, 100, theta=theta_h)
+x_true, jx_true = critical_current_density(
     b, ic, b2beta, jj_width, 100, theta=theta_true
 )
 
