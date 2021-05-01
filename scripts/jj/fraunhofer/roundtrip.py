@@ -59,7 +59,7 @@ bs = np.linspace(-N_NODES * B_NODE, N_NODES * B_NODE, N_POINTS)
 TRIPS = 50
 for i in range(TRIPS):
     # generate Fraunhofer
-    ics = fraunhofer(bs, B2BETA, js, xs)
+    ics = fraunhofer(js, xs, bfields=bs, jj_length=JJ_LENGTH)
     ax2.plot(bs, ics, label=f"{2*i + 1}", color=cmap((2 * i + 1) / (2 * TRIPS)))
 
     # reconstruct current density

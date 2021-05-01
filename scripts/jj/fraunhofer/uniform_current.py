@@ -25,7 +25,7 @@ jx[np.where(np.abs(x) < jj_width / 2)] = 1
 
 # generate fraunhofer
 b = np.linspace(-0.25, 0.25, 513)
-g = fraunhofer(b, b2beta, jx, x, ret_fourier=True)
+g = fraunhofer(jx, x, bfields=b, jj_length=jj_length, ret_fourier=True)
 b_dft, g_dft = _fraunhofer_dft(jx, x[1] - x[0], b2beta, ret_fourier=True)
 ic = np.abs(g)
 ic_dft = np.abs(g_dft)

@@ -81,7 +81,7 @@ for gate_, resist_, ic_, js in zip(gate, resist, ic, jss):
     mask = np.logical_and(mask, np.abs(x) < jj_width / 8)
     jx[mask] = js[2]
 
-    gen_ic = fraunhofer(field_ / 1e3, b2beta, jx, x)
+    gen_ic = fraunhofer(jx, x, bfields=field_ / 1e3, jj_length=jj_length)
 
     fig, ax = plt.subplots(constrained_layout=True)
     ax.set_title(r"$V_{g,odd}$ = " + f"{gate_}")

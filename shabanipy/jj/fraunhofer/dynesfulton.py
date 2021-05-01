@@ -6,18 +6,11 @@
 #
 # The full license is in the file LICENCE, distributed with this software.
 # -----------------------------------------------------------------------------
-"""Deterministic reconstruction of the j(x) in a JJ from a Fraunhofer pattern.
+"""Functions relating the critical current density to the Fraunhofer pattern of a JJ.
 
-The method implemented here is based on:
-    [1] Dynes, R. C. & Fulton, T. A.  Supercurrent Density Distribution in
-    Josephson Junctions.  Phys. Rev. B 3, 3015–3023 (1971).
-
-This method has the advantage of being algebraic but can suffer from a lack of
-precision due to the finite extend of the measured Fraunhofer pattern.
-
-We need to use the more complex approach of the paper since we are interested
-in non-symmetric current distributions.
-
+The functions implemented here are based on:
+    [1] Dynes, R. C. & Fulton, T. A.  Supercurrent Density Distribution in Josephson
+    Junctions.  Phys. Rev. B 3, 3015–3023 (1971).
 """
 import warnings
 from typing import Optional, Tuple
@@ -36,39 +29,57 @@ from shabanipy.utils.integrate import can_romberg, resample_evenly
 
 
 def fraunhofer(
-    magnetic_field: np.ndarray,
-    f2k: float,  # field-to-wavevector conversion factor
-    cd: np.ndarray,  # current distribution
-    xs: np.ndarray,
-    ret_fourier: Optional[bool] = False,
+    current_density,
+    position,
+    *,
+    bfields,
+    jj_length = None,
+    return_fourier = False,
 ) -> np.ndarray:
-    """Generate Fraunhofer from current density using Romberg integration.
+    """Compute the Fraunhofer pattern of a given critical current denisty.
 
-    If ret_fourier is True, return the Fourier transform instead of the
-    critical current (useful for debugging).
+    The Fraunhofer pattern is the critical current interference pattern I_c(B).
+
+    Parameters
+    ----------
+    current_density: ndarray
+        Critical current density J(x) as a function of position along the junction width.
+    position: ndarray
+        Position x along the junction width corresponding to the current_density J(x).
+    bfields: ndarray
+        Out-of-plane magnetic field values at which to compute the Fraunhofer pattern.
+    jj_length: float, optional
+        Effective junction length, which determines the B-field-to-wavenumber conversion
+        factor as 2*pi*jj_length/PHI0 where PHI0 is the (superconducting) magnetic flux
+        quantum.  If left unspecified, the B-to-k conversion factor defaults to 1.
+    return_fourier: bool, optional
+        Whether to return the Fourier transform or the Fraunhofer pattern (useful for
+        studying the phase of the Fourier transform).
+
     """
-    g = np.empty_like(magnetic_field, dtype=complex)
-    if not can_romberg(xs):
-        xs, cd = resample_evenly(xs, cd)
+    fourier = np.empty_like(bfields, dtype=complex)
+    if not can_romberg(position):
+        position, current_density = resample_evenly(position, current_density)
 
-    dx = abs(xs[0] - xs[1])
-    for i, field in enumerate(magnetic_field):
-        g[i] = romb(cd * np.exp(1j * f2k * field * xs), dx)
+    dx = abs(position[0] - position[1])
+    b_to_k = 2 * np.pi * jj_length / PHI0 if jj_length else 1
+    for i, b in enumerate(bfields):
+        fourier[i] = romb(current_density * np.exp(1j * b_to_k * b * position), dx)
 
-    return g if ret_fourier else np.abs(g)
+    return fourier if return_fourier else np.abs(fourier)
 
 
 def _fraunhofer_dft(
-    j: np.ndarray, dx: float = 1, f2k: float = 1, ret_fourier: Optional[bool] = False,
+    j: np.ndarray, dx: float = 1, b_to_k: float = 1, return_fourier: Optional[bool] = False,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Generate Fraunhofer from current density using discrete Fourier transform."""
     j_fourier = fftshift(fft(j))
-    b = 2 * np.pi / f2k * fftshift(fftfreq(len(j), dx))
-    return (b, j_fourier) if ret_fourier else (b, np.abs(j_fourier))
+    b = 2 * np.pi / b_to_k * fftshift(fftfreq(len(j), dx))
+    return (b, j_fourier) if return_fourier else (b, np.abs(j_fourier))
 def fourier_phase(
     fields: np.ndarray,
     ics: np.ndarray,
-    f2k: float,
+    b_to_k: float,
     jj_width: float,
     method: Optional[Literal["romb", "quad", "hilbert"]] = "hilbert",
 ) -> np.ndarray:
@@ -87,7 +98,7 @@ def fourier_phase(
     ics : np.ndarray
         Measured value of the critical current. For ND input the sweep should
         occur on the last axis.
-    f2k : float
+    b_to_k : float
         Field-to-wavenumber conversion factor (i.e. β / B).
     jj_width: float
         Width of the junction transverse to the field and current.
@@ -107,7 +118,7 @@ def fourier_phase(
 
     """
     # scale B to beta first; then forget about it
-    fields = fields * f2k
+    fields = fields * b_to_k
 
     if method == "romb":
         theta = _fourier_phase_romb(fields, ics)
@@ -171,7 +182,7 @@ def _fourier_phase_hilbert(ics: np.ndarray) -> np.ndarray:
 def critical_current_density(
     fields: np.ndarray,
     ics: np.ndarray,
-    f2k: float,
+    b_to_k: float,
     jj_width: float,
     jj_points: int,
     debug: bool = False,
@@ -185,7 +196,7 @@ def critical_current_density(
         1D array of the magnetic field at which the critical current was measured.
     ics : np.ndarray
         1D array of the measured value of the critical current.
-    f2k : float
+    b_to_k : float
         Field to wave-vector conversion factor. This can be estimated from the
         Fraunhofer periodicity.
     jj_width : float
@@ -217,10 +228,10 @@ def critical_current_density(
     fine_ics[np.less_equal(fine_ics, 1e-10)] = 1e-10
 
     if fine_theta is None:
-        fine_theta = fourier_phase(fine_fields, fine_ics, f2k, jj_width)
+        fine_theta = fourier_phase(fine_fields, fine_ics, b_to_k, jj_width)
 
     # scale from B to beta
-    fine_fields = f2k * fine_fields
+    fine_fields = b_to_k * fine_fields
     step = abs(fine_fields[0] - fine_fields[1])
 
     xs = np.linspace(-jj_width, jj_width, int(2 * jj_points))
@@ -234,7 +245,7 @@ def critical_current_density(
 
     if debug:
         f, axes = plt.subplots(2, 1)
-        axes[0].plot(f2k * fields, ics)
+        axes[0].plot(b_to_k * fields, ics)
         axes[1].plot(xs, j.real)
         plt.show()
 

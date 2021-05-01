@@ -37,9 +37,11 @@ ax.plot(x_padded, jx1_padded, label="input 1")
 ax.plot(x_padded, jx2_padded, label="input 2", linestyle="-.")
 ax.legend()
 
+
 B2BETA = 4
 b = np.linspace(-10, 10, N)
-g1 = fraunhofer(b, B2BETA, jx1, x, ret_fourier=True)
+# TODO fraunhofer is refactored
+g1 = fraunhofer(jx1, x, bfields=b, jj_length=....., B2BETA, jx1, x, ret_fourier=True)
 g2 = fraunhofer(b, B2BETA, jx2, x, ret_fourier=True)
 ic1, ic2 = np.abs(g1), np.abs(g2)
 
