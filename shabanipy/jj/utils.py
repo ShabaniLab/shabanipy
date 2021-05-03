@@ -71,8 +71,8 @@ def compute_voltage_offset(
     r_dydx = dydx[midpoint:]
 
     # Find the most prominent peaks on each side of the zero bias current
-    peaks_left, _ = find_peaks(l_dydx, max(l_dydx[bound_l:])/2)
-    peaks_right, _ = find_peaks(r_dydx, max(r_dydx[:bound_r-midpoint])/2)
+    peaks_left, _ = find_peaks(l_dydx, max(l_dydx[bound_l:])/5)
+    peaks_right, _ = find_peaks(r_dydx, max(r_dydx[:bound_r-midpoint])/5)
     
     # Manually evaluate the width of the peaks since they can be very asymetric
     peak_l=peaks_left[-1]
@@ -82,11 +82,17 @@ def compute_voltage_offset(
     l_peak_value = l_dydx[peak_l]
     while l_dydx[peak_l + lw] > l_peak_value / 2:
         lw += 1
+        # Break if at the end of the array
+        if peak_l + lw >= len(l_dydx-1):
+            break
 
     rw = 0
     r_peak_value = r_dydx[peak_r]
     while r_dydx[peak_r - rw] > r_peak_value / 2:
         rw += 1
+        # Break if at the end of the array
+        if peak_r - rw <= 0:
+            break
 
     # Keep only the data between the two peaks
     area = measured_voltage[
@@ -205,7 +211,8 @@ def extract_switching_current(
     volt_or_res : np.ndarray
         N+1D of the voltage or differential resistance of the junction.
     threshold : float
-        Threshold value used to determine the critical current.
+        Since there's a shift in the DMM the superconducting region isn't exactly around zero.
+        This threshold sets the voltage range around zero used to determine the critical current.
     side : {"positive", "negative"}, optional
         On which branch of the bias current to extract the critical current,
         by default "positive"
@@ -218,6 +225,9 @@ def extract_switching_current(
         ND array of the extracted critical current.
 
     """
+    # Correct of the DMM voltage offset(superconducting region should be around zero)
+    volt_or_res = correct_voltage_offset(bias,volt_or_res,2)
+
     if side not in ("positive", "negative"):
         raise ValueError(f"Side should be 'positive' or 'negative', found {side}.")
 
@@ -229,6 +239,7 @@ def extract_switching_current(
     # Mask the data to get only the data we care about
     masked_bias = bias[mask].reshape(bias.shape[:-1] + (-1,))
     masked_data = volt_or_res[mask].reshape(bias.shape[:-1] + (-1,))
+
     it = np.nditer(masked_bias[..., 0], ["multi_index"])
     for b in it:
         # Make it so the bias is always 0 at index 0, by flipping the array if necessary
@@ -258,3 +269,4 @@ def extract_switching_current(
         ics[np.less_equal(ics, replace_zeros)] = replace_zeros
 
     return ics
+

@@ -100,11 +100,37 @@ def analyse_vi_curve(
         # Index at which the bias current is zero
         index = np.argmin(np.abs(cb))
 
-        # Extract the critical current on the positive and negative branch
-        ic_n = cb[np.max(np.where(np.less(mv[:index], -ic_voltage_threshold))[0])]
-        ic_p = cb[
-            np.min(np.where(np.greater(mv[index:], ic_voltage_threshold))[0]) + index
-        ]
+        # masked_mv_l = np.where(np.less(mv[:index],-ic_voltage_threshold))[0]
+        # masked_mv_r = np.where(np.greater(mv[index:],ic_voltage_threshold))[0] +index
+        # # Extract the critical current on the positive and negative branch
+        # ldidv = np.diff(mv[masked_mv_l])/np.diff(cb[masked_mv_l])
+        # rdidv = np.diff(mv[masked_mv_r])/np.diff(cb[masked_mv_r])
+        didv = np.diff(mv)/np.diff(cb)
+        didv = gaussian_filter(didv,2)
+        
+        ldidv = didv[:index]
+        rdidv = didv[index:]
+        lpeak, _ = find_peaks(ldidv, max(ldidv[:-20])*0.1 )
+        rpeak, _ = find_peaks(rdidv, max(rdidv[:-20])*0.1 )
+        
+        if lpeak.size == 0:
+            ic_n = 0.0
+        else:
+            ic_n = abs(cb[lpeak[-1]])
+        
+        if rpeak.size == 0:
+            ic_p = 0.0
+        else:
+            ic_p = abs(cb[rpeak[0]+index])
+
+        # # Index at which the bias current is zero
+        # index = np.argmin(np.abs(cb))
+        # # Extract the critical current on the positive and negative branch
+        # ic_n = cb[np.max(np.where(np.less(mv[:index], -ic_voltage_threshold))[0])]
+        # ic_p = cb[ eshold))[0]) + index
+        # ]
+        # # print(ic_n, ic_p)
+        # print(np.less(mv[:index], -ic_voltage_threshold)[0])
 
         # Fit the high positive/negative bias to extract the normal resistance
         # excess current and their product
@@ -180,7 +206,6 @@ def analyse_vi_curve(
         ic_h[m_index] = hot_value(ic_p, ic_n)
         ie_c[m_index] = cold_value(iexe_p, iexe_n)
         ie_h[m_index] = hot_value(iexe_p, iexe_n)
-
     return (rn_c, rn_h, ic_c, ic_h, ie_c, ie_h)
 
 
@@ -239,21 +264,34 @@ def extract_critical_current(
         # Extract the critical current on the positive and negative branch
         
         didv = np.diff(mv)/np.diff(cb)
-        didv = gaussian_filter(didv,3)
+        # didv = gaussian_filter(didv,1)
         
         # l_limit = 10
         # r_limit = 180
         # ldidv = didv[l_limit:index]
         # rdidv = didv[index:index+r_limit]
+
+
+
         ldidv = didv[:index]
         rdidv = didv[index:]
 
-        lpeak, _ = find_peaks(ldidv, height = math.floor(max(ldidv[:-20]))*0.2) 
-        rpeak, _ = find_peaks(rdidv, height = math.floor(max(rdidv[:-20]))*0.2)
+        lpeak, _ = find_peaks(ldidv, height = math.floor(max(ldidv[:-20]))*0.4) 
+        rpeak, _ = find_peaks(rdidv, height = math.floor(max(rdidv[:-20]))*0.4)
         
-        print(m_index,lpeak,rpeak)
-        ic_n = abs(cb[lpeak[-1]])
-        ic_p = abs(cb[rpeak[0]+index])
+        if lpeak.size != 0:
+            ic_n = abs(cb[lpeak[-1]])
+        else:
+             ic_n = abs(cb[np.argmax(didv[:index])])
+        
+        if rpeak.size != 0:
+            ic_p = abs(cb[rpeak[0]+index])
+        else:
+            ic_p = abs(cb[np.argmax(didv[index:])+index])
+
+
+
+
         # if lpeak.size != 0:
         #     ic_n = abs(cb[lpeak[-1]+l_limit])
         # else:
