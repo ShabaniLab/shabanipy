@@ -6,7 +6,10 @@ from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
     extract_current_distribution,
     extract_theta,
 )
-from shabanipy.jj.fraunhofer.generate_pattern import produce_fraunhofer_fast
+from shabanipy.jj.fraunhofer.generate_pattern import (
+    _produce_fraunhofer_dft,
+    produce_fraunhofer_fast,
+)
 
 # constants
 PHI0 = 2e-15  # magnetic flux quantum
@@ -16,18 +19,31 @@ b2beta = 2 * np.pi * jj_length / PHI0  # B-field to beta factor
 
 # zero-padded uniform current distribution
 x = np.linspace(-2 * jj_width, 2 * jj_width, 513)
+dx = x[1] - x[0]
 jx = np.zeros_like(x)
 jx[np.where(np.abs(x) < jj_width / 2)] = 1
 
 # generate fraunhofer
 b = np.linspace(-0.25, 0.25, 513)
 g = produce_fraunhofer_fast(b, b2beta, jx, x, ret_fourier=True)
+b_dft, g_dft = _produce_fraunhofer_dft(jx, x[1] - x[0], b2beta, ret_fourier=True)
 ic = np.abs(g)
+ic_dft = np.abs(g_dft)
 
 fig, ax = plt.subplots(constrained_layout=True)
 ax.set_xlabel("B [mT]")
 ax.set_ylabel(r"$I_c$ [uA]")
-ax.plot(b / 1e-3, ic / 1e-6)
+ax.plot(b / 1e-3, ic / 1e-6, label="romb")
+ax.plot(
+    b_dft / 1e-3,
+    ic_dft / np.sum(jx),
+    label="dft",
+    linewidth=0,
+    marker=".",
+    markersize=3,
+)
+ax.set_xlim([-260, 260])
+ax.legend()
 
 # compare true and reconstructed phase distributions
 theta_r = extract_theta(b, ic, b2beta, jj_width, method="romb")
