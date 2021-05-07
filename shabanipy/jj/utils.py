@@ -226,8 +226,7 @@ def extract_switching_current(
 
     """
     # Correct of the DMM voltage offset(superconducting region should be around zero)
-    volt_or_res = correct_voltage_offset(bias,volt_or_res,2)
-
+    volt_or_res = correct_voltage_offset(bias,volt_or_res,1)
     if side not in ("positive", "negative"):
         raise ValueError(f"Side should be 'positive' or 'negative', found {side}.")
 
