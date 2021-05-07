@@ -173,17 +173,13 @@ def extract_current_distribution(
     """
     if not can_romberg(fields):
         fine_fields, fine_ics = resample_evenly(fields, ics)
-        if theta is not None:
-            _, fine_theta = resample_evenly(fields, theta)
-        else:
-            fine_theta = theta
     else:
-        fine_fields, fine_ics, fine_theta = fields, ics, theta
+        fine_fields, fine_ics = fields, ics
 
     fine_ics[np.less_equal(fine_ics, 1e-10)] = 1e-10
 
-    if fine_theta is None:
-        fine_theta = extract_theta(fine_fields, fine_ics, f2k, jj_width)
+    if theta is None:
+        theta = extract_theta(fine_fields, fine_ics, f2k, jj_width)
 
     # scale from B to beta
     fine_fields = f2k * fine_fields
@@ -195,7 +191,7 @@ def extract_current_distribution(
         j[i] = (
             1
             / (2 * np.pi)
-            * romb(fine_ics * np.exp(1j * (fine_theta - fine_fields * x)), step)
+            * romb(fine_ics * np.exp(1j * (theta - fine_fields * x)), step)
         )
 
     if debug:

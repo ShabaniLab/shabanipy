@@ -14,7 +14,6 @@ from scipy import constants as cs
 
 from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
     extract_current_distribution,
-    extract_theta,
 )
 from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center, symmetrize_fraunhofer
 from shabanipy.jj.utils import extract_switching_current
@@ -127,29 +126,6 @@ x, jx = extract_current_distribution(field, ic, FIELD_TO_WAVENUM, JJ_WIDTH, len(
 fig, ax = plt.subplots(constrained_layout=True)
 ax.set_xlabel(r"$x$ (μm)")
 ax.set_ylabel(r"$J(x)$ (μA/μm)")
-ax.plot(x * 1e6, jx, label="all lobes")
-# plt.show()
-# fig.savefig("077_hi-res-current-density.pdf")
-
-# if the self-fields of the Josephson current are O(100μT), it should only distort the
-# primary lobe of the Fraunhofer; can the current peaks we see at the edge of the
-# junction be obtained from the first lobe only? the smallest-wavelength Fourier
-# component corresponds to the largest field, e.g. for 400μT it is ~5μm if the effective
-# junction length is taken to be 1μm; in the present scan the primary lobe lies between
-# +-500μT corresponding to a Fourier component with wavelength ~4μm, the junction width
-# (however, the modulus of this Fourier component is small as it resides at a
-# minimum/node in the Fraunhofer)
-theta = extract_theta(field, ic, FIELD_TO_WAVENUM, JJ_WIDTH)
-cutoff = 750e-6
-mask = np.logical_and(field > -cutoff, field < cutoff)
-x2, jx2 = extract_current_distribution(
-    field[mask],
-    ic[mask],
-    FIELD_TO_WAVENUM,
-    JJ_WIDTH,
-    len(field[mask]),
-    theta=theta[mask],
-)
-ax.plot(x2 * 1e6, jx2, label=f"$B < {cutoff*1e3}$mT")
-ax.legend()
+ax.plot(x * 1e6, jx)
 plt.show()
+# fig.savefig("077_hi-res-current-density.pdf")

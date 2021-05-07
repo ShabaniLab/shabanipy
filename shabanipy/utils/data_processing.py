@@ -6,7 +6,7 @@
 #
 # The full license is in the file LICENCE, distributed with this software.
 # -----------------------------------------------------------------------------
-"""Routines to automate analysing a large set of data.
+"""Routines to automate analysing large set of data.
 
 Data are expected to have been aggregated using DataClassifier.
 
@@ -116,15 +116,15 @@ class PreProcessingStep(AnalysisStep):
     def run(
         self, group: Group, classifiers: Dict[int, Dict[str, Any]], debug: bool = False
     ) -> None:
-        """Run the routine and save the produced data.
+        """Run the routine and save the produce data.
 
-        The name of the step and the parameters' values are saved in the dataset's attrs.
+        The name of the step and the parameters values are saved in the datasets attrs.
 
         """
         # Get actual numpy arrays as otherwise the differences may be slightly surprising
         data = [group[k][...] for k in self.input_quantities]
         p = self.populate_parameters(group, classifiers)
-        out = self.routine(*data, **p, debug=debug)
+        out = self.routine(*data, **p, debug=True)
         if len(self.output_quantities) > 1 and len(out) != len(self.output_quantities):
             raise ValueError(
                 f"Got {len(out)} output but {len(self.output_quantities)}."
@@ -139,9 +139,9 @@ class PreProcessingStep(AnalysisStep):
 
 @dataclass
 class ProcessingStep(AnalysisStep):
-    """Step processing data and saving the result in a new file per tier.
+    """Step processing data and saving teh result in a new file per tier.
 
-    Data may require multiple processing steps (extraction, fit, ...) which can be stored
+    Data may require multiple processing step (extraction, fit, ...) which can be stored
     under different tiers.
 
     """
@@ -150,7 +150,7 @@ class ProcessingStep(AnalysisStep):
     tier: str
 
     #: From where should the input data be pulled.
-    #: Currently supports raw@{measurement} for data stored in the original data
+    #: Currently support raw@{measurement} for data stored in the original data
     #: aggregate, processed@{tier} for data created by a previous processing step.
     input_origin: str
 
@@ -165,9 +165,9 @@ class ProcessingStep(AnalysisStep):
         out_explorer: DataExplorer,
         debug: bool = False,
     ) -> None:
-        """Run the routine and save the produced data.
+        """Run the routine and save the produce data.
 
-        The name of the step and the parameters' values are saved in the dataset's attrs.
+        The name of the step and the parameters values are saved in the datasets attrs.
 
         """
         data = [origin[k][...] for k in self.input_quantities]
@@ -227,7 +227,7 @@ class SummarizingStep(AnalysisStep):
             os.makedirs(dir_path)
         p["directory"] = dir_path
         p["classifiers"] = classifiers
-        self.routine(*data, **p, debug=debug)
+        self.routine(*data, **p, debug=True)
 
 
 @dataclass

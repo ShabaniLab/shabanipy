@@ -59,7 +59,7 @@ class StepConfig:
     #: Does this step contain more than a single value.
     is_ramped: bool
 
-    #: Relation this step has to other steps. The tuple contains a
+    #: Relation this step has to other other steps. The tuple contains a
     #: string and a dictionary mapping placeholder in the format string to step
     #: names. The relation can be evaluated by replacing the step name by the value
     #: and using the dictionary as local when evaluating the string.
@@ -90,14 +90,14 @@ class StepConfig:
         for r in self.ramps:
             points += r.steps
             if last_stop is not None:
-                # If this is not the first ramp and the ramp is part of a separate
-                # measurement that was appended, reset the last stop and store the
+                # If this not the first ramp and the ramp is part of a separate
+                # measurement that was appended reset the last stop and store the
                 # number of points
                 if r.new_log:
                     last_stop = None
                     points_per_log.append(points)
                     points = 0
-                # For multiple ramps whose start matches the previous stop Labber
+                # For multiple ramps whose the start match the previous stop Labber
                 # saves a single point.
                 if r.start == last_stop:
                     points -= 1
@@ -125,7 +125,7 @@ class LogEntry:
 
 
 def maybe_decode(bytes_or_str: Union[str, bytes]) -> str:
-    """H5py returns some strings as bytes in 3.10 so convert them."""
+    """H5py return some string as bytes in 3.10 so convert them."""
     if isinstance(bytes_or_str, bytes):
         return bytes_or_str.decode("utf-8")
     return bytes_or_str
