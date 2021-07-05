@@ -110,8 +110,8 @@ def analyse_vi_curve(
         
         ldidv = didv[:index]
         rdidv = didv[index:]
-        lpeak, _ = find_peaks(ldidv, max(ldidv[:-20])*0.1 )
-        rpeak, _ = find_peaks(rdidv, max(rdidv[:-20])*0.1 )
+        lpeak, _ = find_peaks(ldidv, max(ldidv[:-10])*0.8 )
+        rpeak, _ = find_peaks(rdidv, max(rdidv[:-10])*0.8 )
         
         if lpeak.size == 0:
             ic_n = 0.0
@@ -212,6 +212,8 @@ def analyse_vi_curve(
 def extract_critical_current(    
     current_bias: np.ndarray,
     measured_voltage: np.ndarray,
+    points_mask: int = 10,
+    peak_height: float = 0.8,
     debug: bool = False,
 )-> Tuple[np.ndarray]:
     """Extract the critical current
@@ -226,6 +228,11 @@ def extract_critical_current(
         N+1D array of the current bias applied on the junction in A.
     measured_voltage : np.ndarray
         N+1D array of the voltage accross the junction in V.
+    points_mask : int
+        Number of points to ignore on the sides of the VI curve when calculating derivative to find peaks 
+        because sometimes there's abnormal peaks 
+    peak_heights : float
+        Relative peak heights to use to find peaks
 
     Returns
     -------
@@ -276,8 +283,8 @@ def extract_critical_current(
         ldidv = didv[:index]
         rdidv = didv[index:]
 
-        lpeak, _ = find_peaks(ldidv, height = math.floor(max(ldidv[:-20]))*0.4) 
-        rpeak, _ = find_peaks(rdidv, height = math.floor(max(rdidv[:-20]))*0.4)
+        lpeak, _ = find_peaks(ldidv, height = math.floor(max(ldidv[:-points_mask]))*peak_height) 
+        rpeak, _ = find_peaks(rdidv, height = math.floor(max(rdidv[:-points_mask]))*peak_height)
         
         if lpeak.size != 0:
             ic_n = abs(cb[lpeak[-1]])
