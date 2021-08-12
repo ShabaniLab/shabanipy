@@ -91,7 +91,7 @@ def analyse_vi_curve(
         else:
             cold_value = lambda p, n: abs(n)
             hot_value = lambda p, n: abs(p)
-
+            
         # Sort the data so that the bias always go from negative to positive
         sorting_index = np.argsort(cb)
         cb = cb[sorting_index]
@@ -100,16 +100,16 @@ def analyse_vi_curve(
         # Index at which the bias current is zero
         index = np.argmin(np.abs(cb))
 
-        # masked_mv_l = np.where(np.less(mv[:index],-ic_voltage_threshold))[0]
-        # masked_mv_r = np.where(np.greater(mv[index:],ic_voltage_threshold))[0] +index
+        masked_mv_l = np.where(np.less(mv[:index],-ic_voltage_threshold))[0]
+        masked_mv_r = np.where(np.greater(mv[index:],ic_voltage_threshold))[0] +index
         # # Extract the critical current on the positive and negative branch
-        # ldidv = np.diff(mv[masked_mv_l])/np.diff(cb[masked_mv_l])
-        # rdidv = np.diff(mv[masked_mv_r])/np.diff(cb[masked_mv_r])
-        didv = np.diff(mv)/np.diff(cb)
-        didv = gaussian_filter(didv,2)
+        ldidv = np.diff(mv[masked_mv_l])/np.diff(cb[masked_mv_l])
+        rdidv = np.diff(mv[masked_mv_r])/np.diff(cb[masked_mv_r])
+        # didv = np.diff(mv)/np.diff(cb)
+        # didv = gaussian_filter(didv,2)
         
-        ldidv = didv[:index]
-        rdidv = didv[index:]
+        # ldidv = didv[:index]
+        # rdidv = didv[index:]
         lpeak, _ = find_peaks(ldidv, max(ldidv[:-10])*0.8 )
         rpeak, _ = find_peaks(rdidv, max(rdidv[:-10])*0.8 )
         

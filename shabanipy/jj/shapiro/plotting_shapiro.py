@@ -93,7 +93,7 @@ def plot_differential_resistance_map(
     print("Power Offset = ", p_offset)
 
     # Use savgol_filter if params are available
-    dV_dI = savgol_filter(dV_dI,savgol_windowl,savgol_polyorder) if savgol_windowl and savgol_polyorder else dV_dI
+    dV_dI = savgol_filter(dV_dI.real,savgol_windowl,savgol_polyorder) if savgol_windowl and savgol_polyorder else dV_dI.real
 
     if transpose:
         extent = (power[0, 0]- p_offset, power[-1, 0]- p_offset, bias[0, 0] * 1e6, bias[0, -1] * 1e6)
@@ -248,6 +248,7 @@ def plot_shapiro_histogram(
 
     cbar = f.colorbar(im, ax=m_ax, aspect=50,location="top",shrink=0.8)
     cbar.ax.set_xlabel('Counts (I${_c}$)',labelpad = 20)
+    cbar.ax.tick_params(labelsize=20)
 
     plabel = "RF Power (dBm)"
     clabel = r"Voltage ($\dfrac{hf}{2e}$)"

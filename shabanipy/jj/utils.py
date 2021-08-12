@@ -195,6 +195,7 @@ def extract_switching_current(
     volt_or_res: np.ndarray,
     threshold: float,
     side: Literal["positive", "negative"] = "positive",
+    correct_v_offset: Optional[bool] = None,
     replace_zeros: Optional[float] = None,
     debug: bool = False,
 ) -> np.ndarray:
@@ -213,6 +214,8 @@ def extract_switching_current(
     threshold : float
         Since there's a shift in the DMM the superconducting region isn't exactly around zero.
         This threshold sets the voltage range around zero used to determine the critical current.
+    correct_v_offset :  bool, optional
+        Correct voltage offset or not
     side : {"positive", "negative"}, optional
         On which branch of the bias current to extract the critical current,
         by default "positive"
@@ -226,7 +229,9 @@ def extract_switching_current(
 
     """
     # Correct of the DMM voltage offset(superconducting region should be around zero)
-    volt_or_res = correct_voltage_offset(bias,volt_or_res,2)
+
+    volt_or_res = correct_voltage_offset(bias,volt_or_res,2) if correct_v_offset else volt_or_res
+
     if side not in ("positive", "negative"):
         raise ValueError(f"Side should be 'positive' or 'negative', found {side}.")
 
