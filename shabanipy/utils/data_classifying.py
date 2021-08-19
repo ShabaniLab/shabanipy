@@ -616,6 +616,7 @@ class DataClassifier:
                         raise RuntimeError(f"{path} and {p} have identical classifiers")
 
         self._classified_datasets = classified_datasets
+        logger.info(f"Classified datasets:\n{pprint.pformat(classified_datasets)}")
 
     def dump_dataset_classification(self):
         """"""
