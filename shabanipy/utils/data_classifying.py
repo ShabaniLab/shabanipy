@@ -476,6 +476,7 @@ class MeasurementPattern:
                     f"Expected a classifier value from {self.filename_pattern}"
                     f"({dataset.filename})"
                 )
+            logger.debug(f"Classifiers extracted from {dataset.filename}: {value}")
             classifiers[self.filename_pattern.classifier_level] = value
 
         for pattern in (p for p in self.steps if p.use_in_classification):
