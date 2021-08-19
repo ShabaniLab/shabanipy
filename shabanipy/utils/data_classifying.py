@@ -11,6 +11,7 @@
 """
 import logging
 import os
+import pprint
 import re
 from collections import defaultdict, namedtuple
 from contextlib import contextmanager
@@ -524,19 +525,19 @@ class DataClassifier:
         """Identify the relevant datasets by scanning the content of a folder."""
         datasets = {p.name: [] for p in self.patterns}
         for folder in folders:
-            logger.info(f"Walking {folder}")
+            logger.debug(f"Walking {folder}")
             for root, dirs, files in os.walk(folder):
                 for datafile in (f for f in files if f.endswith(".hdf5")):
                     path = os.path.join(root, datafile)
-                    logger.info(f"Matching file {datafile}")
+                    logger.debug(f"Matching file {datafile}")
                     try:
                         with LabberData(path) as f:
                             for p in self.patterns:
-                                logger.info(f"Matching pattern {p.name}")
+                                logger.debug(f"Matching pattern {p.name}")
                                 res = p.match(f)
                                 if res:
                                     datasets[p.name].append(path)
-                                    logger.info(
+                                    logger.debug(
                                         f"- accepted {datafile} "
                                         f"for measurement pattern {p.name}"
                                     )
@@ -547,6 +548,7 @@ class DataClassifier:
                         logger.debug(f"- rejected {datafile}: file is corrupted")
 
         self._datasets = datasets
+        logger.info(f"Identified datasets:\n{pprint.pformat(datasets)}")
 
     def match_dataset(self, path: str) -> Optional[MeasurementPattern]:
         """Match a single file and return the pattern.
