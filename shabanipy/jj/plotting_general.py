@@ -7,7 +7,7 @@
 # The full license is in the file LICENCE, distributed with this software.
 # -----------------------------------------------------------------------------
 
-"""Routines used to plot general current bias measurments as a function of exctracted values and external parameters:
+"""Routines used to plot general current bias measurments as a function of extracted values and external parameters:
 magnetic field, gate voltage etc.
 """
 
