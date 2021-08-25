@@ -20,7 +20,8 @@ from .binning import extract_step_weight
 
 #Set plotting parameters
 plt.rcParams["axes.linewidth"] = 1.5
-plt.rcParams["font.size"] = 30
+plt.rcParams["font.size"] = 40
+plt.rcParams["axes.labelweight"] = "bold"
 plt.rcParams["pdf.fonttype"] = 42
 plt.rcParams["xtick.direction"] = "in"
 plt.rcParams["ytick.direction"] = "in"
@@ -152,7 +153,7 @@ def plot_shapiro_histogram(
     mark_steps: Optional[List[int]] = None,
     mark_steps_limit: Optional[float] = None,
     fig_size: Optional[np.ndarray] = None,
-    transpose: bool = False,
+    transpose: bool = True,
     debug: bool = False,
 ) -> None:
     """Plot Shapiro steps histogram
@@ -194,7 +195,7 @@ def plot_shapiro_histogram(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (15,12))
+    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (16,10))
     m_ax = f.gca()
 
     p = power[:, 0]

@@ -28,6 +28,7 @@ from shabanipy.jj.fraunhofer.deterministic_reconstruction import extract_current
 #Set plotting parameters
 plt.rcParams["axes.linewidth"] = 1.5
 plt.rcParams["font.size"] = 50
+plt.rcParams["axes.labelweight"] = "bold"
 plt.rcParams["pdf.fonttype"] = 42
 plt.rcParams["xtick.direction"] = "in"
 plt.rcParams["ytick.direction"] = "in"
@@ -116,7 +117,7 @@ def plot_fraunhofer(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (30,12))
+    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
     m_ax = f.gca()
     
     #Convert from current to field if conversion factor is available
@@ -200,7 +201,7 @@ def plot_extracted_switching_current(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (30,12))
+    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
     m_ax = f.gca()
     
     #Convert from current to field if conversion factor is available
@@ -287,7 +288,7 @@ def plot_extracted_critical_current(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (30,12))
+    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
     m_ax = f.gca()
 
     #Convert from current to field if conversion factor is available
@@ -381,7 +382,7 @@ def plot_current_distribution(
     FIELD_TO_WAVENUM = 2 * np.pi * jj_length / PHI0  # B-field to beta wavenumber
     PERIOD = 2 * np.pi / (FIELD_TO_WAVENUM * jj_width)
 
-    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (30,12))
+    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
     m_ax = f.gca()
 
     #Convert from current to field if conversion factor is available
@@ -419,8 +420,8 @@ def plot_current_distribution(
 
     m_ax.set_xlabel(r'$x$ (µm)')
     m_ax.set_ylabel(r'$J_{x}$ (µA/µm)')
-    m_ax.tick_params(axis='x', labelsize=50)
-    m_ax.tick_params(axis='y', labelsize=50)
+    m_ax.tick_params(axis='x', labelsize=70)
+    m_ax.tick_params(axis='y', labelsize=70)
 
 
 def plot_inplane_vs_bias(
@@ -464,7 +465,7 @@ def plot_inplane_vs_bias(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (30,12))
+    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
     m_ax = f.gca()
     
     # Use savgol_filter if params are available
@@ -503,8 +504,6 @@ def plot_inplane_vs_Ic_Rn(
     high_bias_threshold: float,
     savgol_windowl: Optional[int] = None,
     savgol_polyorder: Optional[int] = None,
-    cvmax: Optional[float] = None,
-    cvmin: Optional[float] = None,
     ic_limits: Optional[np.ndarray] = None,
     rn_limits: Optional[np.ndarray] = None,
     in_field_limits: Optional[np.ndarray] = None,
@@ -531,10 +530,6 @@ def plot_inplane_vs_Ic_Rn(
         Window length of savgol_filter.
     savgol_polyorder: int, optional
         Polyorder of savgol_filter.
-    cvmax : float, optional
-        Colormap vmax value.
-    cvmin : float, optional
-        Colormap vmin value.
     ic_limits : np.ndarray, optional
         ic axis plot limits.
     rn_limits : np.ndarray, optional
@@ -547,7 +542,7 @@ def plot_inplane_vs_Ic_Rn(
         Should debug information be provided, by default False.
 
     """
-    fig, ax = plt.subplots(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (26,12))
+    fig, ax = plt.subplots(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
     m_ax = fig.gca()
     
     # Use savgol_filter if params are available
@@ -577,9 +572,7 @@ def plot_inplane_vs_IcRn(
     high_bias_threshold: float,
     savgol_windowl: Optional[int] = None,
     savgol_polyorder: Optional[int] = None,
-    cvmax: Optional[float] = None,
-    cvmin: Optional[float] = None,
-    bias_limits: Optional[np.ndarray] = None,
+    icrn_limits: Optional[np.ndarray] = None,
     in_field_limits: Optional[np.ndarray] = None,
     fig_size: Optional[np.ndarray] = None,
     debug: bool = False,
@@ -604,12 +597,8 @@ def plot_inplane_vs_IcRn(
         Window length of savgol_filter.
     savgol_polyorder: int, optional
         Polyorder of savgol_filter.
-    cvmax : float, optional
-        Colormap vmax value.
-    cvmin : float, optional
-        Colormap vmin value.
-    bias_limits : np.ndarray, optional
-        Bias axis plot limits.
+    icrn_limits : np.ndarray, optional
+        icrn axis plot limits.
     in_field_limits : np.ndarray, optional
         In-plane field plot limits.
     fig_size : np.ndarray, optional
@@ -618,7 +607,7 @@ def plot_inplane_vs_IcRn(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (26,12))
+    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
     m_ax = f.gca()
     
     # Use savgol_filter if params are available
@@ -632,8 +621,8 @@ def plot_inplane_vs_IcRn(
     m_ax.set_ylabel(r'I$_{c}$R$_{n}$(Ω)', labelpad = 20, color = 'red')
     if in_field_limits:
         m_ax.set_xlim(in_field_limits)
-    if bias_limits:
-        m_ax.set_ylim(bias_limits)
+    if icrn_limits:
+        m_ax.set_ylim(icrn_limits)
 
 def plot_vg_vs_bias(
     vg: np.ndarray,
@@ -678,7 +667,7 @@ def plot_vg_vs_bias(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (30,12))
+    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
     m_ax = f.gca()
 
     # Use savgol_filter if params are available
@@ -707,7 +696,7 @@ def plot_vg_vs_bias(
     if bias_limits:
         m_ax.set_ylim(bias_limits)
 
-    cb = f.colorbar(pm, ax = m_ax,pad = 0.02,)
+    cb = f.colorbar(pm, ax = m_ax,pad = 0.02, extend = 'max')
     cb.ax.tick_params(direction='in',labelsize=50)
     cb.ax.set_xlabel(r'$\frac{dV}{dI} (\Omega)$', labelpad = 10)
     
@@ -722,8 +711,6 @@ def plot_vg_vs_Ic_Rn(
     high_bias_threshold: float,
     savgol_windowl: Optional[int] = None,
     savgol_polyorder: Optional[int] = None,
-    cvmax: Optional[float] = None,
-    cvmin: Optional[float] = None,
     ic_limits: Optional[np.ndarray] = None,
     rn_limits: Optional[np.ndarray] = None,
     vg_limits: Optional[np.ndarray] = None,
@@ -751,10 +738,6 @@ def plot_vg_vs_Ic_Rn(
         Window length of savgol_filter.
     savgol_polyorder: int, optional
         Polyorder of savgol_filter.
-    cvmax : float, optional
-        Colormap vmax value.
-    cvmin : float, optional
-        Colormap vmin value.
     ic_limits : np.ndarray, optional
         ic axis plot limits.
     rn_limits : np.ndarray, optional
@@ -769,7 +752,7 @@ def plot_vg_vs_Ic_Rn(
         Should debug information be provided, by default False.
 
     """
-    fig, ax = plt.subplots(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (26,12))
+    fig, ax = plt.subplots(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
     m_ax = fig.gca()
     
     # Use savgol_filter if params are available
@@ -801,8 +784,6 @@ def plot_vg_vs_IcRn(
     high_bias_threshold: float,
     savgol_windowl: Optional[int] = None,
     savgol_polyorder: Optional[int] = None,
-    cvmax: Optional[float] = None,
-    cvmin: Optional[float] = None,
     icrn_limits: Optional[np.ndarray] = None,
     vg_limits: Optional[np.ndarray] = None,
     fig_size: Optional[np.ndarray] = None,
@@ -828,10 +809,6 @@ def plot_vg_vs_IcRn(
         Window length of savgol_filter.
     savgol_polyorder: int, optional
         Polyorder of savgol_filter.
-    cvmax : float, optional
-        Colormap vmax value.
-    cvmin : float, optional
-        Colormap vmin value.
     icrn_limits : np.ndarray, optional
         icrn axis plot limits.
     vg_limits : np.ndarray, optional
@@ -842,7 +819,7 @@ def plot_vg_vs_IcRn(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (26,12))
+    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
     m_ax = f.gca()
     
     # Use savgol_filter if params are available
