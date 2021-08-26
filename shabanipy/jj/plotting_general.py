@@ -27,7 +27,7 @@ from shabanipy.jj.fraunhofer.deterministic_reconstruction import extract_current
 
 #Set plotting parameters
 plt.rcParams["axes.linewidth"] = 1.5
-plt.rcParams["font.size"] = 50
+plt.rcParams["font.size"] = 40
 plt.rcParams["axes.labelweight"] = "bold"
 plt.rcParams["pdf.fonttype"] = 42
 plt.rcParams["xtick.direction"] = "in"
@@ -117,7 +117,7 @@ def plot_fraunhofer(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
+    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (16,10))
     m_ax = f.gca()
     
     #Convert from current to field if conversion factor is available
@@ -144,8 +144,8 @@ def plot_fraunhofer(
 
     m_ax.set_xlabel('Out-of-plane field (mT)', labelpad = 20)
     m_ax.set_ylabel('Bias (µA)')
-    m_ax.tick_params(axis='x', labelsize=50)
-    m_ax.tick_params(axis='y', labelsize=50)
+    m_ax.tick_params(axis='x', labelsize=40)
+    m_ax.tick_params(axis='y', labelsize=40)
 
     cb = f.colorbar(pm, ax = m_ax,pad = 0.02)
     cb.ax.tick_params(direction='in',labelsize=50)
@@ -201,7 +201,7 @@ def plot_extracted_switching_current(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
+    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (16,10))
     m_ax = f.gca()
     
     #Convert from current to field if conversion factor is available
@@ -235,8 +235,8 @@ def plot_extracted_switching_current(
     m_ax.grid()
     m_ax.set_xlabel('Out-of-plane field (mT)', labelpad = 20)
     m_ax.set_ylabel('I$_{c}$ (µA)')
-    m_ax.tick_params(axis='x', labelsize=50)
-    m_ax.tick_params(axis='y', labelsize=50)
+    m_ax.tick_params(axis='x', labelsize=40)
+    m_ax.tick_params(axis='y', labelsize=40)
 
 
 def plot_extracted_critical_current(
@@ -288,7 +288,7 @@ def plot_extracted_critical_current(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
+    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (16,10))
     m_ax = f.gca()
 
     #Convert from current to field if conversion factor is available
@@ -318,8 +318,8 @@ def plot_extracted_critical_current(
     m_ax.grid()
     m_ax.set_xlabel('Out-of-plane field (mT)', labelpad = 20)
     m_ax.set_ylabel('I$_{c}$ (µA)')
-    m_ax.tick_params(axis='x', labelsize=50)
-    m_ax.tick_params(axis='y', labelsize=50)
+    m_ax.tick_params(axis='x', labelsize=40)
+    m_ax.tick_params(axis='y', labelsize=40)
 
 
 def plot_current_distribution(
@@ -382,7 +382,7 @@ def plot_current_distribution(
     FIELD_TO_WAVENUM = 2 * np.pi * jj_length / PHI0  # B-field to beta wavenumber
     PERIOD = 2 * np.pi / (FIELD_TO_WAVENUM * jj_width)
 
-    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
+    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (16,10))
     m_ax = f.gca()
 
     #Convert from current to field if conversion factor is available
@@ -420,8 +420,8 @@ def plot_current_distribution(
 
     m_ax.set_xlabel(r'$x$ (µm)')
     m_ax.set_ylabel(r'$J_{x}$ (µA/µm)')
-    m_ax.tick_params(axis='x', labelsize=70)
-    m_ax.tick_params(axis='y', labelsize=70)
+    m_ax.tick_params(axis='x', labelsize=60)
+    m_ax.tick_params(axis='y', labelsize=60)
 
 
 def plot_inplane_vs_bias(
@@ -465,7 +465,7 @@ def plot_inplane_vs_bias(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
+    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (16,10))
     m_ax = f.gca()
     
     # Use savgol_filter if params are available
@@ -491,10 +491,10 @@ def plot_inplane_vs_bias(
     m_ax.set_ylabel('Bias (µA)')
 
     cb = f.colorbar(pm, ax = m_ax,pad = 0.02,)
-    cb.ax.tick_params(direction='in',labelsize=50)
+    cb.ax.tick_params(direction='in',labelsize=40)
     cb.ax.set_xlabel(r'$\frac{dV}{dI} (\Omega)$', labelpad = 10)
-    m_ax.tick_params(axis='x', labelsize=50)
-    m_ax.tick_params(axis='y', labelsize=50)
+    m_ax.tick_params(axis='x', labelsize=40)
+    m_ax.tick_params(axis='y', labelsize=40)
     
 def plot_inplane_vs_Ic_Rn(
     inplane_field: np.ndarray,
@@ -542,7 +542,7 @@ def plot_inplane_vs_Ic_Rn(
         Should debug information be provided, by default False.
 
     """
-    fig, ax = plt.subplots(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
+    fig, ax = plt.subplots(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (16,10))
     m_ax = fig.gca()
     
     # Use savgol_filter if params are available
@@ -607,7 +607,7 @@ def plot_inplane_vs_IcRn(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
+    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (16,10))
     m_ax = f.gca()
     
     # Use savgol_filter if params are available
@@ -616,9 +616,9 @@ def plot_inplane_vs_IcRn(
     x = analyse_vi_curve(bias, dV_dI, ic_voltage_threshold,high_bias_threshold)
 
     m_ax.grid()
-    m_ax.plot(inplane_field[:,0]*1000, x[0]*x[2]*1e6, color = 'red', linewidth = 5, marker = 'x', markersize = 10)
+    m_ax.plot(inplane_field[:,0]*1000, x[0]*x[2]*1e6, color = 'green', linewidth = 5, marker = 'x', markersize = 10)
     m_ax.set_xlabel('In-plane Field (mT)', labelpad = 20)
-    m_ax.set_ylabel(r'I$_{c}$R$_{n}$(Ω)', labelpad = 20, color = 'red')
+    m_ax.set_ylabel(r'I$_{c}$R$_{n}$(Ω)', labelpad = 20, color = 'green')
     if in_field_limits:
         m_ax.set_xlim(in_field_limits)
     if icrn_limits:
@@ -667,7 +667,7 @@ def plot_vg_vs_bias(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
+    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (16,10))
     m_ax = f.gca()
 
     # Use savgol_filter if params are available
@@ -700,8 +700,8 @@ def plot_vg_vs_bias(
     cb.ax.tick_params(direction='in',labelsize=50)
     cb.ax.set_xlabel(r'$\frac{dV}{dI} (\Omega)$', labelpad = 10)
     
-    m_ax.tick_params(axis='x', labelsize=50)
-    m_ax.tick_params(axis='y', labelsize=50)
+    m_ax.tick_params(axis='x', labelsize=40)
+    m_ax.tick_params(axis='y', labelsize=40)
 
 def plot_vg_vs_Ic_Rn(
     vg: np.ndarray,
@@ -752,7 +752,7 @@ def plot_vg_vs_Ic_Rn(
         Should debug information be provided, by default False.
 
     """
-    fig, ax = plt.subplots(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
+    fig, ax = plt.subplots(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (16,10))
     m_ax = fig.gca()
     
     # Use savgol_filter if params are available
@@ -819,7 +819,7 @@ def plot_vg_vs_IcRn(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (32,20))
+    f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (16,10))
     m_ax = f.gca()
     
     # Use savgol_filter if params are available
