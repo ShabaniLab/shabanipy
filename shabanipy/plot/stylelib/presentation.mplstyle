@@ -1,0 +1,14 @@
+figure.figsize : (16, 10)
+figure.dpi : 400
+axes.linewidth : 1.5
+font.size : 40
+axes.labelweight : bold
+pdf.fonttype : 42
+xtick.direction : in
+ytick.direction : in
+xtick.major.size : 10
+xtick.major.width : 4
+ytick.major.size : 10
+ytick.major.width : 4
+xtick.labelsize : 40
+ytick.labelsize : 40
