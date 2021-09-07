@@ -439,20 +439,17 @@ class MeasurementPattern:
         if self.filename_pattern and not self.filename_pattern.match(dataset.filename):
             return False
 
-        logger.debug(f"Steps: {[s.name for s in dataset.list_steps()]}")
-        logger.debug(f"Logs: {[e.name for e in dataset.list_logs()]}")
-
         # Check all step patterns against the existing steps, if one fails exit early
         steps = dataset.list_steps()
+        logger.debug(f"matching against steps: {[s.name for s in steps]}...")
         for pattern in self.steps:
-            logger.debug(f"Matching step pattern {pattern.name}")
             if not any(pattern.match(i, step) for i, step in enumerate(steps)):
                 return False
 
         # Check required log patterns.
         logs = dataset.list_logs()
+        logger.debug(f"matching against logs: {[l.name for l in logs]}...")
         for lpattern in [lp for lp in self.logs if lp.is_required]:
-            logger.debug(f"Matching log pattern {pattern.name}")
             if not any(lpattern.match(i, l) for i, l in enumerate(logs)):
                 return False
 
