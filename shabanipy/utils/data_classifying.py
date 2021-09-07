@@ -361,6 +361,11 @@ class LogPattern:
     #: will be properly shaped to look like normal scans.
     x_name: Optional[str] = None
 
+    # A datafile will only be rejected if it doesn't match a required LogPattern.
+    # If the LogPattern is not required, any matching data will be included in the
+    # aggregated data file if available.
+    is_required: Optional[str] = True
+
     def __post_init__(self):
         if isinstance(self.pattern, dict):
             self.pattern = NamePattern(**self.pattern)
@@ -444,9 +449,9 @@ class MeasurementPattern:
             if not any(pattern.match(i, step) for i, step in enumerate(steps)):
                 return False
 
-        # Check all log patterns.
+        # Check required log patterns.
         logs = dataset.list_logs()
-        for lpattern in self.logs:
+        for lpattern in [lp for lp in self.logs if lp.is_required]:
             logger.debug(f"Matching log pattern {pattern.name}")
             if not any(lpattern.match(i, l) for i, l in enumerate(logs)):
                 return False
