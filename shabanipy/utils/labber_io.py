@@ -9,6 +9,7 @@
 """ IO tools to interact with Labber saved data.
 
 """
+import logging
 import os
 import re
 from dataclasses import dataclass, field
@@ -20,6 +21,7 @@ import numpy as np
 
 from h5py import File, Group
 
+logger = logging.getLogger(__name__)
 
 # XXX currently only linear sweeps are supported
 @dataclass
@@ -316,9 +318,14 @@ class LabberData:
             names = [maybe_decode(e[0]) for e in self._file["Log list"]]
 
             # Identify scalar complex data
-            complex_scalars = [
-                n for n, v in self._file["Data"]["Channel names"] if v == "Real"
-            ]
+            try:
+                complex_scalars = [
+                    n for n, v in self._file["Data"]["Channel names"] if v == "Real"
+                ]
+            except KeyError as e:
+                logger.exception(f"{self.filename} may be malformed")
+            finally:
+                complex_scalars = []
 
             # Identify vector data
             vectors = self._file.get("Traces", ())
