@@ -16,6 +16,7 @@ import re
 from collections import defaultdict
 from dataclasses import dataclass, field, fields
 from itertools import product
+from pathlib import Path
 from typing import (
     Any,
     Dict,
@@ -525,6 +526,9 @@ class DataClassifier:
         """Identify the relevant datasets by scanning the content of a folder."""
         datasets = {p.name: [] for p in self.patterns}
         for folder in folders:
+            if not Path(folder).exists():
+                logger.warning(f"{folder} does not exist")
+                continue
             logger.debug(f"Walking {folder}")
             for root, dirs, files in os.walk(folder):
                 for datafile in (f for f in files if f.endswith(".hdf5")):
