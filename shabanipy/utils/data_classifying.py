@@ -540,8 +540,7 @@ class DataClassifier:
                         with LabberData(path) as f:
                             for p in self.patterns:
                                 logger.debug(f"Matching pattern {p.name}")
-                                res = p.match(f)
-                                if res:
+                                if p.match(f):
                                     datasets[p.name].append(path)
                                     logger.debug(
                                         f"- accepted {datafile} "
