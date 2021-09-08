@@ -132,7 +132,7 @@ class PreProcessingStep(AnalysisStep):
         for n, d in zip(self.output_quantities, out):
             dset = group.create_dataset(n, data=d, compression="gzip")
             dset.attrs["__step_name__"] = self.name
-            dset.attrs.update(self.parameters)
+            dset.attrs.update(p)
 
 
 @dataclass
