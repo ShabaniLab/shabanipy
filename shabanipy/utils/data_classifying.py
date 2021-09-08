@@ -364,7 +364,7 @@ class LogPattern:
     # A datafile will only be rejected if it doesn't match a required LogPattern.
     # If the LogPattern is not required, any matching data will be included in the
     # aggregated data file if available.
-    is_required: Optional[str] = True
+    is_required: Optional[bool] = True
 
     def __post_init__(self):
         if isinstance(self.pattern, dict):
