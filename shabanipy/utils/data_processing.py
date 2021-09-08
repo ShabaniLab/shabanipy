@@ -41,6 +41,8 @@ class AnalysisStep:
     #: If a parameter should be read from data stored in a parent group with a more
     #: generic classifier it should be indicated as: "data@{name}" and the first
     #: matching name will be used.
+    # If the parameter should be obtained from an attribute on an hdf5 dataset, use
+    # "attrs@{name}".
     parameters: Dict[str, Any]
 
     #: Callable responsible of carrying out the analysis. Should expect input
@@ -75,6 +77,12 @@ class AnalysisStep:
                             f"Invalid generic data value access. Got {v} expected "
                             "'data@{{name}}'."
                         )
+                if v.startswith("attrs@"):
+                    parts = v.split("@")[1:]
+                    if len(parts) != 1:
+                        raise ValueError(
+                            f"Malformed attribute parameter. Got '{v}', expected 'attrs@{{name}}'"
+                        )
 
     def populate_parameters(self, group, classifiers):
         """Generate the parameters to pass to the routine."""
@@ -96,6 +104,17 @@ class AnalysisStep:
                                 f"Could not find any dataset named {name}"
                             )
                         g = g.parent
+                if v.startswith("attrs@"):
+                    name = v.split("@")[1]
+                    # for now we assume all input quantity datasets have the requested
+                    # attribute
+                    params = [group[dset].attrs[name] for dset in self.input_quantities]
+                    if len(set(params)) > 1:
+                        raise RuntimeError(
+                            f"Multiple unique parameters found for attribute ({name}) of datasets in group ({group.name})"
+                        )
+                    p[k] = params[0]
+
         return p
 
 
