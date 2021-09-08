@@ -17,10 +17,9 @@ import shutil
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List
 
-from h5py import File, Group, Dataset
+from h5py import Dataset, Group
 
 from .data_exploring import DataExplorer
-
 
 LOGGER = logging.getLogger(__name__)
 
