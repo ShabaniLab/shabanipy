@@ -45,7 +45,7 @@ class AnalysisStep:
     parameters: Dict[str, Any]
 
     #: Callable responsible of carrying out the analysis. Should expect input
-    #: quantities as positional args, parameters as keywords and also debug as keyword
+    #: quantities as positional args, parameters as keyword args.
     #: The returned value should always be a tuple or a list even when a single value
     #: is returned
     routine: Callable
@@ -113,9 +113,7 @@ class PreProcessingStep(AnalysisStep):
     output_quantities: List[str]
 
     # Data are read and written in the same group
-    def run(
-        self, group: Group, classifiers: Dict[int, Dict[str, Any]], debug: bool = False
-    ) -> None:
+    def run(self, group: Group, classifiers: Dict[int, Dict[str, Any]]) -> None:
         """Run the routine and save the produce data.
 
         The name of the step and the parameters values are saved in the datasets attrs.
@@ -124,7 +122,7 @@ class PreProcessingStep(AnalysisStep):
         # Get actual numpy arrays as otherwise the differences may be slightly surprising
         data = [group[k][...] for k in self.input_quantities]
         p = self.populate_parameters(group, classifiers)
-        out = self.routine(*data, **p, debug=True)
+        out = self.routine(*data, **p)
         if len(self.output_quantities) > 1 and len(out) != len(self.output_quantities):
             raise ValueError(
                 f"Got {len(out)} output but {len(self.output_quantities)}."
@@ -163,7 +161,6 @@ class ProcessingStep(AnalysisStep):
         origin: Group,
         classifiers: Dict[int, Dict[str, Any]],
         out_explorer: DataExplorer,
-        debug: bool = False,
     ) -> None:
         """Run the routine and save the produce data.
 
@@ -172,7 +169,7 @@ class ProcessingStep(AnalysisStep):
         """
         data = [origin[k][...] for k in self.input_quantities]
         p = self.populate_parameters(origin, classifiers)
-        out = self.routine(*data, **p, debug=debug)
+        out = self.routine(*data, **p)
         if len(self.output_quantities) > 1 and len(out) != len(self.output_quantities):
             raise ValueError(
                 f"Got {len(out)} output but {len(self.output_quantities)}."
@@ -209,11 +206,7 @@ class SummarizingStep(AnalysisStep):
     use_named_subdirectory: bool = True
 
     def run(
-        self,
-        origin: Group,
-        classifiers: Dict[int, Dict[str, Any]],
-        directory: str,
-        debug: bool = False,
+        self, origin: Group, classifiers: Dict[int, Dict[str, Any]], directory: str,
     ) -> None:
         """Run the routine"""
         data = [origin[k][...] for k in self.input_quantities]
@@ -227,7 +220,7 @@ class SummarizingStep(AnalysisStep):
             os.makedirs(dir_path)
         p["directory"] = dir_path
         p["classifiers"] = classifiers
-        self.routine(*data, **p, debug=True)
+        self.routine(*data, **p)
 
 
 @dataclass
@@ -257,7 +250,7 @@ class ProcessCoordinator:
     summary_steps: List[SummarizingStep]
 
     # XXX add ways to run by names, tiers
-    def run_preprocess(self, debug: bool = False) -> None:
+    def run_preprocess(self) -> None:
         """Run the pre-processing steps."""
         # Duplicate the data to avoid corrupting the original dataset
         LOGGER.debug(f"Copying {self.archive_path} to {self.duplicate_path}")
@@ -280,9 +273,9 @@ class ProcessCoordinator:
 
                         # Apply pre-processing to each dataset
                         # The step takes care of saving data.
-                        step.run(group, classifiers, debug)
+                        step.run(group, classifiers)
 
-    def run_process(self, debug: bool = False) -> None:
+    def run_process(self) -> None:
         """Run the processing steps."""
         # Open duplicate dataset and processing path
         with DataExplorer(self.duplicate_path, allow_edits=True) as data, DataExplorer(
@@ -308,9 +301,9 @@ class ProcessCoordinator:
                         LOGGER.debug(f"    skipped for {classifiers}")
                         continue
                     LOGGER.debug(f"    for {classifiers}")
-                    step.run(dset, classifiers, f, debug)
+                    step.run(dset, classifiers, f)
 
-    def run_summary(self, debug: bool = False) -> None:
+    def run_summary(self) -> None:
         """Run the summary steps."""
         # Open processing path
         with DataExplorer(self.processing_path) as f:
@@ -334,4 +327,4 @@ class ProcessCoordinator:
                         )
                         continue
                     LOGGER.debug(f"    for {classifiers}")
-                    step.run(group, classifiers, self.summary_directory, debug)
+                    step.run(group, classifiers, self.summary_directory)
