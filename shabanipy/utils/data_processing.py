@@ -108,7 +108,11 @@ class AnalysisStep:
                     name = v.split("@")[1]
                     # for now we assume all input quantity datasets have the requested
                     # attribute
-                    params = [group[dset].attrs[name] for dset in self.input_quantities]
+                    params = [
+                        group[dset].attrs[name]
+                        for dset in self.input_quantities
+                        if name in group[dset].attrs
+                    ]
                     if len(set(params)) > 1:
                         raise RuntimeError(
                             f"Multiple unique parameters found for attribute ({name}) of datasets in group ({group.name})"
