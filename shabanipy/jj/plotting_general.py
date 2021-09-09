@@ -365,8 +365,8 @@ def plot_current_distribution(
     if jx_limits:
         m_ax.set_ylims(jx_limits)
 
-    m_ax.set_xlabel(r'$x$ (µm)')
-    m_ax.set_ylabel(r'$J_{x}$ (µA/µm)')
+    m_ax.set_xlabel(r'x (µm)')
+    m_ax.set_ylabel(r'J$_{x}$ (µA/µm)')
 
 
 def plot_inplane_vs_bias(
