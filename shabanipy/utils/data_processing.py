@@ -315,17 +315,17 @@ class ProcessCoordinator:
                 origin = data if d == "raw" else f
 
                 # Apply processing to each dataset
-                for classifiers, dset in origin.walk_data(mt):
+                for classifiers, group in origin.walk_data(mt):
                     # Skip data set that do not contain the relevant quantities
                     # Possible when merging different measurement producing data
                     # at different classifiers level.
                     if not all(
-                        bool(in_name in dset) for in_name in step.input_quantities
+                        bool(in_name in group) for in_name in step.input_quantities
                     ):
                         LOGGER.debug(f"    skipped for {classifiers}")
                         continue
                     LOGGER.debug(f"    for {classifiers}")
-                    step.run(dset, classifiers, f)
+                    step.run(group, classifiers, f)
 
     def run_summary(self) -> None:
         """Run the summary steps."""
