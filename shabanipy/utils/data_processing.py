@@ -115,7 +115,7 @@ class AnalysisStep:
                     ]
                     if len(set(params)) > 1:
                         raise RuntimeError(
-                            f"Multiple unique parameters found for attribute ({name}) of datasets in group ({group.name})"
+                            f"Multiple unique values found for attribute '{name}' of datasets in group ({group.name})"
                         )
                     p[k] = params[0]
 
@@ -194,7 +194,7 @@ class ProcessingStep(AnalysisStep):
         out = self.routine(*data, **p)
         if len(self.output_quantities) > 1 and len(out) != len(self.output_quantities):
             raise ValueError(
-                f"Got {len(out)} output but {len(self.output_quantities)}."
+                f"Got {len(out)} outputs but expected {self.output_quantities}."
             )
         elif len(self.output_quantities) == 1:
             out = (out,)
