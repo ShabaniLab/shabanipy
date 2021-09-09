@@ -216,8 +216,10 @@ class SummarizingStep(AnalysisStep):
 
     """
 
-    #: Tier of data which should be summarized
-    tier: str
+    #: From where should the input data be pulled.
+    #: Currently support raw@{measurement} for data stored in the original data
+    #: aggregate, processed@{tier} for data created by a previous processing step.
+    input_origin: str
 
     #: Whether to create a subdirectory matching the step name in the overall
     #: subdirectory and pass it to the routine.
@@ -323,15 +325,21 @@ class ProcessCoordinator:
 
     def run_summary(self) -> None:
         """Run the summary steps."""
-        # Open processing path
-        with DataExplorer(self.processing_path) as f:
+        # Open duplicate dataset and processing path
+        with DataExplorer(self.processing_path) as f, DataExplorer(
+            self.duplicate_path
+        ) as data:
 
-            # Iterate on processing steps
+            # Iterate on summary steps
             for step in self.summary_steps:
                 LOGGER.debug(f"Running summary: {step.name}")
 
-                # Apply processing to each dataset
-                for classifiers, group in f.walk_data(step.tier):
+                # Walk data pertaining to the right dataset and measurement/tier
+                d, mt = step.input_origin.split("@")
+                origin = data if d == "raw" else f
+
+                # Apply summary to each dataset
+                for classifiers, group in origin.walk_data(mt):
                     # Skip data set that do not contain the relevant quantities
                     # Possible when merging different measurement producing data
                     # at different classifiers level.
