@@ -1,3 +1,4 @@
+figure.constrained_layout.use : True
 figure.figsize : 16, 10
 figure.dpi : 400
 axes.linewidth : 1.5
