@@ -1,4 +1,7 @@
-"""Defines and registers Joe's custom color map."""
+"""Defines Joe's custom colormap and registers it with matplotlib.
+
+This module must but imported before the 'jy_pink' colormap can be used.
+"""
 from matplotlib import pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 
