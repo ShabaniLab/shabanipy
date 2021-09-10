@@ -8,5 +8,5 @@ class InformativeFormatter(Formatter):
             f"[{record.levelname}]".ljust(11)
             + f"{record.filename}:{record.lineno}".ljust(25)
             + " "
-            + record.msg
+            + record.getMessage()
         )
