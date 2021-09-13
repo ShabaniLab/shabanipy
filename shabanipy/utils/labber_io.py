@@ -382,7 +382,9 @@ class LabberData:
                     n for n, v in self._file["Data"]["Channel names"] if v == "Real"
                 ]
             except KeyError as e:
-                logger.exception(f"{self.filename} may be malformed")
+                logger.warning(
+                    f"{self.filename} may be empty or malformed: caught {repr(e)}"
+                )
             finally:
                 complex_scalars = []
 
@@ -734,4 +736,3 @@ class LabberData:
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         """Close the underlying HDF5 file when used as a context manager."""
         self.close()
-

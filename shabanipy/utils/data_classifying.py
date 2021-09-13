@@ -89,11 +89,11 @@ class NamePattern(Copyable):
         if self.names is not None:
             match |= name in self.names
             if not match:
-                logger.debug(f"- {name} not in {self.names}")
+                logger.debug(f"- '{name}' not in '{self.names}'")
         if self.regex is not None:
             match |= bool(re.match(self.regex, name))
             if not match:
-                logger.debug(f"- {name} does not match {self.regex}")
+                logger.debug(f"- '{name}' does not match '{self.regex}'")
 
         return match
 
@@ -629,7 +629,7 @@ class DataClassifier:
 
     def identify_datasets(self, folders):
         """Identify the relevant datasets by scanning the content of a folder."""
-        logger.debug("identifying datasets")
+        logger.info("identifying datasets...")
         datasets = {p.name: [] for p in self.patterns}
         for folder in folders:
             if not Path(folder).exists():
@@ -657,7 +657,9 @@ class DataClassifier:
                                     )
                                     break
                             else:
-                                logger.debug(f"- rejected {datafile} for all patterns")
+                                logger.debug(
+                                    f"- rejected {datafile} for all measurement patterns"
+                                )
                     except OSError:
                         logger.debug(f"- rejected {datafile}: file is corrupted")
 
@@ -709,13 +711,13 @@ class DataClassifier:
 
     def classify_datasets(self):
         """Find the classifiers values in each identified dataset."""
+        logger.info(f"classifying datasets...")
         if not self._datasets:
             raise RuntimeError(
                 "No identified datasets to work on. Run `identify_datasets` or"
                 " load an existing list of datasets using `load_dataset_list`."
             )
 
-        logger.debug(f"classifying datasets")
         classified_datasets = {p.name: {} for p in self.patterns}
         patterns = {p.name: p for p in self.patterns}
         for name, datafiles in self._datasets.items():
@@ -745,6 +747,7 @@ class DataClassifier:
 
     def consolidate_dataset(self, path: str) -> None:
         """Consolidate all the relevant data into a single file."""
+        logger.info(f"consolidating data into {path}...")
         if not self._classified_datasets:
             raise RuntimeError(
                 "No classified datasets to work on. Run `classify_datasets` or"
@@ -752,7 +755,6 @@ class DataClassifier:
                 "`load_dataset_classification`."
             )
 
-        logger.debug(f"Consolidating data into {path}")
         with File(path, "w") as f:
 
             for name, classified in self._classified_datasets.items():
