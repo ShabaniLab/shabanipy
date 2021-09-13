@@ -735,22 +735,3 @@ class LabberData:
         """Close the underlying HDF5 file when used as a context manager."""
         self.close()
 
-
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-
-    FILE = "/Users/mdartiailh/Downloads/JS314_CD1_att40_006.hdf5"
-
-    with LabberData(FILE) as ld:
-        print(ld.list_channels())
-        for ch in ld.list_channels():
-            data = ld.get_data(ch, filters={0: 0}, get_x=True)
-            print(
-                ch,
-                data.shape
-                if isinstance(data, np.ndarray)
-                else (data[0].shape, data[1].shape),
-            )
-
-        # plt.plot(np.absolute(cdata))
-        # plt.show()
