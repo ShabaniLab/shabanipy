@@ -111,28 +111,52 @@ class FilenamePattern(NamePattern):
     #: "^.+-(?P<sample>JJ-100nm-2)-.+$" will capture JJ-100nm-2 under sample.
     classifier_name: str = ""
 
-    #: Level of the classifier  if used for classification.
-    classifier_level: int = 0
+    # Level of the classifier if used for classification.
+    # If multiple classifiers will be extracted, the level of each named field in the
+    # regex can be specified in a dictionary as {"field_name": level}
+    classifier_level: Union[int, Dict[str, int]] = 0
 
-    def extract(self, name: str) -> Optional[Dict[str, Classifier]]:
+    def extract(self, filename: str) -> Optional[Dict[int, Dict[str, Classifier]]]:
         """Extract classification information from the name.
 
-        This requires to use a regular expression.
+        Parameters
+        ----------
+        filename
+            The filename to match against self.
 
+        Returns
+        -------
+        A dictionary of {level, {classifier_name: classifier}} where `level` is the
+        integer level of the classifier in the hdf5 hierarchy, `classifier_name` is the
+        name of the classifier (possibly specified in the regex), and `classifier` is
+        the value of the classifier.
         """
         if self.regex is None:
             return None
 
-        match = re.match(self.regex, name)
+        match = re.match(self.regex, filename)
         if not match:
             raise ValueError(f"The provided name: {name}, does not match: {self.regex}")
 
         d = match.groupdict()
         if d:
-            return {k: Classifier(None, (v,)) for k, v in d.items()}
+            out_dict = defaultdict(dict)
+            if isinstance(self.classifier_level, int):
+                levels = {clsf_name: self.classifier_level for clsf_name in d}
+            else:
+                levels = self.classifier_level
+
+            for clsf_name, clsf_value in d.items():
+                out_dict[levels[clsf_name]].update(
+                    {clsf_name: Classifier(None, (clsf_value,))}
+                )
+            return out_dict
 
         try:
-            return {self.classifier_name: Classifier(None, (match.group(1),))}
+            return {
+                self.classifier_level,
+                {self.classifier_name: Classifier(None, (match.group(1),))},
+            }
         except IndexError:
             return None
 
@@ -550,7 +574,7 @@ class MeasurementPattern(Copyable):
                     f"({dataset.filename})"
                 )
             logger.debug(f"Classifiers extracted from {dataset.filename}: {value}")
-            classifiers[self.filename_pattern.classifier_level] = value
+            classifiers.update(value)
 
         for pattern in (p for p in self.steps if p.use_in_classification):
             found_match = False
