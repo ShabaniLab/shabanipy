@@ -164,12 +164,14 @@ class ValuePattern(Copyable):
         if all(getattr(self, f.name) is None for f in fields(self)):
             raise ValueError("At least one field of ValuePattern has to be non None")
 
-    def match(self, value: float) -> bool:
+    def match(self, value: Optional[float]) -> bool:
         """Match the pattern against a scalar.
 
         If any condition is met the pattern is considered matched.
 
         """
+        if value is None:
+            return False
         match = False
         if self.value:
             match |= value == self.value
