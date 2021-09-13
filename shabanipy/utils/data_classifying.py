@@ -331,7 +331,6 @@ class StepPattern(Copyable):
 
     def match(self, index: int, config: StepConfig) -> bool:
         """Match a step that meet all the specify pattern."""
-        logger.debug(f"Matching step {config.name}")
         if isinstance(self.name_pattern, int) and self.name_pattern != index:
             logger.debug(f"- step index {index} != {self.name_pattern}")
             return False
@@ -449,7 +448,7 @@ class LogPattern(Copyable):
         If a x_name is specified the data have to be vectorial.
 
         """
-        logger.debug(f"Matching log entry: {entry.name}")
+        logger.debug(f"matching log entry: {entry.name}")
         if isinstance(self.pattern, int) and self.pattern != index:
             logger.debug(f"- log index {index} != {self.pattern}")
             return False
@@ -519,8 +518,8 @@ class MeasurementPattern(Copyable):
 
         # Check required log patterns.
         logs = dataset.list_logs()
-        logger.debug(f"matching against logs: {[l.name for l in logs]}...")
         for lpattern in [lp for lp in self.logs if lp.is_required]:
+            logger.debug(f"matching log pattern '{lpattern.name}'")
             if not any(lpattern.match(i, l) for i, l in enumerate(logs)):
                 return False
 
@@ -606,6 +605,7 @@ class DataClassifier:
 
     def identify_datasets(self, folders):
         """Identify the relevant datasets by scanning the content of a folder."""
+        logger.debug("identifying datasets")
         datasets = {p.name: [] for p in self.patterns}
         for folder in folders:
             if not Path(folder).exists():
@@ -615,16 +615,21 @@ class DataClassifier:
             for root, dirs, files in os.walk(folder):
                 for datafile in (f for f in files if f.endswith(".hdf5")):
                     path = os.path.join(root, datafile)
-                    logger.debug(f"Matching file {datafile}")
+                    logger.debug(f"matching file {datafile}")
                     try:
                         with LabberData(path) as f:
+                            logger.debug(f"steps: {[s.name for s in f.list_steps()]}")
+                            logger.debug(f"logs:  {[l.name for l in f.list_logs()]}")
+                            logger.debug(
+                                f"instrument configs: {[c.name for c in f.instrument_configs]}"
+                            )
                             for p in self.patterns:
-                                logger.debug(f"Matching pattern {p.name}")
+                                logger.debug(f"matching measurement pattern '{p.name}'")
                                 if p.match(f):
                                     datasets[p.name].append(path)
                                     logger.debug(
                                         f"- accepted {datafile} "
-                                        f"for measurement pattern {p.name}"
+                                        f"for measurement pattern '{p.name}'"
                                     )
                                     break
                             else:
@@ -634,9 +639,9 @@ class DataClassifier:
 
         self._datasets = datasets
         logger.info(
-            f"Identified datasets:\n{pprint.pformat({k: str(len(v)) + ' files' for k, v in datasets.items()})}"
+            f"identified datasets:\n{pprint.pformat({k: str(len(v)) + ' files' for k, v in datasets.items()})}"
         )
-        logger.debug(f"Identified datasets:\n{pprint.pformat(datasets)}")
+        logger.debug(f"identified datasets:\n{pprint.pformat(datasets)}")
 
     def match_dataset(self, path: str) -> Optional[MeasurementPattern]:
         """Match a single file and return the pattern.
@@ -686,14 +691,14 @@ class DataClassifier:
                 " load an existing list of datasets using `load_dataset_list`."
             )
 
-        logger.debug(f"Classifying datasets")
+        logger.debug(f"classifying datasets")
         classified_datasets = {p.name: {} for p in self.patterns}
         patterns = {p.name: p for p in self.patterns}
         for name, datafiles in self._datasets.items():
-            logger.debug(f"  Processing measurements under: {name}")
+            logger.debug(f"  classifying '{name}' measurements")
             classified = classified_datasets[name]
             for path in datafiles:
-                logger.debug(f"    Processing: {path}")
+                logger.debug(f"    classifying {path}")
                 with LabberData(path) as f:
                     classifiers = patterns[name].extract_classifiers(f)
                 classified[path] = classifiers
