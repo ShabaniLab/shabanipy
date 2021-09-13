@@ -36,7 +36,7 @@ import toml
 from h5py import File, Group
 
 from .data_exploring import make_group_name
-from .labber_io import LabberData, LogEntry, StepConfig
+from .labber_io import InstrumentConfig, LabberData, LogEntry, StepConfig
 
 logger = logging.getLogger(__name__)
 
@@ -258,6 +258,41 @@ class RampPattern(Copyable):
         return match
 
 
+@dataclass
+class InstrumentConfigPattern(Copyable):
+    """Pattern used to identify an instrument configuration."""
+
+    # user-specified name of the instrument/driver appearing in the Name/Address column
+    # of the Measurement Editor
+    name: Union[NamePattern, str]
+
+    # name of the quantity to look for in the "Quantity" column of the "Show config"
+    # side panel in the Log Browser/Viewer
+    quantity: str
+
+    # value to compare against "Value" column of the "Show config" side panel in the Log
+    # Browser/Viewer; None matches any value
+    value: Optional[Union[ValuePattern, float]] = None
+
+    def __post_init__(self) -> None:
+        """Convert literals to patterns."""
+        if isinstance(self.name, str):
+            self.name = NamePattern(regex=self.name)
+        if isinstance(self.value, (int, float)):
+            self.value = ValuePattern(value=self.value)
+
+    def match(self, config: InstrumentConfig) -> bool:
+        return self.name.match(config.name) and (
+            self.value is None or self.value.match(config.get(self.quantity))
+        )
+
+    def extract(self, configs: List[InstrumentConfig]) -> bool:
+        """Extract the first classifying value found."""
+        for config in configs:
+            if self.match(config):
+                return (config.get(self.quantity),)
+
+
 @dataclass(init=True)
 class StepPattern(Copyable):
     """Pattern use to identify a particular step configuration in Labber."""
@@ -274,6 +309,9 @@ class StepPattern(Copyable):
 
     #: List of ramp pattern for the step.
     ramps: Optional[List[RampPattern]] = None
+
+    #: InstrumentConfigPattern to fall back on if this StepPattern doesn't match any steps
+    fallback: Optional[InstrumentConfigPattern] = None
 
     #: Should this step be used to classify datasets.
     #: Steps used for classification should not contain overlapping ramps (both forward
@@ -334,6 +372,18 @@ class StepPattern(Copyable):
 
         logger.debug("- successful match")
         return True
+
+    def match_steps(
+        self, steps: List[StepConfig], instr_configs: List[InstrumentConfig]
+    ) -> bool:
+        """Match self against the step list and instrument configurations."""
+        if any(self.match(i, step) for i, step in enumerate(steps)):
+            return True
+        if self.fallback:
+            logger.debug("falling back to instrument config")
+            return any(
+                self.fallback.match(instr_config) for instr_config in instr_configs
+            )
 
     def extract(self, dataset: LabberData, config: StepConfig) -> tuple:
         """Extract the classification values associated with that step."""
@@ -457,11 +507,14 @@ class MeasurementPattern(Copyable):
         if self.filename_pattern and not self.filename_pattern.match(dataset.filename):
             return False
 
-        # Check all step patterns against the existing steps, if one fails exit early
-        steps = dataset.list_steps()
-        logger.debug(f"matching against steps: {[s.name for s in steps]}...")
-        for pattern in self.steps:
-            if not any(pattern.match(i, step) for i, step in enumerate(steps)):
+        for step_pattern in self.steps:
+            logger.debug(f"matching step pattern '{step_pattern.name}'")
+            if not step_pattern.match_steps(
+                dataset.list_steps(), dataset.instrument_configs
+            ):
+                logger.debug(
+                    f"- rejecting {dataset.filename} for measurement pattern '{self.name}': step pattern '{step_pattern.name}' does not match any steps"
+                )
                 return False
 
         # Check required log patterns.
@@ -501,12 +554,21 @@ class MeasurementPattern(Copyable):
             classifiers[self.filename_pattern.classifier_level] = value
 
         for pattern in (p for p in self.steps if p.use_in_classification):
+            found_match = False
             for i, step in enumerate(dataset.list_steps()):
                 if pattern.match(i, step):
+                    found_match = True
                     classifiers[pattern.classifier_level][pattern.name] = Classifier(
                         step.name, pattern.extract(dataset, step), step.is_ramped
                     )
-                    continue
+                    break
+
+            # get from instrument config if nothing in step list matched
+            if not found_match and pattern.fallback:
+                logger.debug("Extract classifiers: Falling back to instrument config")
+                classifiers[pattern.classifier_level][pattern.name] = Classifier(
+                    step.name, pattern.fallback.extract(dataset.instrument_configs)
+                )
 
         return classifiers
 
