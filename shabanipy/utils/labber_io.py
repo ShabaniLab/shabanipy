@@ -15,11 +15,9 @@ import re
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union, overload
-from typing_extensions import Literal
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union, overload
 
 import numpy as np
-
 from h5py import File, Group
 
 logger = logging.getLogger(__name__)
