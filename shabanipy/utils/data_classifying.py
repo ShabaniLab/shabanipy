@@ -215,16 +215,16 @@ class RampPattern(Copyable):
     """
 
     #: Value pattern for the starting point of the ramp.
-    start: Optional[ValuePattern] = None
+    start: Optional[Union[ValuePattern, float]] = None
 
     #: Value pattern for the end point of the ramp.
-    stop: Optional[ValuePattern] = None
+    stop: Optional[Union[ValuePattern, float]] = None
 
     #: Value pattern for the span of the ramp.
-    span: Optional[ValuePattern] = None
+    span: Optional[Union[ValuePattern, float]] = None
 
     #: Value pattern for the number of points of the ramp.
-    points: Optional[ValuePattern] = None
+    points: Optional[Union[ValuePattern, int]] = None
 
     def __post_init__(self):
         # Turn dict into the proper class
@@ -232,6 +232,8 @@ class RampPattern(Copyable):
             value = getattr(self, f.name)
             if isinstance(value, dict):
                 setattr(self, f.name, f.type.__args__[0](**value))
+            elif isinstance(value, (int, float)):
+                setattr(self, f.name, ValuePattern(value=value))
 
     @property
     def is_generic(self):
