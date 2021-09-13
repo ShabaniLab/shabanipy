@@ -13,8 +13,9 @@ import logging
 import os
 import re
 from dataclasses import dataclass, field
+from functools import cached_property
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union, overload
+from typing import Any, Dict, List, Optional, Tuple, Union, overload
 from typing_extensions import Literal
 
 import numpy as np
@@ -126,6 +127,62 @@ class LogEntry:
     x_name: str = ""
 
 
+@dataclass
+class InstrumentConfig:
+    """Labber's description of an instrument configuration.
+
+    These are contained under the hdf5 group '/Instrument config/' and list the
+    instrument driver settings for the measurement.
+
+    The names of the subgroups have the following format:
+        <driver> - IP: <ip_address>, <name> at localhost
+    A concrete example:
+        Keithley 2450 SourceMeter [Shabani] - IP: 192.168.0.13, x magnet at localhost
+    """
+
+    group: Group
+
+    @cached_property
+    def driver(self) -> str:
+        """The name of the instrument driver."""
+        assert self.group.name.startswith(
+            "/Instrument config/"
+        ), "Unknown group name format in file {self.group.file.filename}: {group.name} doesn't start with '/Instrument config/'"
+        return self.group.name[19:].split(" - ", 1)[0]
+
+    @cached_property
+    def ip_address(self) -> Optional[str]:
+        """The IP address of the instrument driver. Possibly empty."""
+        ip_address = self.group.name.split(" - ", 1)[1].split(", ", 1)[0]
+        if ip_address:
+            assert ip_address.startswith(
+                "IP: "
+            ), "Unknown IP address format in file {self.group.file.filename}: {ip_address} doesn't start with 'IP: '"
+            return ip_address[4:]
+        else:
+            return None
+
+    @cached_property
+    def name(self) -> str:
+        """The name of the instrument defined by the user in Labber.
+
+        This appears in the 'Name/Address' column of the Measurement Editor.
+        """
+        name = self.group.name.split(", ", 1)[1]
+        assert name.endswith(
+            " at localhost"
+        ), "Unknown group name format in file {self.group.file.filename}: {name} doesn't end with ' at localhost'"
+        return name[:-13]
+
+    def get(self, quantity: str) -> Optional[Any]:
+        """Get the value of the given quantity from the instrument config.
+
+        This checks the {Quantity: Value} pairs as seen in the "Show config" side panel
+        of the Log Browser/Viewer.
+        """
+        return self.group.attrs.get(quantity)
+
+
 def maybe_decode(bytes_or_str: Union[str, bytes]) -> str:
     """H5py return some string as bytes in 3.10 so convert them."""
     if isinstance(bytes_or_str, bytes):
@@ -198,6 +255,10 @@ class LabberData:
         self._nested = []
         self._steps = None
         self._logs = None
+        try:
+            del self.instrument_configs
+        except AttributeError:
+            pass
 
     def list_steps(self) -> List[StepConfig]:
         """List the different steps of a measurement."""
@@ -362,6 +423,17 @@ class LabberData:
             ]
 
         return self._channel_names
+
+    @cached_property
+    def instrument_configs(self) -> List[InstrumentConfig]:
+        """Instrument configurations for the measurement."""
+        if not self._file:
+            raise RuntimeError("No file currently opened")
+
+        return [
+            InstrumentConfig(group)
+            for group in self._file["Instrument config"].values()
+        ]
 
     @overload
     def get_data(
