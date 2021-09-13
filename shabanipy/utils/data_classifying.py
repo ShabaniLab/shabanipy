@@ -14,6 +14,7 @@ import os
 import pprint
 import re
 from collections import defaultdict
+from copy import copy
 from dataclasses import dataclass, field, fields
 from itertools import product
 from pathlib import Path
@@ -42,6 +43,19 @@ logger = logging.getLogger(__name__)
 # XXX allow to make pattern strict (match all conditions) or tolerant (match one condition)
 
 
+class Copyable:
+    """An object that can be copied with some new attributes."""
+
+    def copy_with(self, **attrs):
+        """Copy self with updated attributes."""
+        for attr in attrs:
+            if not hasattr(self, attr):
+                raise ValueError(f"{type(self)} has no attribute {attr}")
+        cp = copy(self)
+        cp.__dict__.update(attrs)
+        return cp
+
+
 class Classifier(NamedTuple):
     """Column identified as a classifying value for the collected data"""
 
@@ -58,7 +72,7 @@ class Classifier(NamedTuple):
 
 
 @dataclass
-class NamePattern:
+class NamePattern(Copyable):
     """Pattern use to match on a name (str)."""
 
     #: List of names that can be matched
@@ -124,7 +138,7 @@ class FilenamePattern(NamePattern):
 
 
 @dataclass(init=True)
-class ValuePattern:
+class ValuePattern(Copyable):
     """Pattern matching against a scalar value.
 
     If any condition is true the match will be valid.
@@ -191,7 +205,7 @@ class ValuePattern:
 
 
 @dataclass(init=True)
-class RampPattern:
+class RampPattern(Copyable):
     """Pattern used to identify a ramp.
 
     Note that Labber can have multiple ramps for a single step.
@@ -241,7 +255,7 @@ class RampPattern:
 
 
 @dataclass(init=True)
-class StepPattern:
+class StepPattern(Copyable):
     """Pattern use to identify a particular step configuration in Labber."""
 
     #: Name of the step to use when retrieving data or classifying using that step
@@ -345,7 +359,7 @@ class StepPattern:
 
 
 @dataclass(init=True)
-class LogPattern:
+class LogPattern(Copyable):
     """Pattern used to identify a log entry."""
 
     #: Name to use when extracting the data.
@@ -399,7 +413,7 @@ class LogPattern:
 
 
 @dataclass(init=True)
-class MeasurementPattern:
+class MeasurementPattern(Copyable):
     """Pattern used to identify relevant measurements."""
 
     #: Name used to identify this kind of measurement. Used in post-processing.
