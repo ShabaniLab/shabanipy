@@ -202,8 +202,18 @@ class LabberData:
     #: Name of the file (ie no directories)
     filename: str = field(init=False)
 
-    #: Private reference to the underlying HDF5 file in which the data are stored
-    _file: Optional[File] = field(default=None, init=False)
+    __file: Optional[File] = field(default=None, init=False)
+
+    @property
+    def _file(self):
+        """The underlying HDF5 file in which the data are stored."""
+        if self.__file is None:
+            raise RuntimeError("No HDF5 file is currently opened.")
+        return self.__file
+
+    @_file.setter
+    def _file(self, value):
+        self.__file = value
 
     #: Groups in which the data of appended measurements are stored.
     _nested: List[Group] = field(default_factory=list, init=False)
@@ -259,9 +269,6 @@ class LabberData:
 
     def list_steps(self) -> List[StepConfig]:
         """List the different steps of a measurement."""
-        if not self._file:
-            raise RuntimeError("No file currently opened")
-
         if not self._steps:
             steps = []
             for (
@@ -368,9 +375,6 @@ class LabberData:
 
     def list_logs(self) -> List[LogEntry]:
         """List the existing log entries in the datafile."""
-        if not self._file:
-            raise RuntimeError("No file currently opened")
-
         if not self._logs:
             # Collect all logs names
             names = [maybe_decode(e[0]) for e in self._file["Log list"]]
@@ -419,9 +423,6 @@ class LabberData:
     @cached_property
     def instrument_configs(self) -> List[InstrumentConfig]:
         """Instrument configurations for the measurement."""
-        if not self._file:
-            raise RuntimeError("No file currently opened")
-
         return [
             InstrumentConfig(group)
             for group in self._file["Instrument config"].values()
@@ -478,13 +479,6 @@ class LabberData:
             measurement.
 
         """
-        if not self._file:
-            msg = (
-                "The underlying file needs to be opened before accessing "
-                "data. Either call open or better use a context manager."
-            )
-            raise RuntimeError(msg)
-
         # Convert the name into a channel index.
         index = self._name_or_index_to_index(name_or_index)
 
@@ -670,9 +664,6 @@ class LabberData:
         self, channel_name: str, is_complex: bool = False, get_x: bool = False
     ) -> Tuple[List[np.ndarray], ...]:
         """Get data stored as traces ie vector."""
-        if not self._file:
-            raise RuntimeError("No file currently opened")
-
         if channel_name not in self._file["Traces"]:
             raise ValueError(f"Unknown traces data {channel_name}")
 
@@ -698,9 +689,6 @@ class LabberData:
         self, channel_name: str, is_complex: bool = False
     ) -> List[np.ndarray]:
         """Pull data stored in the data segment of the log file."""
-        if not self._file:
-            raise RuntimeError("No file currently opened")
-
         names = [maybe_decode(n) for n, _ in self._file["Data"]["Channel names"]]
         if is_complex:
             re_index = names.index(channel_name)
@@ -713,8 +701,6 @@ class LabberData:
 
     def _pull_nested_data(self, index: int) -> List[np.ndarray]:
         """Pull data stored in the data segmentfrom all nested logs."""
-        if not self._file:
-            raise RuntimeError("No file currently opened")
         data = [self._file["Data"]["Data"][:, index]]
         for internal in self._nested:
             data.append(internal["Data"]["Data"][:, index])
