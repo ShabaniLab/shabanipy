@@ -80,7 +80,7 @@ from shabanipy.utils.labber_io import LabberData
 
 with LabberData(PATH) as data:
 
-    names = data.list_channels()
+    names = data.channel_names
     if GATE_COLUMN is not None:
         gate = data.get_data(GATE_COLUMN)
         field = data.get_data(FIELD_COLUMN)

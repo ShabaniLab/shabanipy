@@ -218,14 +218,6 @@ class LabberData:
     #: Groups in which the data of appended measurements are stored.
     _nested: List[Group] = field(default_factory=list, init=False)
 
-    #: Names of the channels accessible in the Data or Traces segments of the file
-    _channel_names: Optional[List[str]] = field(default=None, init=False)
-
-    #: Detailed informations about the channels.
-    _channels: Optional[List[Union[LogEntry, StepConfig]]] = field(
-        default=None, init=False
-    )
-
     #: Steps performed in the measurement.
     _steps: Optional[List[StepConfig]] = field(default=None, init=False)
 
@@ -256,16 +248,16 @@ class LabberData:
         if self._file:
             self._file.close()
         self._file = None
-        self._channel_names = None
-        self._channels = None
         self._axis_dimensions = None
         self._nested = []
         self._steps = None
         self._logs = None
-        try:
-            del self.instrument_configs
-        except AttributeError:
-            pass
+        # clear the @cached_properties if they've been cached
+        for attribute in ["instrument_configs", "channels", "channel_names"]:
+            try:
+                delattr(self, attribute)
+            except AttributeError:
+                pass
 
     def list_steps(self) -> List[StepConfig]:
         """List the different steps of a measurement."""
@@ -404,21 +396,28 @@ class LabberData:
 
         return self._logs
 
-    def list_channels(self):
-        """Identify the channel availables in the Labber file.
+    @cached_property
+    def channels(self) -> List[Union[LogEntry, StepConfig]]:
+        """Channels that are stepped or logged in the Labber file.
 
-        Channels data can be retieved using get_data.
+        Channels include step channels and log channels as viewed in the Measurement
+        Editor under "Step sequence" and "Log channels" and are listed under "Active
+        channels" in the Log Browser.
 
+        Channel data can be retrieved using `get_data`.
+
+        Returns
+        -------
+        Ramped step channels and all log channels.
         """
-        if self._channel_names is None:
-            self._channel_names = [s.name for s in self.list_steps() if s.is_ramped] + [
-                l.name for l in self.list_logs()
-            ]
-            self._channels = [s for s in self.list_steps() if s.is_ramped] + [
-                l for l in self.list_logs()
-            ]
+        return [s for s in self.list_steps() if s.is_ramped] + [
+            l for l in self.list_logs()
+        ]
 
-        return self._channel_names
+    @cached_property
+    def channel_names(self) -> List[str]:
+        """Names of the channels available in the Labber file."""
+        return [c.name for c in self.channels]
 
     @cached_property
     def instrument_configs(self) -> List[InstrumentConfig]:
@@ -484,9 +483,7 @@ class LabberData:
 
         # Get the channel description that contains important details
         # (is_vector, is_complex, )
-        if self._channels is None:
-            self.list_channels()
-        channel = self._channels[index]  # type: ignore
+        channel = self.channels[index]  # type: ignore
 
         x_data: List[np.ndarray] = []
         vectorial_data = bool(isinstance(channel, LogEntry) and channel.is_vector)
@@ -641,7 +638,7 @@ class LabberData:
 
     def _name_or_index_to_index(self, name_or_index: Union[str, int]) -> int:
         """Provide the index of a channel from its name."""
-        ch_names = self.list_channels()
+        ch_names = self.channel_names
 
         if isinstance(name_or_index, str):
             if name_or_index not in ch_names:

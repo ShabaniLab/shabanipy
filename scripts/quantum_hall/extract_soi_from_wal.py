@@ -138,7 +138,7 @@ plt.rcParams.update({'pdf.fonttype': 42})
 
 with LabberData(PATH) as data:
 
-    names = data.list_channels()
+    names = data.channel_names
     shape = data.compute_shape((GATE_COLUMN, FIELD_COLUMN))
 
     gate = data.get_data(GATE_COLUMN).reshape(shape).T

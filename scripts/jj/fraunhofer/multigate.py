@@ -42,7 +42,7 @@ fraunhofer_period = 2 * np.pi / (b2beta * jj_width)
 resist = []
 ic = []
 with LabberData(str(DATA_FILE_PATH)) as f:
-    channels = f.list_channels()
+    channels = f.channel_names
 
     field = np.unique(f.get_data(CH_MAGNET))[:-10] * CURR_TO_FIELD
 

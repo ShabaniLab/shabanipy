@@ -158,7 +158,7 @@ for sample, parameters in SAMPLES.items():
 
     with LabberData(os.path.join(BASE_FOLDER, parameters["path"])) as data:
 
-        print(data.list_channels())
+        print(data.channel_names)
         filters = {}
         counter = get_value(sample, COUNTER_NAME)
         if counter is not None:
