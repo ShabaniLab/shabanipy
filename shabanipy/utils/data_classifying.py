@@ -426,7 +426,7 @@ class StepPattern(Copyable):
             if config.relation:
                 steps = {
                     "Step values" if s.name == config.name else s.name: s.value
-                    for s in dataset.list_steps()
+                    for s in dataset.steps
                 }
                 locs = {k: steps[v] for k, v in config.relation[1].items()}
                 # XXX should provide some math functions
@@ -533,7 +533,7 @@ class MeasurementPattern(Copyable):
         for step_pattern in self.steps:
             logger.debug(f"matching step pattern '{step_pattern.name}'")
             if not step_pattern.match_steps(
-                dataset.list_steps(), dataset.instrument_configs
+                dataset.steps, dataset.instrument_configs
             ):
                 logger.debug(
                     f"- rejecting {dataset.filename} for measurement pattern '{self.name}': step pattern '{step_pattern.name}' does not match any steps"
@@ -578,7 +578,7 @@ class MeasurementPattern(Copyable):
 
         for pattern in (p for p in self.steps if p.use_in_classification):
             found_match = False
-            for i, step in enumerate(dataset.list_steps()):
+            for i, step in enumerate(dataset.steps):
                 if pattern.match(i, step):
                     found_match = True
                     classifiers[pattern.classifier_level][pattern.name] = Classifier(
@@ -642,7 +642,7 @@ class DataClassifier:
                     logger.debug(f"matching file {datafile}")
                     try:
                         with LabberData(path) as f:
-                            logger.debug(f"steps: {[s.name for s in f.list_steps()]}")
+                            logger.debug(f"steps: {[s.name for s in f.steps]}")
                             logger.debug(f"logs:  {[l.name for l in f.logs]}")
                             logger.debug(
                                 f"instrument configs: {[c.name for c in f.instrument_configs]}"
@@ -848,7 +848,7 @@ class DataClassifier:
         with LabberData(path) as f:
             # Find and extract the relevant step channels (ie not used in classifying)
             for i, stepcf in [
-                (i, s) for i, s in enumerate(f.list_steps()) if s.is_ramped
+                (i, s) for i, s in enumerate(f.steps) if s.is_ramped
             ]:
                 # Collect all ramps except those used for classification
                 should_skip = False

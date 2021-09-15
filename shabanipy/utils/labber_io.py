@@ -252,117 +252,127 @@ class LabberData:
         self._nested = []
         self._steps = None
         # clear the @cached_properties if they've been cached
-        for attribute in ["instrument_configs", "channels", "channel_names", "logs"]:
+        for attribute in [
+            "instrument_configs",
+            "channels",
+            "channel_names",
+            "logs",
+            "steps",
+        ]:
             try:
                 delattr(self, attribute)
             except AttributeError:
                 pass
 
-    def list_steps(self) -> List[StepConfig]:
-        """List the different steps of a measurement."""
-        if not self._steps:
-            steps = []
-            for (
-                step,
-                _,  # unknown
-                _,  # unknown
-                _,  # 0 no sweep (ie direct update), 1 between points, 2 continuous
-                _,  # unknown
-                has_relation,
-                relation,
-                _,  # unknown
-                _,  # unknown
-                alternate,
-                *_,
-            ) in self._file["Step list"]:
+    @cached_property
+    def steps(self) -> List[StepConfig]:
+        """The step configurations in the Labber file.
 
-                # Decode byte string from the hdf5 file
-                step = maybe_decode(step)
-                relation = maybe_decode(relation)
+        These are listed in the Measurement Editor under "Step sequence" and in the Log
+        Browser under "Active channels" with a step list.  The are listed in the
+        "/Step list" HDF5 dataset with further information in the "/Step config" group.
+        """
+        steps = []
+        for (
+            step,
+            _,  # unknown
+            _,  # unknown
+            _,  # 0 no sweep (ie direct update), 1 between points, 2 continuous
+            _,  # unknown
+            has_relation,
+            relation,
+            _,  # unknown
+            _,  # unknown
+            alternate,
+            *_,
+        ) in self._file["Step list"]:
 
-                log_configs = [
-                    f["Step config"][step]["Step items"]
-                    for f in [self._file] + self._nested
-                ]
+            # Decode byte string from the hdf5 file
+            step = maybe_decode(step)
+            relation = maybe_decode(relation)
 
-                # A step is considered ramped if it has more than one config in any log,
-                # if the first ramp of any log is ramped, if there is more than one
-                # value for a given constant accross different logs
-                # The format describing a single config is:
-                # ramped, unknown, set value, min, max, center, span, step,
-                # number of points, kind(ie linear, log, etc), sweep rate
-                is_ramped = (
-                    any(len(configs) > 1 for configs in log_configs)
-                    or any(bool(configs[0][0]) for configs in log_configs)
-                    or len({configs[0][2] for configs in log_configs}) > 1
+            log_configs = [
+                f["Step config"][step]["Step items"]
+                for f in [self._file] + self._nested
+            ]
+
+            # A step is considered ramped if it has more than one config in any log,
+            # if the first ramp of any log is ramped, if there is more than one
+            # value for a given constant accross different logs
+            # The format describing a single config is:
+            # ramped, unknown, set value, min, max, center, span, step,
+            # number of points, kind(ie linear, log, etc), sweep rate
+            is_ramped = (
+                any(len(configs) > 1 for configs in log_configs)
+                or any(bool(configs[0][0]) for configs in log_configs)
+                or len({configs[0][2] for configs in log_configs}) > 1
+            )
+
+            # We assume that if we have relations in one log we have them in all
+            if has_relation:
+                rel_params = {
+                    maybe_decode(k): maybe_decode(v)
+                    for k, v, _ in self._file["Step config"][step][
+                        "Relation parameters"
+                    ]
+                }
+                relation = (
+                    relation,
+                    {
+                        k: v
+                        for k, v in rel_params.items()
+                        # Preserve only the parameters useful to the relation
+                        # \W is a non word character (no letter no digit)
+                        if re.match(
+                            r"(.*\W+" + f"{k})|{k}" + r"(\W+.*|$)", relation
+                        )
+                    },
+                )
+            else:
+                relation = None
+
+            steps.append(
+                StepConfig(
+                    name=step,
+                    is_ramped=is_ramped,
+                    relation=relation,
+                    value=None if is_ramped else log_configs[0][0][2],
+                    alternate_direction=alternate,
+                    ramps=[
+                        (
+                            RampConfig(
+                                start=cfg[3],
+                                stop=cfg[4],
+                                steps=cfg[8],
+                                new_log=bool(i == 0),
+                            )
+                            if cfg[0]
+                            else RampConfig(
+                                start=cfg[2],
+                                stop=cfg[2],
+                                steps=1,
+                                new_log=bool(i == 0),
+                            )
+                        )
+                        for configs in log_configs
+                        for i, cfg in enumerate(configs)
+                    ]
+                    if is_ramped
+                    else None,
+                )
+            )
+
+        # Mark all channels with relation to a ramped channel as ramped.
+        # One can inspect ramps to know if a step is ramped outside of a relation.
+        for step in steps:
+            if step.relation is not None:
+                step.is_ramped |= any(
+                    s.is_ramped
+                    for s in steps
+                    if s.name in step.relation[1].values()
                 )
 
-                # We assume that if we have relations in one log we have them in all
-                if has_relation:
-                    rel_params = {
-                        maybe_decode(k): maybe_decode(v)
-                        for k, v, _ in self._file["Step config"][step][
-                            "Relation parameters"
-                        ]
-                    }
-                    relation = (
-                        relation,
-                        {
-                            k: v
-                            for k, v in rel_params.items()
-                            # Preserve only the parameters useful to the relation
-                            # \W is a non word character (no letter no digit)
-                            if re.match(
-                                r"(.*\W+" + f"{k})|{k}" + r"(\W+.*|$)", relation
-                            )
-                        },
-                    )
-                else:
-                    relation = None
-
-                steps.append(
-                    StepConfig(
-                        name=step,
-                        is_ramped=is_ramped,
-                        relation=relation,
-                        value=None if is_ramped else log_configs[0][0][2],
-                        alternate_direction=alternate,
-                        ramps=[
-                            (
-                                RampConfig(
-                                    start=cfg[3],
-                                    stop=cfg[4],
-                                    steps=cfg[8],
-                                    new_log=bool(i == 0),
-                                )
-                                if cfg[0]
-                                else RampConfig(
-                                    start=cfg[2],
-                                    stop=cfg[2],
-                                    steps=1,
-                                    new_log=bool(i == 0),
-                                )
-                            )
-                            for configs in log_configs
-                            for i, cfg in enumerate(configs)
-                        ]
-                        if is_ramped
-                        else None,
-                    )
-                )
-
-            # Mark all channels with relation to a ramped channel as ramped.
-            # One can inspect ramps to know if a step is ramped outside of a relation.
-            for step in steps:
-                if step.relation is not None:
-                    step.is_ramped |= any(
-                        s.is_ramped
-                        for s in steps
-                        if s.name in step.relation[1].values()
-                    )
-
-            self._steps = steps
-        return self._steps
+        return steps
 
     @cached_property
     def logs(self) -> List[LogEntry]:
@@ -413,7 +423,7 @@ class LabberData:
         -------
         Ramped step channels and all log channels.
         """
-        return [s for s in self.list_steps() if s.is_ramped] + [l for l in self.logs]
+        return [s for s in self.steps if s.is_ramped] + [l for l in self.logs]
 
     @cached_property
     def channel_names(self) -> List[str]:
@@ -554,7 +564,7 @@ class LabberData:
         # Identify the ramped steps not used for filtering
         steps_points = []
         first_step_is_used = False
-        for i, s in reversed(list(enumerate(self.list_steps()))):
+        for i, s in reversed(list(enumerate(self.steps))):
 
             # Use ramps rather than is_ramped to consider only steps manually
             # ramped and exclude steps with multiple values because they
