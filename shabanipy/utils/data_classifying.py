@@ -655,11 +655,6 @@ class DataClassifier:
                                         f"- accepted {datafile} "
                                         f"for measurement pattern '{p.name}'"
                                     )
-                                    break
-                            else:
-                                logger.debug(
-                                    f"- rejected {datafile} for all measurement patterns"
-                                )
                     except OSError:
                         logger.debug(f"- rejected {datafile}: file is corrupted")
 
