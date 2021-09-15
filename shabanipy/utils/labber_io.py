@@ -377,16 +377,9 @@ class LabberData:
             names = [maybe_decode(e[0]) for e in self._file["Log list"]]
 
             # Identify scalar complex data
-            try:
-                complex_scalars = [
-                    n for n, v in self._file["Data"]["Channel names"] if v == "Real"
-                ]
-            except KeyError as e:
-                logger.warning(
-                    f"{self.filename} may be empty or malformed: caught {repr(e)}"
-                )
-            finally:
-                complex_scalars = []
+            complex_scalars = [
+                n for n, v in self._file.get("Data/Channel names", ()) if v == "Real"
+            ]
 
             # Identify vector data
             vectors = self._file.get("Traces", ())
