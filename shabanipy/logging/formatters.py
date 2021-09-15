@@ -9,4 +9,9 @@ class InformativeFormatter(Formatter):
             + f"{record.filename}:{record.lineno}".ljust(25)
             + " "
             + record.getMessage()
+            + (
+                ("\n" + self.formatException(record.exc_info))
+                if record.exc_info
+                else ""
+            )
         )
