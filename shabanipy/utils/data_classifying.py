@@ -747,7 +747,7 @@ class DataClassifier:
 
     def consolidate_dataset(self, path: str) -> None:
         """Consolidate all the relevant data into a single file."""
-        logger.info(f"consolidating data into {path}...")
+        logger.info(f"consolidating data...")
         if not self._classified_datasets:
             raise RuntimeError(
                 "No classified datasets to work on. Run `classify_datasets` or"
@@ -770,6 +770,7 @@ class DataClassifier:
                     logger.debug(f"    Processing: {path}")
                     clfs = [classifiers[k] for k in sorted(classifiers)]
                     self._create_entries(group, path, meas_pattern, clfs)
+        logger.info("...data consolidated into {path}")
 
     def _create_entries(
         self,

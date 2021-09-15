@@ -670,7 +670,9 @@ class LabberData:
     def _get_traces_data(
         self, channel_name: str, is_complex: bool = False, get_x: bool = False
     ) -> Tuple[List[np.ndarray], ...]:
-        """Get data stored as traces ie vector."""
+        """Get data stored in the "/Traces/" HDF5 group of the Labber file.
+
+        This is where vectorial data are stored."""
         if channel_name not in self._file["Traces"]:
             raise ValueError(f"Unknown traces data {channel_name}")
 
@@ -695,7 +697,9 @@ class LabberData:
     def _get_data_data(
         self, channel_name: str, is_complex: bool = False
     ) -> List[np.ndarray]:
-        """Pull data stored in the data segment of the log file."""
+        """Get data stored in the "/Data/" HDF5 group of the Labber file.
+
+        This is where ordinary (i.e. non-vectorial) data are stored."""
         names = [maybe_decode(n) for n, _ in self._file["Data"]["Channel names"]]
         if is_complex:
             re_index = names.index(channel_name)
