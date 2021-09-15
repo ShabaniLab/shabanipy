@@ -129,10 +129,10 @@ class LogEntry:
 class InstrumentConfig:
     """Labber's description of an instrument configuration.
 
-    These are contained under the hdf5 group '/Instrument config/' and list the
+    These are contained under the HDF5 group "/Instrument config/" and list the
     instrument driver settings for the measurement.
 
-    The names of the subgroups have the following format:
+    The names of the HDF5 subgroups have the following format:
         <driver> - IP: <ip_address>, <name> at localhost
     A concrete example:
         Keithley 2450 SourceMeter [Shabani] - IP: 192.168.0.13, x magnet at localhost
@@ -194,7 +194,6 @@ class LabberData:
 
     A channel is either a swept variable or a measured quantity. We use either
     strings or integers to identify channels.
-
     """
 
     #: Path to the HDF5 file containing the data.
