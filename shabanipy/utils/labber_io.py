@@ -13,7 +13,7 @@ import logging
 import os
 import re
 from dataclasses import dataclass, field
-from functools import cached_property
+from functools import cached_property, reduce
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union, overload
 
@@ -535,9 +535,7 @@ class LabberData:
                         mask |= np.isnan(filter_data)
                     masks.append(mask)
 
-                mask = masks.pop()
-                for m in masks:
-                    mask &= m
+                mask = reduce(lambda x, y: x & y, masks)
                 # For unclear reason vector data are not index in the same order
                 # as other data and require the mask to be transposed before being
                 # raveled
