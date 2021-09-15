@@ -251,9 +251,8 @@ class LabberData:
         self._axis_dimensions = None
         self._nested = []
         self._steps = None
-        self._logs = None
         # clear the @cached_properties if they've been cached
-        for attribute in ["instrument_configs", "channels", "channel_names"]:
+        for attribute in ["instrument_configs", "channels", "channel_names", "logs"]:
             try:
                 delattr(self, attribute)
             except AttributeError:
@@ -365,36 +364,40 @@ class LabberData:
             self._steps = steps
         return self._steps
 
-    def list_logs(self) -> List[LogEntry]:
-        """List the existing log entries in the datafile."""
-        if not self._logs:
-            # Collect all logs names
-            names = [maybe_decode(e[0]) for e in self._file["Log list"]]
+    @cached_property
+    def logs(self) -> List[LogEntry]:
+        """The logged channels in the Labber file.
 
-            # Identify scalar complex data
-            complex_scalars = [
-                n for n, v in self._file.get("Data/Channel names", ()) if v == "Real"
-            ]
+        These are listed in the Measurement Editor under "Log channels" and in the Log
+        Browser under "Active channels" with no step list.  They are listed in the
+        "/Log list" HDF5 dataset with further information in the "/Data" group (for
+        scalar data) and "/Traces" group (for vectorial data).
+        """
+        log_names = [maybe_decode(e[0]) for e in self._file["Log list"]]
 
-            # Identify vector data
-            vectors = self._file.get("Traces", ())
+        # identify scalar complex data
+        complex_scalars = [
+            n for n, v in self._file.get("Data/Channel names", ()) if v == "Real"
+        ]
 
-            logs = []
-            for n in names:
-                if n in vectors:
-                    logs.append(
-                        LogEntry(
-                            name=n,
-                            is_vector=True,
-                            is_complex=self._file["Traces"][n].attrs.get("complex"),
-                            x_name=self._file["Traces"][n].attrs.get("x, name"),
-                        )
+        # identify vector data
+        vectors = self._file.get("Traces", ())
+
+        logs = []
+        for name in log_names:
+            if name in vectors:
+                logs.append(
+                    LogEntry(
+                        name=name,
+                        is_vector=True,
+                        is_complex=self._file[f"Traces/{name}"].attrs.get("complex"),
+                        x_name=self._file[f"Traces/{name}"].attrs.get("x, name"),
                     )
-                else:
-                    logs.append(LogEntry(name=n, is_complex=bool(n in complex_scalars)))
-            self._logs = logs
+                )
+            else:
+                logs.append(LogEntry(name=name, is_complex=name in complex_scalars))
 
-        return self._logs
+        return logs
 
     @cached_property
     def channels(self) -> List[Union[LogEntry, StepConfig]]:
@@ -410,9 +413,7 @@ class LabberData:
         -------
         Ramped step channels and all log channels.
         """
-        return [s for s in self.list_steps() if s.is_ramped] + [
-            l for l in self.list_logs()
-        ]
+        return [s for s in self.list_steps() if s.is_ramped] + [l for l in self.logs]
 
     @cached_property
     def channel_names(self) -> List[str]:

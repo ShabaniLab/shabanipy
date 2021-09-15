@@ -541,7 +541,7 @@ class MeasurementPattern(Copyable):
                 return False
 
         # Check required log patterns.
-        logs = dataset.list_logs()
+        logs = dataset.logs
         for lpattern in [lp for lp in self.logs if lp.is_required]:
             logger.debug(f"matching log pattern '{lpattern.name}'")
             if not any(lpattern.match(i, l) for i, l in enumerate(logs)):
@@ -643,7 +643,7 @@ class DataClassifier:
                     try:
                         with LabberData(path) as f:
                             logger.debug(f"steps: {[s.name for s in f.list_steps()]}")
-                            logger.debug(f"logs:  {[l.name for l in f.list_logs()]}")
+                            logger.debug(f"logs:  {[l.name for l in f.logs]}")
                             logger.debug(
                                 f"instrument configs: {[c.name for c in f.instrument_configs]}"
                             )
@@ -874,7 +874,7 @@ class DataClassifier:
 
             # Find and extract the relevant log channels
             n_matched_logs = 0
-            for i, entry in enumerate(f.list_logs()):
+            for i, entry in enumerate(f.logs):
                 # Collect only requested log entries.
                 should_skip = True
                 name = entry.name
