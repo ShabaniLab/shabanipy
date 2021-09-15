@@ -274,7 +274,7 @@ class LabberData:
         """
         steps = []
         for (
-            step,
+            channel_name,
             _,  # unknown
             _,  # unknown
             _,  # 0 no sweep (ie direct update), 1 between points, 2 continuous
@@ -288,11 +288,11 @@ class LabberData:
         ) in self._file["Step list"]:
 
             # Decode byte string from the hdf5 file
-            step = maybe_decode(step)
+            channel_name = maybe_decode(channel_name)
             relation = maybe_decode(relation)
 
-            log_configs = [
-                f["Step config"][step]["Step items"]
+            step_configs = [
+                f["Step config"][channel_name]["Step items"]
                 for f in [self._file] + self._nested
             ]
 
@@ -303,16 +303,16 @@ class LabberData:
             # ramped, unknown, set value, min, max, center, span, step,
             # number of points, kind(ie linear, log, etc), sweep rate
             is_ramped = (
-                any(len(configs) > 1 for configs in log_configs)
-                or any(bool(configs[0][0]) for configs in log_configs)
-                or len({configs[0][2] for configs in log_configs}) > 1
+                any(len(configs) > 1 for configs in step_configs)
+                or any(bool(configs[0][0]) for configs in step_configs)
+                or len({configs[0][2] for configs in step_configs}) > 1
             )
 
             # We assume that if we have relations in one log we have them in all
             if has_relation:
                 rel_params = {
                     maybe_decode(k): maybe_decode(v)
-                    for k, v, _ in self._file["Step config"][step][
+                    for k, v, _ in self._file["Step config"][channel_name][
                         "Relation parameters"
                     ]
                 }
@@ -333,10 +333,10 @@ class LabberData:
 
             steps.append(
                 StepConfig(
-                    name=step,
+                    name=channel_name,
                     is_ramped=is_ramped,
                     relation=relation,
-                    value=None if is_ramped else log_configs[0][0][2],
+                    value=None if is_ramped else step_configs[0][0][2],
                     alternate_direction=alternate,
                     ramps=[
                         (
@@ -354,7 +354,7 @@ class LabberData:
                                 new_log=bool(i == 0),
                             )
                         )
-                        for configs in log_configs
+                        for configs in step_configs
                         for i, cfg in enumerate(configs)
                     ]
                     if is_ramped
