@@ -248,7 +248,6 @@ class LabberData:
         if self._file:
             self._file.close()
         self._file = None
-        self._axis_dimensions = None
         self._nested = []
         self._steps = None
         # clear the @cached_properties if they've been cached
