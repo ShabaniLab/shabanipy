@@ -543,6 +543,24 @@ class LabberData:
                 # raveled
                 if vectorial_data:
                     mask = np.ravel(mask.T)
+                    if len(mask) > len(data[i]):
+                        # if the scan was aborted, the mask (which is derived from the
+                        # NaN-padded "/Data/Data" HDF5 dataset) may be larger than the
+                        # vectorial data (which is derived from unpadded HDF5 datasets
+                        # in "/Traces/")
+                        mask = mask[: data[i].shape[0]]
+                    elif len(mask) < len(data[i]):
+                        # sometimes Labber inexplicably fails to record an incomplete
+                        # scan in the "/Data/Data" HDF5 dataset, but still records the
+                        # vectorial data points
+                        logger.warning(
+                            f"There are more traces ({len(data[i])}) recorded in "
+                            f"'/Traces/' than there are step values ({len(mask)}) "
+                            f"recorded in '/Data/Data'.  You might not be getting all "
+                            f"the data from {self.filename} for {name_or_index=} with "
+                            f"{filters=} and {get_x=}."
+                        )
+                        mask = np.append(mask, [False] * (len(data[i]) - len(mask)))
 
                 # Filter
                 results.append(data[i][mask])
