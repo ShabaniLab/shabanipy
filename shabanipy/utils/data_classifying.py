@@ -197,15 +197,15 @@ class ValuePattern(Copyable):
         if value is None:
             return False
         match = False
-        if self.value:
+        if self.value is not None:
             match |= value == self.value
             if not match:
                 logger.debug(f"- {value} != {self.value}")
-        if self.value_set:
+        if self.value_set is not None:
             match |= value in self.value_set
             if not match:
                 logger.debug(f"- {value} not in {self.value_set}")
-        if self.smaller:
+        if self.smaller is not None:
             match |= (
                 value < self.smaller
                 if self.strict_comparisons
@@ -216,7 +216,7 @@ class ValuePattern(Copyable):
                     f"- {value} {'>=' if self.strict_comparisons else '>'}"
                     f"{self.smaller}"
                 )
-        if self.greater:
+        if self.greater is not None:
             match |= (
                 value > self.greater
                 if self.strict_comparisons
