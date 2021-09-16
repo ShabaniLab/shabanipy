@@ -761,10 +761,10 @@ class DataClassifier:
                 # Extract the measurement pattern
                 meas_pattern = [p for p in self.patterns if p.name == name][0]
 
-                for path, classifiers in classified.items():
-                    logger.debug(f"    Processing: {path}")
+                for filepath, classifiers in classified.items():
+                    logger.debug(f"    Processing: {filepath}")
                     clfs = [classifiers[k] for k in sorted(classifiers)]
-                    self._create_entries(group, path, meas_pattern, clfs)
+                    self._create_entries(group, filepath, meas_pattern, clfs)
         logger.info(f"...data consolidated into {path}")
 
     def _create_entries(
