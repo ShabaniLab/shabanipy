@@ -765,7 +765,7 @@ class DataClassifier:
                     logger.debug(f"    Processing: {path}")
                     clfs = [classifiers[k] for k in sorted(classifiers)]
                     self._create_entries(group, path, meas_pattern, clfs)
-        logger.info("...data consolidated into {path}")
+        logger.info(f"...data consolidated into {path}")
 
     def _create_entries(
         self,
