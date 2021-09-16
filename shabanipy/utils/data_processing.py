@@ -21,7 +21,7 @@ from h5py import Dataset, Group
 
 from .data_exploring import DataExplorer
 
-LOGGER = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -277,23 +277,23 @@ class ProcessCoordinator:
     def run_preprocess(self) -> None:
         """Run the pre-processing steps."""
         # Duplicate the data to avoid corrupting the original dataset
-        LOGGER.debug(f"Copying {self.archive_path} to {self.duplicate_path}")
+        logger.debug(f"Copying {self.archive_path} to {self.duplicate_path}")
         shutil.copyfile(self.archive_path, self.duplicate_path)
-        LOGGER.debug(f"Copied {self.archive_path} to {self.duplicate_path}")
+        logger.debug(f"Copied {self.archive_path} to {self.duplicate_path}")
 
         # Open new dataset
         with DataExplorer(self.duplicate_path, allow_edits=True) as data:
 
             # Iterate on pre-processing steps
             for step in self.preprocessing_steps:
-                LOGGER.debug(f"Running pre-processing: {step.name}")
+                logger.debug(f"Running pre-processing: {step.name}")
 
                 for meas in step.measurements:
-                    LOGGER.debug(f"    on {meas}")
+                    logger.debug(f"    on {meas}")
 
                     # Walk data pertaining to the right measurement
                     for classifiers, group in data.walk_data(meas):
-                        LOGGER.debug(f"        for {classifiers}")
+                        logger.debug(f"        for {classifiers}")
 
                         # Apply pre-processing to each dataset
                         # The step takes care of saving data.
@@ -308,7 +308,7 @@ class ProcessCoordinator:
 
             # Iterate on processing steps
             for step in self.processing_steps:
-                LOGGER.debug(f"Running processing: {step.name}")
+                logger.debug(f"Running processing: {step.name}")
 
                 # Walk data pertaining to the right dataset and measurement/tier
                 d, mt = step.input_origin.split("@")
@@ -322,9 +322,9 @@ class ProcessCoordinator:
                     if not all(
                         bool(in_name in group) for in_name in step.input_quantities
                     ):
-                        LOGGER.debug(f"    skipped for {classifiers}")
+                        logger.debug(f"    skipped for {classifiers}")
                         continue
-                    LOGGER.debug(f"    for {classifiers}")
+                    logger.debug(f"    for {classifiers}")
                     step.run(group, classifiers, f)
 
     def run_summary(self) -> None:
@@ -336,7 +336,7 @@ class ProcessCoordinator:
 
             # Iterate on summary steps
             for step in self.summary_steps:
-                LOGGER.debug(f"Running summary: {step.name}")
+                logger.debug(f"Running summary: {step.name}")
 
                 # Walk data pertaining to the right dataset and measurement/tier
                 d, mt = step.input_origin.split("@")
@@ -350,11 +350,11 @@ class ProcessCoordinator:
                     if not all(
                         bool(in_name in group) for in_name in step.input_quantities
                     ):
-                        LOGGER.debug(
+                        logger.debug(
                             f"    skipped for {classifiers}, "
                             f"looking for {step.input_quantities}, found "
                             f"{[n for n in group if isinstance(group[n], Dataset)]}."
                         )
                         continue
-                    LOGGER.debug(f"    for {classifiers}")
+                    logger.debug(f"    for {classifiers}")
                     step.run(group, classifiers, self.summary_directory)
