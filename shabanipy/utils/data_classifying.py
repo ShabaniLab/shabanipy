@@ -270,14 +270,14 @@ class RampPattern(Copyable):
         if self.is_generic:
             return True
 
-        match = False
+        match = True
         for name, value in zip(("start", "stop", "points"), (start, stop, points)):
             pattern = getattr(self, name)
             if pattern is not None:
-                match |= pattern.match(value)
+                match &= pattern.match(value)
 
         if self.span is not None:
-            match |= self.span.match(abs(stop - start))
+            match &= self.span.match(abs(stop - start))
 
         return match
 
