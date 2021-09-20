@@ -276,6 +276,7 @@ class ProcessCoordinator:
     # XXX add ways to run by names, tiers
     def run_preprocess(self) -> None:
         """Run the pre-processing steps."""
+        logger.info("preprocessing...")
         # Duplicate the data to avoid corrupting the original dataset
         logger.debug(f"Copying {self.archive_path} to {self.duplicate_path}")
         shutil.copyfile(self.archive_path, self.duplicate_path)
@@ -298,9 +299,11 @@ class ProcessCoordinator:
                         # Apply pre-processing to each dataset
                         # The step takes care of saving data.
                         step.run(group, classifiers)
+        logger.info(f"...preprocessed data saved to {self.duplicate_path}")
 
     def run_process(self) -> None:
         """Run the processing steps."""
+        logger.info("processing...")
         # Open duplicate dataset and processing path
         with DataExplorer(self.duplicate_path, allow_edits=True) as data, DataExplorer(
             self.processing_path, create_new=True
@@ -326,9 +329,11 @@ class ProcessCoordinator:
                         continue
                     logger.debug(f"    for {classifiers}")
                     step.run(group, classifiers, f)
+        logger.info(f"processed data saved to {self.processing_path}")
 
     def run_summary(self) -> None:
         """Run the summary steps."""
+        logger.info("summarizing...")
         # Open duplicate dataset and processing path
         with DataExplorer(self.processing_path) as f, DataExplorer(
             self.duplicate_path
@@ -358,3 +363,4 @@ class ProcessCoordinator:
                         continue
                     logger.debug(f"    for {classifiers}")
                     step.run(group, classifiers, self.summary_directory)
+        logger.info(f"summarized data saved to directory {self.summary_directory}")
