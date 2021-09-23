@@ -310,11 +310,13 @@ class InstrumentConfigPattern(Copyable):
             self.value is None or self.value.match(config.get(self.quantity))
         )
 
-    def extract(self, configs: List[InstrumentConfig]) -> bool:
+    def extract(self, configs: List[InstrumentConfig], default) -> bool:
         """Extract the first classifying value found."""
         for config in configs:
             if self.match(config):
                 return (config.get(self.quantity),)
+        logger.debug("no instrument config found, using default")
+        return (default,)
 
 
 @dataclass(init=True)
@@ -336,6 +338,10 @@ class StepPattern(Copyable):
 
     #: InstrumentConfigPattern to fall back on if this StepPattern doesn't match any steps
     fallback: Optional[InstrumentConfigPattern] = None
+
+    # Default value if this StepPattern and fallback InstrumentConfigPattern both fail
+    # (e.g. the channel may not have been added to labber yet)
+    default: Any = None
 
     #: Should this step be used to classify datasets.
     #: Steps used for classification should not contain overlapping ramps (both forward
@@ -400,6 +406,9 @@ class StepPattern(Copyable):
         self, steps: List[StepConfig], instr_configs: List[InstrumentConfig]
     ) -> bool:
         """Match self against the step list and instrument configurations."""
+        if self.default is not None:
+            logger.debug("default value specified, always matches")
+            return True
         if any(self.match(i, step) for i, step in enumerate(steps)):
             return True
         if self.fallback:
@@ -590,7 +599,10 @@ class MeasurementPattern(Copyable):
             if not found_match and pattern.fallback:
                 logger.debug("Extract classifiers: Falling back to instrument config")
                 classifiers[pattern.classifier_level][pattern.name] = Classifier(
-                    step.name, pattern.fallback.extract(dataset.instrument_configs)
+                    step.name,
+                    pattern.fallback.extract(
+                        dataset.instrument_configs, pattern.default
+                    ),
                 )
 
         return classifiers
