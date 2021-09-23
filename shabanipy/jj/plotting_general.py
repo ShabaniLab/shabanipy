@@ -152,7 +152,7 @@ def plot_extracted_switching_current(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, figsize = fig_size if fig_size else rcParams['figure.figsize'])
+    f = plt.figure(constrained_layout=True, figsize = fig_size if fig_size else mpl.rcParams['figure.figsize'])
     m_ax = f.gca()
     
     #Convert from current to field if conversion factor is available
@@ -237,7 +237,7 @@ def plot_extracted_critical_current(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, figsize = fig_size if fig_size else rcParams['figure.figsize'])
+    f = plt.figure(constrained_layout=True, figsize = fig_size if fig_size else mpl.rcParams['figure.figsize'])
     m_ax = f.gca()
 
     #Convert from current to field if conversion factor is available
@@ -329,7 +329,7 @@ def plot_current_distribution(
     FIELD_TO_WAVENUM = 2 * np.pi * jj_length / PHI0  # B-field to beta wavenumber
     PERIOD = 2 * np.pi / (FIELD_TO_WAVENUM * jj_width)
 
-    f = plt.figure(constrained_layout=True, figsize = fig_size if fig_size else rcParams['figure.figsize'])
+    f = plt.figure(constrained_layout=True, figsize = fig_size if fig_size else mpl.rcParams['figure.figsize'])
     m_ax = f.gca()
 
     #Convert from current to field if conversion factor is available
@@ -410,7 +410,7 @@ def plot_inplane_vs_bias(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, figsize = fig_size if fig_size else rcParams['figure.figsize'])
+    f = plt.figure(constrained_layout=True, figsize = fig_size if fig_size else mpl.rcParams['figure.figsize'])
     m_ax = f.gca()
     
     # Use savgol_filter if params are available
@@ -485,7 +485,7 @@ def plot_inplane_vs_Ic_Rn(
         Should debug information be provided, by default False.
 
     """
-    fig, ax = plt.subplots(constrained_layout=True, figsize = fig_size if fig_size else rcParams['figure.figsize'])
+    fig, ax = plt.subplots(constrained_layout=True, figsize = fig_size if fig_size else mpl.rcParams['figure.figsize'])
     m_ax = fig.gca()
     
     # Use savgol_filter if params are available
@@ -550,7 +550,7 @@ def plot_inplane_vs_IcRn(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, figsize = fig_size if fig_size else rcParams['figure.figsize'])
+    f = plt.figure(constrained_layout=True, figsize = fig_size if fig_size else mpl.rcParams['figure.figsize'])
     m_ax = f.gca()
     
     # Use savgol_filter if params are available
@@ -610,7 +610,7 @@ def plot_vg_vs_bias(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, figsize = fig_size if fig_size else rcParams['figure.figsize'])
+    f = plt.figure(constrained_layout=True, figsize = fig_size if fig_size else mpl.rcParams['figure.figsize'])
     m_ax = f.gca()
 
     # Use savgol_filter if params are available
@@ -693,7 +693,7 @@ def plot_vg_vs_Ic_Rn(
         Should debug information be provided, by default False.
 
     """
-    fig, ax = plt.subplots(constrained_layout=True, figsize = fig_size if fig_size else rcParams['figure.figsize'])
+    fig, ax = plt.subplots(constrained_layout=True, figsize = fig_size if fig_size else mpl.rcParams['figure.figsize'])
     m_ax = fig.gca()
     
     # Use savgol_filter if params are available
@@ -760,7 +760,7 @@ def plot_vg_vs_IcRn(
         Should debug information be provided, by default False.
 
     """
-    f = plt.figure(constrained_layout=True, figsize = fig_size if fig_size else rcParams['figure.figsize'])
+    f = plt.figure(constrained_layout=True, figsize = fig_size if fig_size else mpl.rcParams['figure.figsize'])
     m_ax = f.gca()
     
     # Use savgol_filter if params are available
