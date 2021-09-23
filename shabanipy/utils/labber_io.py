@@ -386,7 +386,9 @@ class LabberData:
 
         # identify scalar complex data
         complex_scalars = [
-            n for n, v in self._file.get("Data/Channel names", ()) if v == "Real"
+            maybe_decode(n)
+            for n, v in self._file.get("Data/Channel names", ())
+            if maybe_decode(v) == "Real"
         ]
 
         # identify vector data
