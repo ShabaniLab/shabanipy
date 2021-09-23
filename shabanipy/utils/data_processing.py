@@ -129,6 +129,7 @@ class PreProcessingStep(AnalysisStep):
     """
 
     #: List of measurement names on which this step should be applied to.
+    #: If empty, this step will be run on all measurements in the file.
     measurements: List[str]
 
     #: Names of the output quantities, that will be saved next to the existing data.
@@ -142,6 +143,9 @@ class PreProcessingStep(AnalysisStep):
 
         """
         # Get actual numpy arrays as otherwise the differences may be slightly surprising
+        if any(i not in group for i in self.input_quantities):
+            logger.debug("skipping preprocessing step '{self.name}' for group '{group.name}': one of {self.input_quantities} is missing")
+            return
         data = [group[k][...] for k in self.input_quantities]
         p = self.populate_parameters(group, classifiers)
         out = self.routine(*data, **p)
@@ -289,7 +293,7 @@ class ProcessCoordinator:
             for step in self.preprocessing_steps:
                 logger.debug(f"Running pre-processing: {step.name}")
 
-                for meas in step.measurements:
+                for meas in step.measurements if step.measurements else data.list_top_level():
                     logger.debug(f"    on {meas}")
 
                     # Walk data pertaining to the right measurement
