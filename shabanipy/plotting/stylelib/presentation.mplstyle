@@ -1,5 +1,6 @@
 figure.constrained_layout.use : True
 figure.figsize      : 16, 10
+savefig.transparent : True
 axes.linewidth      : 1.5
 font.size           : 40
 pdf.fonttype        : 42
