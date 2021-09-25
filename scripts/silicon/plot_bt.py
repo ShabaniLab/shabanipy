@@ -57,7 +57,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from shabanipy.utils.labber_io import LabberData
+from shabanipy.labber import LabberData
 
 with LabberData(PATH) as data:
 

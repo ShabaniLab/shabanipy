@@ -75,7 +75,7 @@ from shabanipy.quantum_hall.conversion import (
 )
 from shabanipy.quantum_hall.density import extract_density
 from shabanipy.quantum_hall.mobility import extract_mobility
-from shabanipy.utils.labber_io import LabberData
+from shabanipy.labber import LabberData
 
 
 with LabberData(PATH) as data:

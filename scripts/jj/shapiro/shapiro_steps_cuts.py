@@ -111,7 +111,7 @@ import matplotlib.pyplot as plt
 
 from shabanipy.jj.iv_analysis import compute_voltage_offset
 from shabanipy.jj.shapiro import shapiro_step
-from shabanipy.utils.labber_io import LabberData
+from shabanipy.labber import LabberData
 
 plt.rcParams["axes.linewidth"] = 1.5
 plt.rcParams["xtick.direction"] = "in"

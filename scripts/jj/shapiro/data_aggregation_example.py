@@ -26,7 +26,7 @@ import os
 import numpy as np
 import h5py
 
-from shabanipy.utils.data_classifying import (
+from shabanipy.bulk.data_classifying import (
     DataClassifier,
     FilenamePattern,
     LogPattern,

@@ -130,7 +130,7 @@ from shabanipy.quantum_hall.wal.utils import (flip_field_axis,
                                               symmetrize_wal_data,
                                               compute_linear_soi,
                                               compute_dephasing_time)
-from shabanipy.utils.labber_io import LabberData
+from shabanipy.labber import LabberData
 
 plt.rcParams.update({'font.size': 14})
 plt.rcParams.update({'pdf.fonttype': 42})

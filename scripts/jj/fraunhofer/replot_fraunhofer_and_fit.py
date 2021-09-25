@@ -74,7 +74,7 @@ from scipy.signal import savgol_filter
 
 from lmfit import minimize
 
-from shabanipy.utils.labber_io import LabberData
+from shabanipy.labber import LabberData
 
 plt.rcParams["axes.linewidth"] = 1.5
 plt.rcParams["xtick.direction"] = "in"

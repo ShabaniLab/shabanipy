@@ -96,7 +96,7 @@ import matplotlib.pyplot as plt
 from shabanipy.jj.shapiro import normalize_db_power
 from shabanipy.jj.shapiro.binning import (bin_power_shapiro_steps,
                                        extract_step_weight)
-from shabanipy.utils.labber_io import LabberData
+from shabanipy.labber import LabberData
 
 with LabberData(PATH) as data:
 

@@ -102,8 +102,8 @@ from shabanipy.squid.squid_analysis import extract_switching_current
 from shabanipy.squid.squid_model import compute_squid_current
 from shabanipy.squid.cpr import (fraunhofer_envelope,
                                  finite_transparency_jj_current)
-from shabanipy.utils.labber_io import LabberData
-from shabanipy.utils.plotting import format_phase
+from shabanipy.labber import LabberData
+from shabanipy.bulk.plotting import format_phase
 
 plt.rcParams['axes.linewidth'] = 1.5
 plt.rcParams['font.size'] = 13

@@ -37,7 +37,7 @@ from shabanipy.jj.shapiro.plotting import (
 )
 from shabanipy.jj.shapiro.utils import correct_voltage_offset_per_power
 from shabanipy.jj.utils import compute_resistance, correct_voltage_offset
-from shabanipy.utils.data_processing import (
+from shabanipy.bulk.data_processing import (
     PreProcessingStep,
     ProcessCoordinator,
     ProcessingStep,

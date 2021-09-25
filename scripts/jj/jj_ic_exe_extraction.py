@@ -102,7 +102,7 @@ import matplotlib.pyplot as plt
 from scipy import constants
 
 from shabanipy.jj.iv_analysis import analyse_vi_curve
-from shabanipy.utils.labber_io import LabberData
+from shabanipy.labber import LabberData
 
 plt.rcParams["axes.linewidth"] = 1.5
 plt.rcParams["font.size"] = 13

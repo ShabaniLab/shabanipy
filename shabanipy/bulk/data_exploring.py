@@ -32,7 +32,8 @@ import numpy as np
 import toml
 from h5py import File, Group, Dataset
 
-from .labber_io import LabberData, LogEntry, StepConfig
+from shabanipy.labber import LabberData
+from shabanipy.labber.labber_io import LogEntry, StepConfig
 
 
 def make_group_name(labels: Dict[str, Any]) -> str:

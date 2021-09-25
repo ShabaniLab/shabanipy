@@ -92,7 +92,7 @@ from shabanipy.squid.squid_analysis import extract_switching_current
 from shabanipy.squid.squid_model import compute_squid_current
 from shabanipy.squid.cpr import (fraunhofer_envelope,
                                  finite_transparency_jj_current)
-from shabanipy.utils.labber_io import LabberData
+from shabanipy.labber import LabberData
 
 
 gates_number = {}

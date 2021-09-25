@@ -36,7 +36,8 @@ import toml
 from h5py import File, Group
 
 from .data_exploring import make_group_name
-from .labber_io import InstrumentConfig, LabberData, LogEntry, StepConfig
+from shabanipy.labber import LabberData
+from shabanipy.labber.labber_io import InstrumentConfig, LogEntry, StepConfig
 
 logger = logging.getLogger(__name__)
 

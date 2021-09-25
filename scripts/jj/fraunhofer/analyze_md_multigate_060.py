@@ -21,7 +21,7 @@ from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
 )
 from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center, symmetrize_fraunhofer
 from shabanipy.jj.utils import extract_switching_current
-from shabanipy.utils.labber_io import LabberData
+from shabanipy.labber import LabberData
 
 LABBER_DATA_DIR = os.environ["LABBER_DATA_DIR"]
 DATA_FILE_PATH = (
