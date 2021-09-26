@@ -81,7 +81,6 @@ class NamePattern(Copyable):
     names: Optional[List[str]] = None
 
     #: Regular expression that the name should match.
-    # XXX allow for multiple regexes
     regex: Optional[str] = None
 
     def match(self, name: str) -> bool:
