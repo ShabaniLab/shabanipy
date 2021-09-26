@@ -161,7 +161,7 @@ class FilenamePattern(NamePattern):
             return None
 
 
-@dataclass(init=True)
+@dataclass
 class ValuePattern(Copyable):
     """Pattern matching against a scalar value.
 
@@ -230,7 +230,7 @@ class ValuePattern(Copyable):
         return match
 
 
-@dataclass(init=True)
+@dataclass
 class RampPattern(Copyable):
     """Pattern used to identify a ramp.
 
@@ -319,7 +319,7 @@ class InstrumentConfigPattern(Copyable):
         return (default,)
 
 
-@dataclass(init=True)
+@dataclass
 class StepPattern(Copyable):
     """Pattern use to identify a particular step configuration in Labber."""
 
@@ -444,7 +444,7 @@ class StepPattern(Copyable):
                 return (config.value,)
 
 
-@dataclass(init=True)
+@dataclass
 class LogPattern(Copyable):
     """Pattern used to identify a log entry."""
 
@@ -498,7 +498,7 @@ class LogPattern(Copyable):
         return True
 
 
-@dataclass(init=True)
+@dataclass
 class MeasurementPattern(Copyable):
     """Pattern used to identify relevant measurements."""
 
@@ -608,7 +608,7 @@ class MeasurementPattern(Copyable):
         return classifiers
 
 
-@dataclass(init=True)
+@dataclass
 class DataClassifier:
     """Object used to identify and consolidate measurements in a single location.
 
