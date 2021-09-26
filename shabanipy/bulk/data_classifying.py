@@ -251,12 +251,9 @@ class RampPattern(Copyable):
     points: Optional[Union[ValuePattern, int]] = None
 
     def __post_init__(self):
-        # Turn dict into the proper class
         for f in fields(self):
             value = getattr(self, f.name)
-            if isinstance(value, dict):
-                setattr(self, f.name, f.type.__args__[0](**value))
-            elif isinstance(value, (int, float)):
+            if isinstance(value, (int, float)):
                 setattr(self, f.name, ValuePattern(value=value))
 
     @property
@@ -351,13 +348,6 @@ class StepPattern(Copyable):
     #: Level of the classifier.
     classifier_level: int = 0
 
-    def __post_init__(self):
-        if isinstance(self.ramps, list) and isinstance(self.ramps[0], dict):
-            self.ramps = [RampPattern(**rp) for rp in self.ramps]
-        if isinstance(self.name, dict):
-            self.name = NamePattern(**self.name)
-        if isinstance(self.value, dict):
-            self.value = ValuePattern(**self.value)
 
     def match(self, index: int, config: StepConfig) -> bool:
         """Match a step that meet all the specify pattern."""
@@ -466,14 +456,6 @@ class LogPattern(Copyable):
     # aggregated data file if available.
     is_required: Optional[bool] = True
 
-    def __post_init__(self):
-        if isinstance(self.pattern, dict):
-            self.pattern = NamePattern(**self.pattern)
-        if not isinstance(self.pattern, (int, NamePattern)):
-            raise ValueError(
-                "The pattern of a Logpattern should be int or NamePattern got:"
-                f" {self.pattern, type(self.pattern)}"
-            )
 
     def match(self, index: int, entry: LogEntry) -> bool:
         """Match a log entry on its index or name.
@@ -518,19 +500,6 @@ class MeasurementPattern(Copyable):
     #: to steps ramped due to relations but that are not relevant. Un-ramped steps
     #: are always omitted.
     excluded_steps: List[Union[NamePattern, int]] = field(default_factory=list)
-
-    def __post_init__(self) -> None:
-        if isinstance(self.filename_pattern, dict):
-            self.filename_pattern = FilenamePattern(**self.filename_pattern)
-        if isinstance(self.steps[0], dict):
-            self.steps = [StepPattern(**v) for v in self.steps]  # type:ignore
-        if isinstance(self.logs[0], dict):
-            self.logs = [LogPattern(**v) for v in self.logs]  # type:ignore
-
-        if not self.logs:
-            raise ValueError(
-                "No declared logs of interest, data consolidation would be empty."
-            )
 
     def match(self, dataset: LabberData) -> bool:
         """Determine if a given Labber file match the specified pattern."""
