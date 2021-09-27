@@ -59,7 +59,7 @@ clf = DataClassifier(
             filename_pattern=FilenamePattern(
                 regex=f"^.+-(?P<sample>{SAMPLE_NAME})-.+$", use_in_classification=True
             ),
-            steps=[
+            patterns=[
                 StepPattern(
                     name="Bias",
                     name_pattern=0,
@@ -82,15 +82,15 @@ clf = DataClassifier(
                     use_in_classification=True,
                     classifier_level=1,
                 ),
+                LogPattern(name="Voltage", pattern=0),
             ],
-            logs=[LogPattern(name="Voltage", pattern=0)],
         ),
         MeasurementPattern(
             name="Shapiro",
             filename_pattern=FilenamePattern(
                 regex=f"^.+-(?P<sample>{SAMPLE_NAME})-.+$", use_in_classification=True
             ),
-            steps=[
+            patterns=[
                 StepPattern(name="Bias", name_pattern=0, ramps=[RampPattern()],),
                 StepPattern(
                     name="RF ON",
@@ -120,8 +120,8 @@ clf = DataClassifier(
                     use_in_classification=True,
                     classifier_level=2,
                 ),
+                LogPattern(name="Voltage", pattern=0),
             ],
-            logs=[LogPattern(name="Voltage", pattern=0)],
         ),
     ]
 )

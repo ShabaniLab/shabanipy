@@ -13,6 +13,7 @@ import logging
 import os
 import pprint
 import re
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass, field, fields
@@ -41,7 +42,16 @@ from shabanipy.labber.labber_io import InstrumentConfig, LogEntry, StepConfig
 
 logger = logging.getLogger(__name__)
 
-# XXX allow to make pattern strict (match all conditions) or tolerant (match one condition)
+
+class LabberDataPattern(ABC):
+    """A pattern to match against a Labber datafile."""
+
+    @abstractmethod
+    def match_file(self, datafile: LabberData) -> bool:
+        """Match self against the given (opened) LabberData."""
+        raise NotImplementedError(
+            "Your subclass must implement this match_file() method."
+        )
 
 
 class Copyable:
@@ -317,8 +327,8 @@ class InstrumentConfigPattern(Copyable):
 
 
 @dataclass
-class StepPattern(Copyable):
-    """Pattern use to identify a particular step configuration in Labber."""
+class StepPattern(Copyable, LabberDataPattern):
+    """A pattern to match against stepped channels."""
 
     #: Name of the step to use when retrieving data or classifying using that step
     name: str
@@ -347,7 +357,6 @@ class StepPattern(Copyable):
 
     #: Level of the classifier.
     classifier_level: int = 0
-
 
     def match(self, index: int, config: StepConfig) -> bool:
         """Match a step that meet all the specify pattern."""
@@ -392,19 +401,25 @@ class StepPattern(Copyable):
         logger.debug("- successful match")
         return True
 
-    def match_steps(
-        self, steps: List[StepConfig], instr_configs: List[InstrumentConfig]
-    ) -> bool:
-        """Match self against the step list and instrument configurations."""
+    def match_file(self, datafile: LabberData) -> bool:
+        """Match self against the stepped channels in the datafile.
+
+        If no step channels match and a `fallback` pattern is specified, the instrument
+        configs are checked.
+
+        If a `default` value is specified, the pattern always matches regardless of the
+        step channels and instrument configs.
+        """
         if self.default is not None:
             logger.debug("default value specified, always matches")
             return True
-        if any(self.match(i, step) for i, step in enumerate(steps)):
+        if any(self.match(i, step) for i, step in enumerate(datafile.steps)):
             return True
         if self.fallback:
             logger.debug("falling back to instrument config")
             return any(
-                self.fallback.match(instr_config) for instr_config in instr_configs
+                self.fallback.match(instr_config)
+                for instr_config in datafile.instrument_configs
             )
 
     def extract(self, dataset: LabberData, config: StepConfig) -> tuple:
@@ -435,8 +450,8 @@ class StepPattern(Copyable):
 
 
 @dataclass
-class LogPattern(Copyable):
-    """Pattern used to identify a log entry."""
+class LogPattern(Copyable, LabberDataPattern):
+    """A pattern to match against logged channels."""
 
     #: Name to use when extracting the data.
     name: str
@@ -455,7 +470,6 @@ class LogPattern(Copyable):
     # If the LogPattern is not required, any matching data will be included in the
     # aggregated data file if available.
     is_required: Optional[bool] = True
-
 
     def match(self, index: int, entry: LogEntry) -> bool:
         """Match a log entry on its index or name.
@@ -479,9 +493,15 @@ class LogPattern(Copyable):
         logger.debug("- successful match")
         return True
 
+    def match_file(self, datafile: LabberData) -> bool:
+        """Match self against the logged channels in the datafile."""
+        if not self.is_required:
+            return True
+        return any(self.match(idx, log) for idx, log in enumerate(datafile.logs))
+
 
 @dataclass
-class MeasurementPattern(Copyable):
+class MeasurementPattern(Copyable, LabberDataPattern):
     """Pattern used to identify relevant measurements."""
 
     #: Name used to identify this kind of measurement. Used in post-processing.
@@ -490,42 +510,21 @@ class MeasurementPattern(Copyable):
     #: Pattern that the filename of the measurement must match.
     filename_pattern: Optional[FilenamePattern] = None
 
-    #: Steps that should be present in the measurement.
-    steps: List[StepPattern] = field(default_factory=list)
-
-    #: Logs channels that should be present in the measurement.
-    logs: List[LogPattern] = field(default_factory=list)
+    # list of patterns describing the measurement
+    patterns: List[LabberDataPattern] = field(default_factory=list)
 
     #: Steps that should be excluded from the consolidated file. This applies to
     #: to steps ramped due to relations but that are not relevant. Un-ramped steps
     #: are always omitted.
     excluded_steps: List[Union[NamePattern, int]] = field(default_factory=list)
 
-    def match(self, dataset: LabberData) -> bool:
-        """Determine if a given Labber file match the specified pattern."""
-
-        # Check the filename and exit early if it fails
-        if self.filename_pattern and not self.filename_pattern.match(dataset.filename):
+    def match_file(self, datafile: LabberData) -> bool:
+        """Match self against the given Labber datafile."""
+        if self.filename_pattern is not None and not self.filename_pattern.match(
+            datafile.filename
+        ):
             return False
-
-        for step_pattern in self.steps:
-            logger.debug(f"matching step pattern '{step_pattern.name}'")
-            if not step_pattern.match_steps(
-                dataset.steps, dataset.instrument_configs
-            ):
-                logger.debug(
-                    f"- rejecting {dataset.filename} for measurement pattern '{self.name}': step pattern '{step_pattern.name}' does not match any steps"
-                )
-                return False
-
-        # Check required log patterns.
-        logs = dataset.logs
-        for lpattern in [lp for lp in self.logs if lp.is_required]:
-            logger.debug(f"matching log pattern '{lpattern.name}'")
-            if not any(lpattern.match(i, l) for i, l in enumerate(logs)):
-                return False
-
-        return True
+        return all(p.match_file(datafile) for p in self.patterns)
 
     def match_excluded_steps(self, index: int, config: StepConfig) -> bool:
         """Determine if a config match any of the excluded channels."""
@@ -554,7 +553,11 @@ class MeasurementPattern(Copyable):
             logger.debug(f"Classifiers extracted from {dataset.filename}: {value}")
             classifiers.update(value)
 
-        for pattern in (p for p in self.steps if p.use_in_classification):
+        for pattern in (
+            p
+            for p in self.patterns
+            if isinstance(p, StepPattern) and p.use_in_classification
+        ):
             found_match = False
             for i, step in enumerate(dataset.steps):
                 if pattern.match(i, step):
@@ -630,7 +633,7 @@ class DataClassifier:
                             )
                             for p in self.patterns:
                                 logger.debug(f"matching measurement pattern '{p.name}'")
-                                if p.match(f):
+                                if p.match_file(f):
                                     datasets[p.name].append(path)
                                     logger.debug(
                                         f"- accepted {datafile} "
@@ -833,7 +836,9 @@ class DataClassifier:
 
                 # Check if a pattern match and if yes determine if we need to
                 # extract this parameter and if yes under what name
-                for pattern in meas_pattern.steps:
+                for pattern in (
+                    p for p in meas_pattern.patterns if isinstance(p, StepPattern)
+                ):
                     if pattern.match(i, stepcf):
                         if pattern.use_in_classification:
                             should_skip = True
@@ -851,6 +856,9 @@ class DataClassifier:
 
             # Find and extract the relevant log channels
             n_matched_logs = 0
+            log_patterns = [
+                p for p in meas_pattern.patterns if isinstance(p, LogPattern)
+            ]
             for i, entry in enumerate(f.logs):
                 # Collect only requested log entries.
                 should_skip = True
@@ -859,7 +867,7 @@ class DataClassifier:
 
                 # Check if a pattern match and if yes determine if we need to
                 # extract this log entry and if yes under what name
-                for lpattern in meas_pattern.logs:
+                for lpattern in log_patterns:
                     if lpattern.match(i, entry):
                         n_matched_logs += 1
                         should_skip = False
@@ -883,8 +891,8 @@ class DataClassifier:
                 else:
                     to_store[name] = data
 
-            if n_matched_logs > len(meas_pattern.logs):
-                log_names = [log.name for log in meas_pattern.logs]
+            if n_matched_logs > len(log_patterns):
+                log_names = [log.name for log in log_patterns]
                 raise RuntimeError(
                     "More logs were matched than there is log patterns. "
                     f"The matched logs are {[l for l in to_store if l in log_names]}"
