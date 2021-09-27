@@ -367,4 +367,4 @@ class ProcessCoordinator:
                         continue
                     logger.debug(f"    for {classifiers}")
                     step.run(group, classifiers, self.summary_directory)
-        logger.info(f"summarized data saved to directory {self.summary_directory}")
+        logger.info(f"summarized data saved to directory '{self.summary_directory}/'")
