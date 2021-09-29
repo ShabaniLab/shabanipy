@@ -36,9 +36,10 @@ import numpy as np
 import toml
 from h5py import File, Group
 
-from .data_exploring import make_group_name
 from shabanipy.labber import LabberData
 from shabanipy.labber.labber_io import InstrumentConfig, LogEntry, StepConfig
+
+from .data_exploring import make_group_name
 
 logger = logging.getLogger(__name__)
 
@@ -290,7 +291,7 @@ class RampPattern(Copyable):
 
 
 @dataclass
-class InstrumentConfigPattern(Copyable):
+class InstrumentConfigPattern(Copyable, LabberDataPattern):
     """Pattern used to identify an instrument configuration."""
 
     # user-specified name of the instrument/driver appearing in the Name/Address column
@@ -324,6 +325,9 @@ class InstrumentConfigPattern(Copyable):
                 return (config.get(self.quantity),)
         logger.debug("no instrument config found, using default")
         return (default,)
+
+    def match_file(self, datafile: LabberData) -> bool:
+        return any(self.match(config) for config in datafile.instrument_configs)
 
 
 @dataclass
