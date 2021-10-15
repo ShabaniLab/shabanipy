@@ -111,6 +111,7 @@ def plot_extracted_switching_current(
     current_field_conversion: Optional[float] = None,
     correct_v_offset: Optional[bool] = True,
     symmetrize_fraun: Optional[bool] = False,
+    center_fraun: Optional[bool] = True,
     savgol_windowl: Optional[int] = None,
     savgol_polyorder: Optional[int] = None,
     bias_limits: Optional[np.ndarray] = None,
@@ -138,6 +139,8 @@ def plot_extracted_switching_current(
     symmetrize_fraun : bool, optional
         Do you want to symmetrize the Fraunhofer or not. Symmetrizing is best when the Fraunhofer
         field range is uneven    
+    center_fraun : bool, optional
+        Center the fraunofer pattern around 0mT.  
     savgol_windowl : int, optional
         Window length of savgol_filter (has to be an odd number).
     savgol_polyorder: int, optional
@@ -167,12 +170,12 @@ def plot_extracted_switching_current(
     ic = savgol_filter(ic, savgol_windowl, savgol_polyorder) if savgol_windowl and savgol_polyorder else ic
 
     #Find max of fraunhofer(which should be in the center) and center field around 0
-    centered_field = out_field[:,0] - find_fraunhofer_center(out_field[:,0], ic)
+    field = out_field[:,0] - find_fraunhofer_center(out_field[:,0], ic) if center_fraun else out_field
     
     #Symmetrize the field and ic
-    if symmetrize_fraun: centered_field, ic = symmetrize_fraunhofer(centered_field, ic)
+    if symmetrize_fraun: field, ic = symmetrize_fraunhofer(field, ic)
     
-    pm = m_ax.plot(centered_field*1e3, #field: 1e3 factor to convert from T to mT 
+    pm = m_ax.plot(field*1e3, #field: 1e3 factor to convert from T to mT 
         ic*1e6,    #ic: 1e6 factor to convert from A to µA
         color = 'royalblue',
         linewidth = 5
@@ -279,6 +282,7 @@ def plot_current_distribution(
     current_field_conversion: Optional[float] = None,
     correct_v_offset: Optional[bool] = True,
     symmetrize_fraun: Optional[bool] = False,
+    center_fraun: Optional[bool] = True,
     savgol_windowl: Optional[int] = None,
     savgol_polyorder: Optional[int] = None,
     x_limits: Optional[np.ndarray] = None,
@@ -310,6 +314,8 @@ def plot_current_distribution(
     symmetrize_fraun : bool, optional
         Do you want to symmetrize the Fraunhofer or not. Symmetrizing is best when the Fraunhofer
         field range is uneven
+    center_fraun : bool, optional
+        Center the fraunofer pattern around 0mT.  
     savgol_windowl : int, optional
         Window length of savgol_filter (has to be an odd number).
     savgol_polyorder: int, optional
@@ -343,13 +349,13 @@ def plot_current_distribution(
     ic = savgol_filter(ic, savgol_windowl, savgol_polyorder) if savgol_windowl and savgol_polyorder else ic
 
     #Find max of fraunhofer(which should be in the center) and center field around 0
-    centered_field = out_field[:,0] - find_fraunhofer_center(out_field[:,0], ic)
+    field = out_field[:,0] - find_fraunhofer_center(out_field[:,0], ic) if center_fraun else out_field
     
     #Symmetrize the field and ic
-    if symmetrize_fraun: centered_field, ic = symmetrize_fraunhofer(centered_field, ic)
+    if symmetrize_fraun: field, ic = symmetrize_fraunhofer(field, ic)
 
     #Extract current distributions with symmertizied field and ic
-    x, jx = extract_current_distribution(centered_field, ic, FIELD_TO_WAVENUM, jj_width, len(out_field))
+    x, jx = extract_current_distribution(field, ic, FIELD_TO_WAVENUM, jj_width, len(out_field))
 
     pm = m_ax.plot(x*1e6, #x: 1e6 factor converts from m into µm
         jx.real, #  Jx: is in units of µA/µm
