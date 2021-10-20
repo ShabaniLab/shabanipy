@@ -14,10 +14,10 @@ import re
 import sys
 from pathlib import Path
 
-import matplotlib as mpl
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import rcParams
+from matplotlib.figure import Figure
 
 from shabanipy.bulk.data_processing import (
     PreProcessingStep,
@@ -967,8 +967,17 @@ def plot_summary(
         )
         return
     try:
-        fig, ax = plot(
-            x, y, xlabel=xlabel, ylabel=ylabel, title=title, label=legend, **plot_kwargs
+        fig = Figure()
+        ax = fig.add_subplot()
+        plot(
+            x,
+            y,
+            xlabel=xlabel,
+            ylabel=ylabel,
+            title=title,
+            ax=ax,
+            label=legend,
+            **plot_kwargs,
         )
     except Exception as e:
         logger.warning(
@@ -996,7 +1005,7 @@ def plot2d_summary(
     **params,
 ):
     """Plot 2-dimensional data and save figure."""
-    mpl.rcParams.update(rc_params)
+    rcParams.update(rc_params)
     if any(len(a.shape) > 2 for a in (x, y, z)):
         logger.warning(
             f"Failed to plot {params['labber_filename']}: "
@@ -1012,7 +1021,9 @@ def plot2d_summary(
         x, y, z = x[:n], y[:n], z[:n]
     min_z = np.min(z)
     try:
-        fig, ax = plot2d(
+        fig = Figure()
+        ax = fig.add_subplot()
+        plot2d(
             x,
             y,
             z,
@@ -1020,6 +1031,7 @@ def plot2d_summary(
             ylabel=ylabel,
             zlabel=zlabel,
             title=title,
+            ax=ax,
             **pcm_kwargs,
         )
     except Exception as e:

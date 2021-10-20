@@ -5,7 +5,7 @@ All plot formatting/styling should be left to the package consumer (ideally cont
 by an mplstyle sheet).
 """
 import numpy as np
-from matplotlib.figure import Figure
+from matplotlib.pyplot import subplots
 
 
 def plot(x, y, xlabel=None, ylabel=None, title=None, ax=None, **plot_kwargs):
@@ -96,8 +96,6 @@ def plot2d(
 
 def _fig_ax(ax=None):
     if ax is None:
-        fig = Figure()
-        ax = fig.add_subplot()
-        return fig, ax
+        return subplots()
     else:
         return ax.get_figure(), ax
