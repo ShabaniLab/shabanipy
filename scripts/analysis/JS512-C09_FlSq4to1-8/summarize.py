@@ -28,6 +28,7 @@ from shabanipy.bulk.data_processing import (
 from shabanipy.constants import VECTOR9_AMPS_PER_TESLA_X, VECTOR10_AMPS_PER_TESLA_X
 from shabanipy.logging import ConsoleFormatter, configure_logging
 from shabanipy.plotting import jy_pink, plot, plot2d
+from shabanipy.plotting.utils import stamp
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
@@ -926,19 +927,6 @@ def out_dir(params) -> Path:
     out_dir = Path(params["directory"], flat_clfs(params)["device"])
     out_dir.mkdir(parents=True, exist_ok=True)
     return out_dir
-
-
-def stamp(ax, text):
-    """Stamp the plot with an ID."""
-    ax.text(
-        1,
-        1,
-        text,
-        size=0.4 * rcParams["font.size"],
-        ha="right",
-        va="bottom",
-        transform=ax.transAxes,
-    )
 
 
 def plot_summary(
