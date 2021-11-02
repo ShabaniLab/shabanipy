@@ -40,7 +40,7 @@ def plot(x, y, xlabel=None, ylabel=None, title=None, ax=None, **plot_kwargs):
     ax.set_ylabel(ylabel)
 
     lines = ax.plot(x, y, **plot_kwargs)
-    if plot_kwargs.get("label"):
+    if "label" in plot_kwargs:
         ax.legend()
     return fig, ax
 
