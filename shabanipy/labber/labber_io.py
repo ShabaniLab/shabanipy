@@ -496,6 +496,7 @@ class LabberData:
         # Get the channel description that contains important details
         # (is_vector, is_complex, )
         channel = self.channels[index]  # type: ignore
+
         x_data: List[np.ndarray] = []
         vectorial_data = bool(isinstance(channel, LogEntry) and channel.is_vector)
         vec_dim = 0

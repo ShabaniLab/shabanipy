@@ -37,7 +37,7 @@ import toml
 from h5py import File, Group
 
 from shabanipy.labber import LabberData
-from shabanipy.labber.labber_io import InstrumentConfig, LogEntry, StepConfig, maybe_decode
+from shabanipy.labber.labber_io import InstrumentConfig, LogEntry, StepConfig
 
 from .data_exploring import make_group_name
 
@@ -784,6 +784,7 @@ class DataClassifier:
             clf[k].column_name for k, mask in zip(names, require_filtering) if mask
         ]
         all_values = [clf[k].values for k in names]
+
         # This assumes that all combination of classifiers exist which may not be true
         # if the measurement was interrupted.
         # XXX this could be optimized for relation that enforce equality
@@ -828,9 +829,6 @@ class DataClassifier:
         x_vector_data_names = []
         to_store = {}
 
-        h = File(path, 'r')
-        channel_list = [maybe_decode(n) for n, _ in h['Data']['Channel names']]
-
         with LabberData(path) as f:
             # Find and extract the relevant step channels (ie not used in classifying)
             for i, stepcf in [
@@ -858,9 +856,7 @@ class DataClassifier:
 
                 # Get the data which are already in a meaningful shape (see
                 # LabberData.get_data)
-
-                if name in channel_list:
-                    to_store[name] = f.get_data(stepcf.name, filters=filters)
+                to_store[name] = f.get_data(stepcf.name, filters=filters)
 
             # Find and extract the relevant log channels
             n_matched_logs = 0
