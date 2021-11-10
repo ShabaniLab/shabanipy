@@ -181,12 +181,28 @@ def correct_voltage_offset(
 
 
 def compute_resistance(
-    bias_current: np.ndarray, measured_voltage: np.ndarray, debug: bool = False
+    bias_current: np.ndarray, measured_voltage: np.ndarray
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Compute the differential from the VI characteristic of a JJ.
+    """Compute the differential resistance dV/dI from a V(I) characteristic.
 
+    The bias current is assumed to be swept along the last axis of the input arrays.
+
+    Parameters
+    ----------
+    bias_current: np.ndarray
+        n-dimensional array of bias current values
+    measured_voltage: np.ndarray
+        n-dimensional array of measured DC voltage values
+
+    Returns
+    -------
+    (np.ndarray, np.ndarray)
+        The input bias_current (unchanged) and the differential resistance dV/dI
+        computed along the last axis of the input arrays and having the same shape.
     """
-    resistance = np.gradient(measured_voltage, bias_current[0], axis=-1)
+    resistance = np.gradient(measured_voltage, axis=-1) / np.gradient(
+        bias_current, axis=-1
+    )
     return bias_current, resistance
 
 
