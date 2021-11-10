@@ -444,6 +444,76 @@ def plot_inplane_vs_bias(
     cb = f.colorbar(pm, ax = m_ax,pad = 0.02,)
     cb.ax.tick_params(direction='in')
     cb.ax.set_xlabel(r'$\frac{dV}{dI} (\Omega)$', labelpad = 10)
+
+def plot_inplane_vs_outofplane(
+    inplane_field: np.ndarray,
+    out_field: np.ndarray,
+    dR: np.ndarray,
+    savgol_windowl: Optional[int] = None,
+    savgol_polyorder: Optional[int] = None,
+    cvmax: Optional[float] = None,
+    cvmin: Optional[float] = None,
+    in_field_limits: Optional[np.ndarray] = None,
+    out_field_limits: Optional[np.ndarray] = None,
+    fig_size: Optional[np.ndarray] = None,
+    debug: bool = False,
+) -> None:
+    """Plot the differential resistance as a function of in-plane magnetic field and bias.
+
+    Parameters
+    ----------
+    inplane_field : np.ndarray
+        2D array of the applied in-plane magnetic field.
+    out_field : np.ndarray
+        2D array of the applied out-of-plane magnetic field.
+    dR : np.ndarray
+        2D array of the differential resistance.
+    savgol_windowl : int, optional
+        Window length of savgol_filter.
+    savgol_polyorder: int, optional
+        Polyorder of savgol_filter.
+    cvmax : float, optional
+        Colormap vmax value.
+    cvmin : float, optional
+        Colormap vmin value.
+    in_field_limits : np.ndarray, optional
+        In-plane field plot limits.
+    out_field_limits : np.ndarray, optional
+        Out-of-plane field plot limits.
+    fig_size : np.ndarray, optional
+        Figure size of plot.
+    debug : bool, optional
+        Should debug information be provided, by default False.
+
+    """
+    f = plt.figure(constrained_layout=True, figsize = fig_size if fig_size else mpl.rcParams['figure.figsize'])
+    m_ax = f.gca()
+    
+    # Use savgol_filter if params are available
+    dR = savgol_filter(dR,savgol_windowl,savgol_polyorder) if savgol_windowl and savgol_polyorder else dR
+    
+    pm = m_ax.pcolormesh(out_field*1e3, #field: 1e3 to convert from T to mT,
+        inplane_field*1e3, #bias: 1e6 to convert from A to µA
+        dR, #dV_dI: 1 to account of gain of amplifier hooked up to DMM
+        shading = 'auto',
+        vmin = cvmin if cvmin else  0,
+        vmax = cvmax if cvmax else  200,
+        cmap = 'jy_pink',
+        linewidth=0,
+        rasterized = True
+        )
+
+    if in_field_limits:
+         m_ax.set_ylim(in_field_limits) 
+    if out_field_limits: 
+         m_ax.set_xlim(out_field_limits)
+
+    m_ax.set_ylabel('In-plane Field (mT)', labelpad = 20)
+    m_ax.set_xlabel('Out-of-plane Field (mT)')
+
+    cb = f.colorbar(pm, ax = m_ax,pad = 0.02,)
+    cb.ax.tick_params(direction='in')
+    cb.ax.set_xlabel(r'$dR(\Omega)$', labelpad = 10)
     
 def plot_inplane_vs_Ic_Rn(
     inplane_field: np.ndarray,
