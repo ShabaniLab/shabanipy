@@ -12,7 +12,7 @@
 from math import pi
 
 import numpy as np
-from scipy.constants import h, e
+from scipy.constants import e, h
 from scipy.interpolate import interp1d
 
 
@@ -41,7 +41,7 @@ def compute_squid_current(
     cpr2 : callable
         Function used to compute the current in the second junction. The
         callable should take the phase as first argument.
-    parameters1 : tuple
+    parameters2 : tuple
         Parameters to use to compute the current in the second junction.
     positive : bool, optional
         Should the computed current be positive or negative
