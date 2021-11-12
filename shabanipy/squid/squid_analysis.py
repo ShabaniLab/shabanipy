@@ -9,6 +9,8 @@
 """Functions used to analyse squid oscillations.
 
 """
+from warnings import warn
+
 import numpy as np
 
 
@@ -29,6 +31,10 @@ def extract_switching_current(field, bias, diff, threshold):
         Threshold value used to determine the critical current.
 
     """
+    warn(
+        "shabanipy.squid.squid_analaysis.extract_switching_current is deprecated. "
+        "Use shabanipy.dvdi.extract_switching_current instead."
+    )
     temp = np.greater(diff, threshold)
     index = np.argmax(temp, axis=-1).reshape((-1, 1))
     return field[:, 0], np.ravel(bias.take(index))
