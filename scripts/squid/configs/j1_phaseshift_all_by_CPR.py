@@ -1,5 +1,6 @@
 #: Common folder in which the data file are related.
-DATA_ROOT_FOLDER = '/Users/mdartiailh/Labber/Data/2019/04'
+from shabanipy.labber import get_data_dir
+DATA_ROOT_FOLDER = get_data_dir() / '2019/04'
 
 #: Dictionary of parallel field, file path.
 DATA_PATHS = {

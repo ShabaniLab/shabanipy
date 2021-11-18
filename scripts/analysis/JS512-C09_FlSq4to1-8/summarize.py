@@ -1037,6 +1037,8 @@ if __name__ == "__main__":
         s_steps = [ss for ss in s_steps if ss.name in sys.argv[1:]]
     required_inputs = set.union(*[set(ss.input_quantities) for ss in s_steps])
     pp_steps = [pps for pps in pp_steps if set(pps.output_quantities) & required_inputs]
+    logger.info(f"pre-processing: {[p.name for p in pp_steps]}")
+    logger.info(f"summarizing: {[s.name for s in s_steps]}")
     pc = ProcessCoordinator(
         archive_path="data_aggregated.hdf5",
         duplicate_path="data_preprocessed.hdf5",

@@ -21,7 +21,9 @@ assume the following:
 CONFIG_NAME = 'j1_phaseshift_all_by_CPR.py'
 
 #: Common folder in which the data file are related.
-DATA_ROOT_FOLDER = '/Users/mdartiailh/Labber/Data/2019/04'
+from shabanipy.labber import get_data_dir
+DATA_ROOT_FOLDER = get_data_dir() / '2019/04'
+print(DATA_ROOT_FOLDER)
 
 #: Dictionary of parallel field, file path.
 DATA_PATHS = {400: 'Data_0405/JS124S_BM002_465.hdf5'}
@@ -123,12 +125,16 @@ gates_number = {}
 datasets = {}
 datasets_color = {}
 
+print(DATA_PATHS)
+
 # Load and filter all the datasets
 for f, ppath in DATA_PATHS.items():
 
     datasets[f] = {}
     datasets_color[f] = {}
 
+    print(DATA_ROOT_FOLDER)
+    print(os.path.join(DATA_ROOT_FOLDER, ppath))
     with LabberData(os.path.join(DATA_ROOT_FOLDER, ppath)) as data:
 
         shape = data.compute_shape((BIAS_COLUMN, FIELD_COLUMN))
