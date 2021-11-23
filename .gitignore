@@ -105,6 +105,7 @@ venv.bak/
 
 # vim files
 *.swp
+*.swo
 *.un~
 
 # Vscode
