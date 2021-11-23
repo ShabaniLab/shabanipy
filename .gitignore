@@ -120,3 +120,6 @@ pyproject.toml
 
 # macOS
 .DS_Store
+
+# HDF5 data files
+*.hdf5
