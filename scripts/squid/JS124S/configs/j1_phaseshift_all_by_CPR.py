@@ -1,5 +1,6 @@
 #: Common folder in which the data file are related.
-DATA_ROOT_FOLDER = '/Users/mdartiailh/Labber/Data/2019/04'
+from shabanipy.labber import get_data_dir
+DATA_ROOT_FOLDER = get_data_dir() / "2019/04"
 
 #: Dictionary of parallel field, file path.
 DATA_PATHS = {
@@ -88,5 +89,4 @@ CONVERSION_FACTOR_CORRECTION = {
 MULTIPLE_TRANSPARENCIES = [0.01, 0.6, 0.95]
 
 #: Path to which save the graphs and fitted parameters.
-# ANALYSIS_PATH = ('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/'
-#                  'SQUID/By/active_t_fixed')
+ANALYSIS_PATH = f"{__file__.split('.py')[0]}_results/"

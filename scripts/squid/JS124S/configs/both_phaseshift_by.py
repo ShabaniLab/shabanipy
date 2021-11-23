@@ -1,5 +1,6 @@
 #: Common folder in which the data file are related.
-DATA_ROOT_FOLDER = '/Users/mdartiailh/Labber/Data/2019'
+from shabanipy.labber import get_data_dir
+DATA_ROOT_FOLDER = get_data_dir() / '2019'
 
 #: Dictionary of parallel field: pair of file path. The first path should refer
 #: to the dataset in which the j1 junction is gated, the second to the dataset
@@ -91,5 +92,4 @@ PLOT_FITS = 'color'
 MULTIPLE_TRANSPARENCIES = []#[0.01, 0.6, 0.95]
 
 #: Path to which save the graphs and fitted parameters.
-ANALYSIS_PATH = ('/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/'
-                 'SQUID/phaseshift_low_field/combined/By_paper')
+ANALYSIS_PATH = f"./{__file__.split('.py')[0]}_results/"

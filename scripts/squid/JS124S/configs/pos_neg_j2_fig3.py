@@ -1,5 +1,6 @@
 #: Common folder in which the data file are related.
-DATA_ROOT_FOLDER = '/Users/mdartiailh/Labber/Data/2019/05'
+from shabanipy.labber import get_data_dir
+DATA_ROOT_FOLDER = get_data_dir() / "2019/05"
 
 #: Dictionary of parallel field, file path.
 DATA_PATHS = {
@@ -86,4 +87,4 @@ PLOT_INITIAL_GUESS = True
 PLOT_FITS = 'color'
 
 #: Path to which save the graphs and fitted parameters.
-ANALYSIS_PATH = '/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/SQUID/phaseshift_low_field/symmetric_j2'
+ANALYSIS_PATH = f"{__file__.split('.py')[0]}_results/"

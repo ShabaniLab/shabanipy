@@ -20,9 +20,6 @@ assume the following:
 #: a python file defining all the constants defined above # --- Execution
 CONFIG_NAME = 'j2_phaseshift_all_by_config.py'
 
-#: Common folder in which the data file are related.
-DATA_ROOT_FOLDER = '/Users/mdartiailh/Labber/Data/2019/04'
-
 #: Dictionary of parallel field, file path.
 DATA_PATHS = {400: 'Data_0405/JS124S_BM002_465.hdf5'}
 
@@ -85,9 +82,6 @@ PLOT_FITS = True
 #: Plot multiple fits with different transparencies
 MULTIPLE_TRANSPARENCIES = []
 
-#: Path to which save the graphs and fitted parameters.
-ANALYSIS_PATH = ''
-
 # =============================================================================
 # --- Execution ---------------------------------------------------------------
 # =============================================================================
@@ -109,6 +103,10 @@ from shabanipy.squid.cpr import (fraunhofer_envelope,
 from shabanipy.labber import LabberData
 from shabanipy.plotting.utils import format_phase
 
+from patch_labber_io import patch_labberdata
+
+patch_labberdata()
+
 plt.rcParams['axes.linewidth'] = 1.5
 plt.rcParams['font.size'] = 13
 plt.rcParams['pdf.fonttype'] = 42
@@ -120,6 +118,7 @@ if CONFIG_NAME:
     with open(path) as f:
         exec(f.read())
     if ANALYSIS_PATH:
+        os.makedirs(ANALYSIS_PATH, exist_ok=True)
         shutil.copy(path, ANALYSIS_PATH)
 
 if not DATA_ROOT_FOLDER:
@@ -136,14 +135,10 @@ for f, ppath in DATA_PATHS.items():
     datasets_color[f] = {}
 
     with LabberData(os.path.join(DATA_ROOT_FOLDER, ppath)) as data:
-
-        shape = data.compute_shape((BIAS_COLUMN, FIELD_COLUMN))
-        # Often we do not do all perp field so allow to reshape as needed
-        shape = (shape[0], -1)
         frange = FIELD_RANGES[f]
         if GATE_COLUMN is not None:
             gates = [g for g in np.unique(data.get_data(GATE_COLUMN))
-                    if g not in EXCLUDED_GATES]
+                    if g not in EXCLUDED_GATES and not np.isnan(g)]
         else:
             gates = [-4.5]
         gates_number[f] = len(gates)
@@ -156,12 +151,10 @@ for f, ppath in DATA_PATHS.items():
 
         for i, gate in enumerate(gates):
             filt = {GATE_COLUMN: gate} if GATE_COLUMN is not None else {}
-            field = data.get_data(FIELD_COLUMN, filters=filt).reshape(shape).T
-            bias = data.get_data(BIAS_COLUMN, filters=filt).reshape(shape).T
-            li_index = data.name_or_index_to_index(RESISTANCE_COLUMN)
-            diff = (data.get_data(li_index, filters=filt) +
-                    1j*data.get_data(li_index + 1, filters=filt))
-            diff = np.abs(diff).reshape(shape).T
+            field = data.get_data(FIELD_COLUMN, filters=filt)
+            bias = data.get_data(BIAS_COLUMN, filters=filt)
+            diff = data.get_data(RESISTANCE_COLUMN, filters=filt)
+            diff = np.abs(diff)
             rfield, curr = extract_switching_current(field, bias, diff,
                                                      RESISTANCE_THRESHOLD)
 

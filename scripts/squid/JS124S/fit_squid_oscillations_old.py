@@ -14,9 +14,10 @@ assume the following:
 - at a given field the envelope of the squid oscillation is fixed
 
 """
+from shabanipy.labber import get_data_dir
 
 #: Common folder in which the data file are related.
-DATA_ROOT_FOLDER = '/Users/mdartiailh/Labber/Data/2019/04'
+DATA_ROOT_FOLDER = get_data_dir() / '2019/04'
 
 #: Dictionary of parallel field, file path.
 DATA_PATHS = {400: 'Data_0405/JS124S_BM002_465.hdf5',
@@ -74,7 +75,7 @@ PLOT_INITIAL_GUESS = False
 PLOT_FITS = True
 
 #: Path to which save the graphs and fitted parameters.
-ANALYSIS_PATH = '/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/SQUID/By'
+ANALYSIS_PATH = f"{__file__.split('.py')[0]}_results"
 
 # =============================================================================
 # --- Execution ---------------------------------------------------------------
@@ -94,9 +95,14 @@ from shabanipy.squid.cpr import (fraunhofer_envelope,
                                  finite_transparency_jj_current)
 from shabanipy.labber import LabberData
 
+from patch_labber_io import patch_labberdata
+
+patch_labberdata()
 
 gates_number = {}
 datasets = {}
+
+os.makedirs(ANALYSIS_PATH, exist_ok=True)
 
 # Load and filter all the datasets
 for f, ppath in DATA_PATHS.items():
@@ -104,10 +110,6 @@ for f, ppath in DATA_PATHS.items():
     datasets[f] = {}
 
     with LabberData(os.path.join(DATA_ROOT_FOLDER, ppath)) as data:
-
-        shape = data.compute_shape((BIAS_COLUMN, FIELD_COLUMN))
-        # Often we do not do all perp field so allow to reshape as needed
-        shape = (shape[0], -1)
         frange = FIELD_RANGES[f]
         gates_number[f] = (data.get_axis_dimension(GATE_COLUMN) -
                            len(EXCLUDED_GATES))
@@ -119,16 +121,14 @@ for f, ppath in DATA_PATHS.items():
             fig.suptitle(f'Parallel field {f} mT')
 
         for i, gate in enumerate(np.unique(data.get_data(GATE_COLUMN))):
-            if gate in EXCLUDED_GATES:
+            if gate in EXCLUDED_GATES or np.isnan(gate):
                 continue
 
             filt = {GATE_COLUMN: gate}
-            field = data.get_data(FIELD_COLUMN, filters=filt).reshape(shape).T
-            bias = data.get_data(BIAS_COLUMN, filters=filt).reshape(shape).T
-            li_index = data.name_or_index_to_index(RESISTANCE_COLUMN)
-            diff = (data.get_data(li_index, filters=filt) +
-                    1j*data.get_data(li_index + 1, filters=filt))
-            diff = np.abs(diff).reshape(shape).T
+            field = data.get_data(FIELD_COLUMN, filters=filt)
+            bias = data.get_data(BIAS_COLUMN, filters=filt)
+            diff = data.get_data(RESISTANCE_COLUMN, filters=filt)
+            diff = np.abs(diff)
             rfield, curr = extract_switching_current(field, bias, diff,
                                                      RESISTANCE_THRESHOLD)
 

@@ -118,6 +118,10 @@ from shabanipy.squid.cpr import (fraunhofer_envelope,
 from shabanipy.labber import LabberData
 from shabanipy.plotting.utils import format_phase
 
+from patch_labber_io import patch_labberdata
+
+patch_labberdata()
+
 plt.rcParams['axes.linewidth'] = 1.5
 plt.rcParams['font.size'] = 13
 plt.rcParams['pdf.fonttype'] = 42
@@ -132,6 +136,8 @@ if CONFIG_NAME:
 if not DATA_ROOT_FOLDER:
     raise ValueError('No root path for the date was specified.')
 
+os.makedirs(ANALYSIS_PATH, exist_ok=True)
+
 gates_number = {}
 datasets = {}
 datasets_color = {}
@@ -144,12 +150,9 @@ for f, ppath in DATA_PATHS.items():
 
     with LabberData(os.path.join(DATA_ROOT_FOLDER, ppath)) as data:
 
-        bias_dim = data.get_axis_dimension(BIAS_COLUMN)
-        # Often we do not do all perp field so allow to reshape as needed
-        shape = (bias_dim, -1)
         frange = FIELD_RANGES[f]
         gates = [g for g in np.unique(data.get_data(GATE_COLUMN))
-                 if g not in EXCLUDED_GATES]
+                 if g not in EXCLUDED_GATES and not np.isnan(g)]
         gates_number[f] = len(gates)
 
         if PLOT_EXTRACTED_SWITCHING_CURRENT:
@@ -163,14 +166,10 @@ for f, ppath in DATA_PATHS.items():
             datasets_color[f][gate] = {}
             for counter, meaning in COUNTER_MEANING.items():
                 filt = {GATE_COLUMN: gate, COUNTER_COLUMN: counter}
-                field = data.get_data(FIELD_COLUMN,
-                                      filters=filt).reshape(shape).T
-                bias = data.get_data(BIAS_COLUMN,
-                                     filters=filt).reshape(shape).T
-                li_index = data.name_or_index_to_index(RESISTANCE_COLUMN)
-                diff = (data.get_data(li_index, filters=filt) +
-                        1j*data.get_data(li_index + 1, filters=filt))
-                diff = np.abs(diff).reshape(shape).T
+                field = data.get_data(FIELD_COLUMN, filters=filt)
+                bias = data.get_data(BIAS_COLUMN, filters=filt)
+                diff = data.get_data(RESISTANCE_COLUMN, filters=filt)
+                diff = np.abs(diff)
 
                 # Filter out Nan values
                 mask = np.logical_not(np.any(np.isnan(diff), axis=-1))
