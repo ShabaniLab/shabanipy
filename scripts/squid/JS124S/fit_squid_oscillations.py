@@ -126,10 +126,6 @@ from shabanipy.squid.cpr import (fraunhofer_envelope,
 from shabanipy.labber import LabberData
 from shabanipy.plotting.utils import format_phase
 
-from patch_labber_io import patch_labberdata
-
-patch_labberdata()
-
 plt.rcParams['axes.linewidth'] = 1.5
 plt.rcParams['font.size'] = 13
 plt.rcParams['pdf.fonttype'] = 42

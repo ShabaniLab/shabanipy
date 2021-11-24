@@ -95,10 +95,6 @@ from shabanipy.squid.cpr import (fraunhofer_envelope,
                                  finite_transparency_jj_current)
 from shabanipy.labber import LabberData
 
-from patch_labber_io import patch_labberdata
-
-patch_labberdata()
-
 gates_number = {}
 datasets = {}
 
@@ -111,7 +107,7 @@ for f, ppath in DATA_PATHS.items():
 
     with LabberData(os.path.join(DATA_ROOT_FOLDER, ppath)) as data:
         frange = FIELD_RANGES[f]
-        gates_number[f] = (data.get_axis_dimension(GATE_COLUMN) -
+        gates_number[f] = (data.steps[GATE_COLUMN].points -
                            len(EXCLUDED_GATES))
 
         if PLOT_EXTRACTED_SWITCHING_CURRENT:
