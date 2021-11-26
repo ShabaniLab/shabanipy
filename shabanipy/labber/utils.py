@@ -1,9 +1,7 @@
 """Helper functions for dealing with Labber."""
-import logging
 from os import environ
 from pathlib import Path
-
-logger = logging.getLogger(__name__)
+from warnings import warn
 
 
 def get_data_dir():
@@ -22,5 +20,5 @@ def get_data_dir():
         else Path("~/Labber/Data").expanduser()
     )
     if not path.exists():
-        logger.warning(f"{path} does not exist")
+        warn(f"{path} does not exist")
     return path
