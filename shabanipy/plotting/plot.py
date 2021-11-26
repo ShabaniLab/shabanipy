@@ -7,8 +7,12 @@ by an mplstyle sheet).
 import numpy as np
 from matplotlib.pyplot import subplots
 
+from .utils import stamp as sp_stamp
 
-def plot(x, y, xlabel=None, ylabel=None, title=None, ax=None, **plot_kwargs):
+
+def plot(
+    x, y, xlabel=None, ylabel=None, title=None, ax=None, stamp=None, **plot_kwargs
+):
     """Plot 1-dimensional data y(x).
 
     Parameters
@@ -26,6 +30,8 @@ def plot(x, y, xlabel=None, ylabel=None, title=None, ax=None, **plot_kwargs):
     ax : matplotlib Axes or AxesSubplot
         The axes in which to plot.
         If None, a new Figure and AxesSubplot will be created.
+    stamp : str
+        A small text label to put on the plot.
     **plot_kwargs : dict
         Keyword arguments to pass to matplotlib's plot function.
 
@@ -38,6 +44,8 @@ def plot(x, y, xlabel=None, ylabel=None, title=None, ax=None, **plot_kwargs):
     ax.set_title(title)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
+    if stamp is not None:
+        sp_stamp(ax, stamp)
 
     lines = ax.plot(x, y, **plot_kwargs)
     if "label" in plot_kwargs:
@@ -47,7 +55,16 @@ def plot(x, y, xlabel=None, ylabel=None, title=None, ax=None, **plot_kwargs):
 
 # TODO support line cuts
 def plot2d(
-    x, y, z, xlabel=None, ylabel=None, zlabel=None, title=None, ax=None, **pcm_kwargs
+    x,
+    y,
+    z,
+    xlabel=None,
+    ylabel=None,
+    zlabel=None,
+    title=None,
+    ax=None,
+    stamp=None,
+    **pcm_kwargs
 ):
     """Plot 2-dimensional data z(x, y) in a color plot with a colorbar.
 
@@ -66,6 +83,8 @@ def plot2d(
     ax : matplotlib Axes or AxesSubplot
         The axes in which to plot.
         If None, a new Figure and AxesSubplot will be created.
+    stamp : str
+        A small text label to put on the plot.
     **pcm_kwargs : dict
         Keyword arguments to pass to matplotlib's pcolormesh.
 
@@ -78,6 +97,8 @@ def plot2d(
     ax.set_title(title)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
+    if stamp is not None:
+        sp_stamp(ax, stamp)
 
     pcm_kwargs.setdefault("shading", "auto")
     mesh = ax.pcolormesh(x, y, z, **pcm_kwargs)
