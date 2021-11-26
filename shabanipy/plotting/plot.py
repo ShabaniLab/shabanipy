@@ -41,9 +41,12 @@ def plot(
         The figure and axes where the data was plotted.
     """
     fig, ax = _fig_ax(ax)
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
+    if title is not None:
+        ax.set_title(title)
+    if xlabel is not None:
+        ax.set_xlabel(xlabel)
+    if ylabel is not None:
+        ax.set_ylabel(ylabel)
     if stamp is not None:
         sp_stamp(ax, stamp)
 
@@ -94,9 +97,12 @@ def plot2d(
         The figure and axes where the data was plotted.
     """
     fig, ax = _fig_ax(ax)
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
+    if title is not None:
+        ax.set_title(title)
+    if xlabel is not None:
+        ax.set_xlabel(xlabel)
+    if ylabel is not None:
+        ax.set_ylabel(ylabel)
     if stamp is not None:
         sp_stamp(ax, stamp)
 
