@@ -8,7 +8,7 @@
 """Fit the current-phase relation of a Josephson junction.
 
 The applied field is assumed to drive the phase of the SQUID's active junction only; the
-idler junction is assumed to be phase-fixed.
+idler junction is assumed to be phase-fixed, contributing a constant offset.
 """
 
 import argparse
@@ -152,6 +152,7 @@ fig, ax = plot(
     xlabel="phase [2π]",
     ylabel="switching current [μA]",
     label="data",
+    stamp=COOLDOWN_SCAN,
 )
 if PLOT_GUESS:
     plot(
