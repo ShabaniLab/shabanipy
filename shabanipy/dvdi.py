@@ -45,16 +45,20 @@ def extract_switching_current(
         raise ValueError("`side` should be one of: 'positive', 'negative', 'both'")
 
     if side != "negative":
-        ic_p = _find_rising_edge(bias, np.where(bias >= 0, dvdi, np.nan), threshold)
+        ic_p = find_rising_edge(
+            bias, np.where(bias >= 0, dvdi, np.nan), threshold=threshold
+        )
     if side != "positive":
-        ic_n = _find_rising_edge(
-            bias[..., ::-1], np.where(bias <= 0, dvdi, np.nan)[..., ::-1], threshold,
+        ic_n = find_rising_edge(
+            bias[..., ::-1],
+            np.where(bias <= 0, dvdi, np.nan)[..., ::-1],
+            threshold=threshold,
         )
 
     return ic_p if side == "positive" else ic_n if side == "negative" else (ic_n, ic_p)
 
 
-def _find_rising_edge(bias, dvdi, threshold):
+def find_rising_edge(bias, dvdi, *, threshold=0):
     """Find the first `bias` where `dvdi` exceeds `threshold` (along the last axis)."""
     index = np.argmax(dvdi > threshold, axis=-1)
     return np.take_along_axis(bias, np.expand_dims(index, axis=-1), axis=-1).squeeze(
