@@ -13,7 +13,6 @@ Usage:
 If no MeasurementPattern names are specified, all will run.
 """
 
-import os
 import re
 import sys
 from pathlib import Path
@@ -29,11 +28,12 @@ from shabanipy.bulk.data_classifying import (
     StepPattern,
     ValuePattern,
 )
-from shabanipy.logging.config import configure_logging
+from shabanipy.labber import get_data_dir
+from shabanipy.logging import configure_logging
 
 configure_logging()
 
-DATA_DIR = os.environ["DATA_DIR"]
+DATA_DIR = get_data_dir()
 SAMPLE_ID = "JS512-C09_FlSq4to1-8"
 SEARCH_PATHS = [
     (Path(DATA_DIR) / "vector9/2021/06").expanduser().absolute().as_posix(),
