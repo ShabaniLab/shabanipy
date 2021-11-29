@@ -12,6 +12,7 @@ idler junction is assumed to be phase-fixed, contributing a constant offset.
 """
 
 import argparse
+from contextlib import redirect_stdout
 from pathlib import Path
 
 import numpy as np
@@ -141,9 +142,14 @@ def residuals(params, bfield, ic):
 mini = Minimizer(residuals, params, fcn_args=(bfield, ic_p))
 result = mini.minimize()
 print(fit_report(result))
-popt = result.params.valuesdict()
+with open(str(OUTPATH) + "_fit-report.txt", "w") as f:
+    f.write(fit_report(result))
+with open(str(OUTPATH) + "_fit-params.txt", "w") as f:
+    with redirect_stdout(f):
+        result.params.pretty_print(precision=8)
 
 # plot the initial guess and best fit over the data
+popt = result.params.valuesdict()
 phase = (bfield - popt["bfield_offset"]) * popt["radians_per_tesla"]
 fig, ax = plot(
     phase / (2 * np.pi),
