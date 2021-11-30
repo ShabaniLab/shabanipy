@@ -1,3 +1,7 @@
+"""Configuration file for fitting CPRs and SQUID oscillations.
+
+Should be fed to a fitting script in the parent directory.
+"""
 from shabanipy.labber import get_data_dir
 from shabanipy.constants import VECTOR9_AMPS_PER_TESLA_X, VECTOR10_AMPS_PER_TESLA_X
 
@@ -16,10 +20,9 @@ DATAPATH = (
 )
 
 # make sure we use the right magnet conversion factors
+# (depends on my local file structure)
 FRIDGE = "vector10"
-assert FRIDGE in str(
-    DATAPATH
-), f"I can't double check that {DATAPATH} is from {FRIDGE}"  # depends on my local file structure
+assert FRIDGE in str(DATAPATH), f"I can't double check that {DATAPATH} is from {FRIDGE}"
 AMPS_PER_T = vars()[f"{FRIDGE.upper()}_AMPS_PER_TESLA_X"]
 
 # names or indices of the data channels

@@ -25,6 +25,7 @@ from shabanipy.labber import LabberData
 from shabanipy.plotting import plot, plot2d, jy_pink
 from shabanipy.squid.cpr import finite_transparency_jj_current as cpr
 
+# set up the command-line interface
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
     "config_path", help="path to a config file, relative to this script."
