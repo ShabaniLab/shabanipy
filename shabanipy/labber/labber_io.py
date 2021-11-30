@@ -373,6 +373,16 @@ class LabberData:
 
         return steps
 
+    def get_step(self, name: str) -> StepConfig:
+        """Get a step by name."""
+        for step in self.steps:
+            if step.name == name:
+                return step
+        raise ValueError(
+            f"The requested step `{name}` does not exist in `{self.filename}`."
+            f"Available steps are: {[step.name for step in self.steps]}"
+        )
+
     @cached_property
     def logs(self) -> List[LogEntry]:
         """The logged channels in the Labber file.
