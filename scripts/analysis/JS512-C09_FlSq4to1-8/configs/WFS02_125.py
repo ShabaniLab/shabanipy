@@ -29,13 +29,6 @@ AMPS_PER_T = vars()[f"{FRIDGE.upper()}_AMPS_PER_TESLA_X"]
 CHAN_LOCKIN = "vicurve - dR vs I curve"
 CHAN_FIELD_PERP = "X magnet - Source current"
 CHAN_FIELD_PRLL = "Y magnet - Field"
-CHAN_GATE_4UM = "4um gate - Source voltage"
-CHAN_GATE_2UM = "2um gate - Source voltage"
-# TODO add check for gate leakage
-CHAN_GATE_4UM_MEAS = "4um gate - Current"
-CHAN_GATE_2UM_MEAS = "2um gate - Current"
-# TODO add check for temperature variation
-CHAN_TEMP = "fridge - Temperature closed loop - target temperature"
 CHAN_TEMP_MEAS = "fridge - MC-RuOx-Temperature"
 
 # threshold used to determine switching current
