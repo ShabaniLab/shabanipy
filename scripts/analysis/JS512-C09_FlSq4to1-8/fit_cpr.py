@@ -12,6 +12,7 @@ idler junction is assumed to be phase-fixed, contributing a constant offset.
 """
 
 import argparse
+import warnings
 from contextlib import redirect_stdout
 from pathlib import Path
 
@@ -45,8 +46,15 @@ with LabberData(DATAPATH) as f:
     bfield = f.get_data(CHAN_FIELD_PERP) / AMPS_PER_T
     ibias, lockin = f.get_data(CHAN_LOCKIN, get_x=True)
     dvdi = np.abs(lockin)
-#    temp_set = f.get_data(CHAN_TEMP)
-#    temp_meas = f.get_data(CHAN_TEMP_MEAS)
+    temp_meas = f.get_data(CHAN_TEMP_MEAS)
+
+# check for significant temperature deviations
+MAX_TEMPERATURE_STD = 1e-3
+temp_std = np.std(temp_meas)
+if temp_std > MAX_TEMPERATURE_STD:
+    warnings.warn(
+        f"Temperature standard deviation {temp_std} K > {MAX_TEMPERATURE_STD} K"
+    )
 
 # plot the raw data
 fig, ax = plot2d(
@@ -77,8 +85,7 @@ if np.sign(HANDEDNESS) < 0:
 params = Parameters()
 params.add(f"transparency", value=0.5, max=1)
 params.add(f"switching_current", value=(np.max(ic_p) - np.min(ic_p)) / 2)
-# TODO set temperature from setpoint or MC average
-params.add(f"temperature", value=600e-3, vary=False)
+params.add(f"temperature", value=round(np.mean(temp_meas), 3), vary=False)
 params.add(f"gap", value=200e-6 * eV, vary=False)
 params.add(f"ic_offset", value=np.mean(ic_p))
 params.add(
