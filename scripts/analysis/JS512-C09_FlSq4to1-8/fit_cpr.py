@@ -129,7 +129,7 @@ fig.savefig(str(OUTPATH) + "_fft.png")
 
 # define the model to fit
 def model(params, bfield):
-    """The model function to fit against the data `ic` vs `bfield`."""
+    """The model function to fit against the data."""
     p = params.valuesdict()
     return p["ic_offset"] + cpr(
         (bfield - p["bfield_offset"]) * p["radians_per_tesla"],
