@@ -26,7 +26,7 @@ transparency = np.append(transparency, [0.99, 0.9999])
 fig, ax = plt.subplots()
 ax.set_title(f"$T$={args.temperature}K, $\\Delta$={round(args.gap / 1e-3, 3)}meV")
 ax.set_xlabel("phase [$2\pi$]")
-ax.set_ylabel("$I_c$ [arb.u.]")
+ax.set_ylabel("supercurrent [$I_c$]")
 for tau in transparency:
     lines = ax.plot(
         phase / (2 * np.pi),

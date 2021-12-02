@@ -10,8 +10,7 @@ from scipy.constants import eV
 from shabanipy.squid.cpr import finite_transparency_jj_current as cpr
 
 parser = argparse.ArgumentParser(
-    description="Plot the current-phase relation of a Josephson junction for various temperatures.",
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
     "--transparency",
@@ -29,7 +28,7 @@ temperatures = np.linspace(0, gap / k_B, 6)
 fig, ax = plt.subplots()
 ax.set_title(f"transparency = {args.transparency}")
 ax.set_xlabel("phase [$2\pi$]")
-ax.set_ylabel("$I_c$ [arb.u.]")
+ax.set_ylabel("supercurrent [$I_c$]")
 for temp in temperatures:
     lines = ax.plot(
         phase / (2 * np.pi),
