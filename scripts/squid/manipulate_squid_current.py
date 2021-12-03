@@ -38,7 +38,7 @@ params = [logratio, tau1, tau2, phi1, phi2, L]
 
 fig = plt.figure()
 # plots on the left, sliders on the right
-subfigs = fig.subfigures(1, 2)
+subfigs = fig.subfigures(1, 2, width_ratios=[2, 1])
 
 axs = subfigs[0].subplots(2, 1, sharex=True)
 axs[1].set_xlabel("SQUID phase [2π]")
