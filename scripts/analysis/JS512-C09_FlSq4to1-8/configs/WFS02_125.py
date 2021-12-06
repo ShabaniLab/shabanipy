@@ -37,8 +37,11 @@ RESISTANCE_THRESHOLD = 400
 # handedness of the system; i.e. sign(bfield) * sign(phase)
 HANDEDNESS = -1
 
+# whether to equate the transparency of both junctions (when using a 2-junction model)
+EQUAL_TRANSPARENCIES = True
+
 # plot the initial guess along with the best fit
-PLOT_GUESS = False
+PLOT_GUESS = True
 
 # directory and path prefix to save plots and fit parameters
 OUTDIR = f"{__file__.split('.py')[0]}_results/"
