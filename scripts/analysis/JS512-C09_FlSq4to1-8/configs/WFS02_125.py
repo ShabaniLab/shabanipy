@@ -38,7 +38,10 @@ RESISTANCE_THRESHOLD = 400
 HANDEDNESS = -1
 
 # whether to equate the transparency of both junctions (when using a 2-junction model)
-EQUAL_TRANSPARENCIES = True
+EQUAL_TRANSPARENCIES = False
+
+# whether to fit both positive and negative critical current branches simultaneously
+BOTH_BRANCHES = True
 
 # plot the initial guess along with the best fit
 PLOT_GUESS = True
