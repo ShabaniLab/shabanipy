@@ -16,7 +16,8 @@ def extract_switching_current(
     dvdi: np.ndarray,
     *,
     side: Literal["positive", "negative", "both"] = "positive",
-    threshold: float
+    threshold: float,
+    interp: bool = False,
 ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
     """Extract the switching currents from a set of differential resistance curves.
 
@@ -33,6 +34,9 @@ def extract_switching_current(
     threshold
         The switching current is determined as the first `bias` value for which `dvdi`
         rises above `threshold`.
+    interp : optional
+        If true, linearly interpolate `dvdi` vs `bias` to more accurately detect the
+        switching current.
 
     Returns
     -------
@@ -46,19 +50,34 @@ def extract_switching_current(
 
     if side != "negative":
         ic_p = find_rising_edge(
-            bias, np.where(bias >= 0, dvdi, np.nan), threshold=threshold
+            bias, np.where(bias >= 0, dvdi, np.nan), threshold=threshold, interp=interp,
         )
     if side != "positive":
         ic_n = find_rising_edge(
             bias[..., ::-1],
             np.where(bias <= 0, dvdi, np.nan)[..., ::-1],
             threshold=threshold,
+            interp=interp,
         )
 
     return ic_p if side == "positive" else ic_n if side == "negative" else (ic_n, ic_p)
 
 
-def find_rising_edge(bias, dvdi, *, threshold=0):
-    """Find the first `bias` where `dvdi` exceeds `threshold` (along the last axis)."""
-    index = np.argmax(dvdi > threshold, axis=-1)
-    return np.take_along_axis(bias, index[..., np.newaxis], axis=-1).squeeze(axis=-1)
+def find_rising_edge(x, y, *, threshold, interp=False):
+    """Find the first `x` where `y` exceeds `threshold` (along the last axis).
+
+    `x` and `y` must have the same shape.
+
+    If `interp` is True, linearly interpolate between the two points below and above
+    `threshold` to get a more accurate value of `x` at the crossing.
+    """
+    index = np.argmax(y > threshold, axis=-1)
+    x1 = np.take_along_axis(x, index[..., np.newaxis], axis=-1).squeeze(axis=-1)
+    if interp:
+        x0 = np.take_along_axis(x, index[..., np.newaxis] - 1, axis=-1).squeeze(axis=-1)
+        y0 = np.take_along_axis(y, index[..., np.newaxis] - 1, axis=-1).squeeze(axis=-1)
+        y1 = np.take_along_axis(y, index[..., np.newaxis], axis=-1).squeeze(axis=-1)
+        dydx = (y1 - y0) / (x1 - x0)
+        return x0 + (threshold - y0) / dydx
+    else:
+        return x1

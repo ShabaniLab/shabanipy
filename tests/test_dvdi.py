@@ -64,6 +64,20 @@ class TestExtractSwitchingCurrent(unittest.TestCase):
             ([[-2, -2, -1], [-1, -1, -2]], [[2, 1, 2], [1, 2, 2]]),
         )
 
+    def test_interpolation(self):
+        # 2x3 bias sweeps of [-2, -1, 0, 1, 2]
+        bias = np.tile(np.linspace(-2, 2, 5), (2, 3, 1))
+        dvdi = np.array(
+            [
+                [[1, 0, 0, 0, 1], [1, 0, 0, 1, 1], [1, 1, 0, 0, 1]],
+                [[1, 1, 0, 1, 1], [1, 1, 0, 0, 1], [1, 0, 0, 0, 1]],
+            ]
+        )
+        assert_array_equal(
+            extract_switching_current(bias, dvdi, threshold=0.5, interp=True),
+            [[1.5, 0.5, 1.5], [0.5, 1.5, 1.5]],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

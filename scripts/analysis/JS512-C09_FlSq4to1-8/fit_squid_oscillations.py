@@ -69,7 +69,7 @@ fig.savefig(str(OUTPATH) + "_raw-data.png")
 
 # extract the switching currents
 ic_n, ic_p = extract_switching_current(
-    ibias, dvdi, side="both", threshold=RESISTANCE_THRESHOLD
+    ibias, dvdi, side="both", threshold=RESISTANCE_THRESHOLD, interp=True,
 )
 ax.set_title("$I_c$ extraction")
 plot(bfield / 1e-3, ic_p / 1e-6, ax=ax, color="w", lw=0, marker=".")
