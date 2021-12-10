@@ -9,6 +9,7 @@
 import argparse
 import warnings
 from contextlib import redirect_stdout
+from functools import partial
 from pathlib import Path
 from typing import Optional
 
@@ -24,6 +25,7 @@ from shabanipy.plotting import plot, plot2d, jy_pink
 from shabanipy.squid.cpr import finite_transparency_jj_current as cpr
 from shabanipy.squid.squid_model import compute_squid_current
 
+print = partial(print, flush=True)
 # set up the command-line interface
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
@@ -216,10 +218,12 @@ def residuals(
 
 
 # fit the data
+print("Optimizing fit...", end="")
 mini = Minimizer(
     residuals, params, fcn_args=(bfield, ic_p, ic_n if BOTH_BRANCHES else None)
 )
 result = mini.minimize()
+print("done.")
 print(fit_report(result))
 with open(str(OUTPATH) + "_fit-report.txt", "w") as f:
     f.write(fit_report(result))
