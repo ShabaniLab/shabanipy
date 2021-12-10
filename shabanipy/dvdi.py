@@ -61,6 +61,4 @@ def extract_switching_current(
 def find_rising_edge(bias, dvdi, *, threshold=0):
     """Find the first `bias` where `dvdi` exceeds `threshold` (along the last axis)."""
     index = np.argmax(dvdi > threshold, axis=-1)
-    return np.take_along_axis(bias, np.expand_dims(index, axis=-1), axis=-1).squeeze(
-        axis=-1
-    )
+    return np.take_along_axis(bias, index[..., np.newaxis], axis=-1).squeeze(axis=-1)
