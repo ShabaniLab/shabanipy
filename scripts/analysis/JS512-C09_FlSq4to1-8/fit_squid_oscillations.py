@@ -18,6 +18,7 @@ from lmfit import Minimizer, Parameters, fit_report
 from lmfit.minimizer import MinimizerResult
 from matplotlib import pyplot as plt
 from scipy.constants import eV
+from scipy.signal import find_peaks
 
 from shabanipy.dvdi import extract_switching_current
 from shabanipy.labber import LabberData
@@ -124,36 +125,83 @@ def estimate_radians_per_tesla(bfield: np.ndarray, ic: np.ndarray):
     return 2 * np.pi * freq_guess
 
 
-def estimate_phase_offset(
-    bfield: np.ndarray, ic: np.ndarray, boffset: float, radians_per_tesla: float
-):
-    """Estimate the phase offset of the SQUID oscillations.
+def estimate_bfield_offset(bfield: np.ndarray, ic_p: np.ndarray, ic_n=None):
+    """Estimate the coil field at which the true flux is integral.
 
-    The position of the (first) maximum is returned.
+    The position of a maximum near the center of the `bfield` range is returned.
+    If `ic_n` is given, a better estimate is midway between a peak in `ic_p` and the
+    closest valley in `ic_n`.
     """
-    phase = (bfield - boffset) * radians_per_tesla
-    phase_guess = phase[np.argmax(ic)]
+    peak_locs, _ = find_peaks(ic_p, prominence=(np.max(ic_p) - np.min(ic_p)) / 2)
+    guess_loc = peak_locs[len(peak_locs) // 2]
+    bfield_guess = bfield[guess_loc]
+    if ic_n is not None:
+        peak_locs_n, _ = find_peaks(-ic_n, prominence=(np.max(ic_n) - np.min(ic_n)) / 2)
+        guess_loc_n = peak_locs_n[len(peak_locs_n) // 2]
+        bfield_guess_n = bfield[guess_loc_n]
+        bfield_guess = (bfield_guess + bfield_guess_n) / 2
 
     # plot the guess
-    fig, ax = plot(
-        phase / np.pi,
-        ic / 1e-6,
-        xlabel="SQUID phase estimate [π]",
+    if ic_n is None:
+        fig, ax = plt.subplots()
+        ax.set_xlabel("x coil field [mT]")
+    else:
+        fig, (ax, ax2) = plt.subplots(2, 1, sharex=True)
+        ax2.set_xlabel("x coil field [mT]")
+        plot(
+            bfield / 1e-3, ic_n / 1e-6, ylabel="supercurrent [μA]", ax=ax2, marker=".",
+        )
+        ax2.plot(
+            bfield[peak_locs_n] / 1e-3,
+            ic_n[peak_locs_n] / 1e-6,
+            lw=0,
+            marker="*",
+            label="$I_{c-}$ peaks",
+        )
+        ax2.plot(
+            bfield[guess_loc_n] / 1e-3,
+            ic_n[guess_loc_n] / 1e-6,
+            lw=0,
+            marker="*",
+            label="$I_{c-}$ guess",
+        )
+        ax2.axvline(bfield_guess / 1e-3, color="k")
+        ax2.legend()
+    plot(
+        bfield / 1e-3,
+        ic_p / 1e-6,
         ylabel="supercurrent [μA]",
-        title="Δφ guess",
+        title="bfield offset guess",
         stamp=COOLDOWN_SCAN,
+        ax=ax,
+        marker=".",
     )
-    ax.axvline(phase_guess / np.pi, color="k")
+    ax.axvline(bfield_guess / 1e-3, color="k")
+    ax.plot(
+        bfield[peak_locs] / 1e-3,
+        ic_p[peak_locs] / 1e-6,
+        lw=0,
+        marker="*",
+        label="$I_{c+}$ peaks",
+    )
+    ax.plot(
+        bfield[guess_loc] / 1e-3,
+        ic_p[guess_loc] / 1e-6,
+        lw=0,
+        marker="*",
+        label="$I_{c+}$ guess",
+    )
     ax.text(
         0.5,
         0.5,
-        f"phase offset = {np.round(phase_guess / np.pi, 2)}π",
+        f"bfield offset $\\approx$ {np.round(bfield_guess / 1e-3, 3)} mT",
         va="center",
         ha="center",
         transform=ax.transAxes,
     )
-    fig.savefig(str(OUTPATH) + "_phase-offset.png")
-    return phase_guess
+    ax.legend()
+    fig.savefig(str(OUTPATH) + "_bfield-offset.png")
+    return bfield_guess
 
 
 # parameterize the fit; assume Ic1 >> Ic2
@@ -164,18 +212,14 @@ if EQUAL_TRANSPARENCIES:
     params["transparency2"].set(expr="transparency1")
 params.add(f"switching_current1", value=np.mean(ic_p))
 params.add(f"switching_current2", value=(np.max(ic_p) - np.min(ic_p)) / 2)
-params.add(f"bfield_offset", value=np.mean(bfield), vary=False)
+params.add(f"bfield_offset", value=estimate_bfield_offset(bfield, ic_p, ic_n))
 params.add(f"radians_per_tesla", value=estimate_radians_per_tesla(bfield, ic_p))
-params.add(f"phase1", value=0, vary=False)
-params.add(
-    f"phase2",
-    value=estimate_phase_offset(
-        bfield, ic_p, params["bfield_offset"], params["radians_per_tesla"]
-    )
-    % (2 * np.pi),
-    min=-np.pi,
-    max=np.pi,
-)
+# anomalous phases; if both fixed, then there is no phase freedom in the model (aside
+# from bfield_offset), as the two gauge-invariant phases are fixed by two constraints:
+#     1. flux quantization:         γ1 - γ2 = 2πΦ/Φ_0 (mod 2π),
+#     2. supercurrent maximization: I_tot = max_γ1 { I_1(γ1) + I_2(γ1 - 2πΦ/Φ_0) }
+params.add(f"anom_phase1", value=0, vary=False)
+params.add(f"anom_phase2", value=0, vary=False)
 params.add(f"temperature", value=round(np.mean(temp_meas), 3), vary=False)
 params.add(f"gap", value=200e-6 * eV, vary=False)
 
@@ -189,9 +233,9 @@ def squid_model(params: Parameters, bfield: np.ndarray, positive: bool = True):
     i_squid = compute_squid_current(
         bfield * p["radians_per_tesla"],
         cpr,
-        (p["phase1"], p["switching_current1"], p["transparency1"]),
+        (p["anom_phase1"], p["switching_current1"], p["transparency1"]),
         cpr,
-        (p["phase2"], p["switching_current2"], p["transparency2"]),
+        (p["anom_phase2"], p["switching_current2"], p["transparency2"]),
         positive=positive,
     )
     return i_squid
