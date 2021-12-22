@@ -15,12 +15,18 @@ from shabanipy.squid.squid_model import compute_squid_current
 phase = np.linspace(-2 * np.pi, 2 * np.pi, 500)
 
 # adjustable parameters
-SliderKwargs = namedtuple("SliderKwargs", "label valmin valmax valinit")
+SliderKwargs = namedtuple(
+    "SliderKwargs", "label valmin valmax valinit valfmt", defaults=(None,)
+)
 phi1 = SimpleNamespace(
-    kwargs=SliderKwargs(label=r"$\Delta\phi_1$ [2π]", valmin=-1, valmax=1, valinit=0)
+    kwargs=SliderKwargs(
+        label=r"$\varphi_0^{(1)}$", valmin=-2, valmax=2, valinit=0, valfmt="%0.2fπ"
+    )
 )
 phi2 = SimpleNamespace(
-    kwargs=SliderKwargs(label=r"$\Delta\phi_2$ [2π]", valmin=-1, valmax=1, valinit=0)
+    kwargs=SliderKwargs(
+        label=r"$\varphi_0^{(2)}$", valmin=-2, valmax=2, valinit=0, valfmt="%0.2fπ"
+    )
 )
 logratio = SimpleNamespace(
     kwargs=SliderKwargs(
@@ -56,13 +62,9 @@ def update(_=None):
             compute_squid_current(
                 phase,
                 cpr,
-                (phi1.slider.val * 2 * np.pi, 1, tau1.slider.val),
+                (phi1.slider.val * np.pi, 1, tau1.slider.val),
                 cpr,
-                (
-                    phi2.slider.val * 2 * np.pi,
-                    10 ** logratio.slider.val,
-                    tau2.slider.val,
-                ),
+                (phi2.slider.val * np.pi, 10 ** logratio.slider.val, tau2.slider.val,),
                 inductance=L.slider.val,
                 positive=branch,
             ),
