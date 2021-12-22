@@ -8,10 +8,12 @@ from types import SimpleNamespace
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.widgets import Slider
+from scipy.constants import physical_constants
 
 from shabanipy.squid.cpr import finite_transparency_jj_current as cpr
 from shabanipy.squid.squid_model import compute_squid_current
 
+FLUX_QUANTUM = physical_constants["mag. flux quantum"][0]
 phase = np.linspace(-2 * np.pi, 2 * np.pi, 500)
 
 # adjustable parameters
@@ -55,7 +57,11 @@ tau2 = SimpleNamespace(
         closedmax=False,
     )
 )
-L = SimpleNamespace(kwargs=SliderKwargs(label="L", valmin=0, valmax=1e-9, valinit=0))
+L = SimpleNamespace(
+    kwargs=SliderKwargs(
+        label="L", valmin=0, valmax=0.2, valinit=0, valfmt=r"%0.3f $\frac{Φ_0}{Ι_{c1}}$"
+    )
+)
 params = [logratio, tau1, tau2, phi1, phi2, L]
 
 fig = plt.figure()
@@ -81,7 +87,7 @@ def update(_=None):
                 (phi1.slider.val * np.pi, 1, tau1.slider.val),
                 cpr,
                 (phi2.slider.val * np.pi, 10 ** logratio.slider.val, tau2.slider.val,),
-                inductance=L.slider.val,
+                inductance=L.slider.val * FLUX_QUANTUM,
                 positive=branch,
             ),
         )
