@@ -16,7 +16,9 @@ phase = np.linspace(-2 * np.pi, 2 * np.pi, 500)
 
 # adjustable parameters
 SliderKwargs = namedtuple(
-    "SliderKwargs", "label valmin valmax valinit valfmt", defaults=(None,)
+    "SliderKwargs",
+    "label valmin valmax valinit valfmt closedmax",
+    defaults=(None, True),
 )
 phi1 = SimpleNamespace(
     kwargs=SliderKwargs(
@@ -34,10 +36,24 @@ logratio = SimpleNamespace(
     )
 )
 tau1 = SimpleNamespace(
-    kwargs=SliderKwargs(label=r"$\tau_1$", valmin=0, valmax=0.99999, valinit=0.5)
+    kwargs=SliderKwargs(
+        label=r"$\tau_1$",
+        valmin=0,
+        valmax=1,
+        valinit=0.5,
+        valfmt="%0.4f",
+        closedmax=False,
+    )
 )
 tau2 = SimpleNamespace(
-    kwargs=SliderKwargs(label=r"$\tau_2$", valmin=0, valmax=0.99999, valinit=0.5)
+    kwargs=SliderKwargs(
+        label=r"$\tau_2$",
+        valmin=0,
+        valmax=1,
+        valinit=0.5,
+        valfmt="%0.4f",
+        closedmax=False,
+    )
 )
 L = SimpleNamespace(kwargs=SliderKwargs(label="L", valmin=0, valmax=1e-9, valinit=0))
 params = [logratio, tau1, tau2, phi1, phi2, L]
