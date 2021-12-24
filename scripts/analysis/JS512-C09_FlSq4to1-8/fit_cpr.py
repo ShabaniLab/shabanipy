@@ -99,6 +99,18 @@ params.add(
 )
 params.add(f"radians_per_tesla")
 
+# check bfield offset guess
+fig, ax = plot(
+    bfield / 1e-3,
+    ic_p / 1e-6,
+    xlabel="field (mT)",
+    ylabel="switching current (μA)",
+    title="bfield offset guess",
+)
+ax.axhline(params["ic_offset"] / 1e-6, color="black")
+ax.axvline(params["bfield_offset"] / 1e-3, color="black")
+fig.savefig(str(OUTPATH) + "_bfield-offset.png")
+
 # guess the field-to-phase factor by FFT
 dbs = np.unique(np.diff(bfield))
 try:
