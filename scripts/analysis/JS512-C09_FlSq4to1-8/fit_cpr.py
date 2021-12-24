@@ -31,6 +31,13 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
     "config_path", help="path to a config file, relative to this script."
 )
+parser.add_argument(
+    "--plot-guess",
+    "-g",
+    action="store_true",
+    default=False,
+    help="plot the initial guess along with the best fit",
+)
 args = parser.parse_args()
 
 # load the config file
@@ -164,8 +171,10 @@ def residuals(params, bfield, ic):
 
 
 # fit the data
+print("Optimizing fit...", end="")
 mini = Minimizer(residuals, params, fcn_args=(bfield, ic_p))
 result = mini.minimize()
+print("done.")
 print(fit_report(result))
 with open(str(OUTPATH) + "_fit-report.txt", "w") as f:
     f.write(fit_report(result))
@@ -185,7 +194,7 @@ fig, ax = plot(
     label="data",
     stamp=COOLDOWN_SCAN,
 )
-if PLOT_GUESS:
+if args.plot_guess:
     plot(
         phase / (2 * np.pi), model(params, bfield) / 1e-6, ax=ax, label="guess",
     )

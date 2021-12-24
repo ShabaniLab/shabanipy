@@ -40,9 +40,6 @@ EQUAL_TRANSPARENCIES = False
 # whether to fit both positive and negative critical current branches simultaneously
 BOTH_BRANCHES = True
 
-# plot the initial guess along with the best fit
-PLOT_GUESS = True
-
 # directory and path prefix to save plots and fit parameters
 OUTDIR = f"{__file__.split('.py')[0]}_results/"
 OUTPATH = Path(OUTDIR) / COOLDOWN_SCAN

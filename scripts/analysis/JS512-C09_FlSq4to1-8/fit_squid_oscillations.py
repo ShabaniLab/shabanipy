@@ -32,6 +32,20 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
     "config_path", help="path to a config file, relative to this script."
 )
+parser.add_argument(
+    "--dry-run",
+    "-n",
+    action="store_true",
+    default=False,
+    help="do preliminary analysis but don't run fit",
+)
+parser.add_argument(
+    "--plot-guess",
+    "-g",
+    action="store_true",
+    default=False,
+    help="plot the initial guess along with the best fit",
+)
 args = parser.parse_args()
 
 # load the config file
@@ -267,28 +281,38 @@ def residuals(
 
 
 # fit the data
-print("Optimizing fit...", end="")
-mini = Minimizer(
-    residuals, params, fcn_args=(bfield, ic_p, ic_n if BOTH_BRANCHES else None)
-)
-result = mini.minimize()
-print("done.")
-print(fit_report(result))
-with open(str(OUTPATH) + "_fit-report.txt", "w") as f:
-    f.write(fit_report(result))
-with open(str(OUTPATH) + "_fit-params.txt", "w") as f:
-    with redirect_stdout(f):
-        result.params.pretty_print(precision=8)
+if args.dry_run:
+    result = None
+else:
+    print("Optimizing fit...", end="")
+    mini = Minimizer(
+        residuals, params, fcn_args=(bfield, ic_p, ic_n if BOTH_BRANCHES else None)
+    )
+    result = mini.minimize()
+    print("done.")
+    print(fit_report(result))
+    with open(str(OUTPATH) + "_fit-report.txt", "w") as f:
+        f.write(fit_report(result))
+    with open(str(OUTPATH) + "_fit-params.txt", "w") as f:
+        with redirect_stdout(f):
+            result.params.pretty_print(precision=8)
 
 # plot the initial guess and best fit over the data
 def plot_fit(
-    result: MinimizerResult,
     bfield: np.ndarray,
     ic: np.ndarray,
+    result: Optional[MinimizerResult] = None,
+    guess: Optional[Parameters] = None,
     positive: bool = True,
-    ax: plt.Axes = None,
+    ax: Optional[plt.Axes] = None,
 ):
-    popt = result.params.valuesdict()
+    popt = (
+        result.params.valuesdict()
+        if result is not None
+        else guess.valuesdict()
+        if guess is not None
+        else params
+    )
     phase = (bfield - popt["bfield_offset"]) * popt["radians_per_tesla"]
     _, ax = plot(
         phase / (2 * np.pi),
@@ -300,16 +324,17 @@ def plot_fit(
         stamp=COOLDOWN_SCAN,
         ax=ax,
     )
-    plot(
-        phase / (2 * np.pi),
-        squid_model(result.params, bfield, positive=positive) / 1e-6,
-        ax=ax,
-        label="fit",
-    )
-    if PLOT_GUESS:
+    if result is not None:
         plot(
             phase / (2 * np.pi),
-            squid_model(params, bfield, positive=positive) / 1e-6,
+            squid_model(result.params, bfield, positive=positive) / 1e-6,
+            ax=ax,
+            label="fit",
+        )
+    if guess is not None:
+        plot(
+            phase / (2 * np.pi),
+            squid_model(guess, bfield, positive=positive) / 1e-6,
             ax=ax,
             label="guess",
         )
@@ -317,9 +342,16 @@ def plot_fit(
 
 if BOTH_BRANCHES:
     fig, (ax, ax2) = plt.subplots(2, 1, sharex=True)
-    plot_fit(result, bfield, ic_n, positive=False, ax=ax2)
+    plot_fit(
+        bfield,
+        ic_n,
+        result=result,
+        guess=params if args.plot_guess else None,
+        positive=False,
+        ax=ax2,
+    )
 else:
     fig, ax = plt.subplots()
-plot_fit(result, bfield, ic_p, ax=ax)
+plot_fit(bfield, ic_p, result=result, guess=params if args.plot_guess else None, ax=ax)
 fig.savefig(str(OUTPATH) + "_fit.png")
 plt.show()
