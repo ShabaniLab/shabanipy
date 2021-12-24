@@ -34,9 +34,6 @@ CHAN_TEMP_MEAS = "fridge - MC-RuOx-Temperature"
 # threshold used to determine switching current
 RESISTANCE_THRESHOLD = 400
 
-# handedness of the system; i.e. sign(bfield) * sign(phase)
-HANDEDNESS = -1
-
 # whether to equate the transparency of both junctions (when using a 2-junction model)
 EQUAL_TRANSPARENCIES = False
 

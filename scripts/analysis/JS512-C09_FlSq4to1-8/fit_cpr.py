@@ -76,11 +76,15 @@ plot(bfield / 1e-3, ic_p / 1e-6, ax=ax, color="w", lw=0, marker=".")
 plot(bfield / 1e-3, ic_n / 1e-6, ax=ax, color="w", lw=0, marker=".")
 fig.savefig(str(OUTPATH) + "_ic-extraction.png")
 
-# TODO: make handedness consistent with ./fit_squid_oscillations.py
-if np.sign(HANDEDNESS) < 0:
-    bfield *= -1
-    bfield = np.flip(bfield)
+# in vector10, positive Bx points into the daughterboard
+if FRIDGE == "vector10":
+    bfield = np.flip(bfield) * -1
     ic_p = np.flip(ic_p)
+# in vector9, positive Bx points out of the daughterboard
+elif FRIDGE == "vector9":
+    pass
+else:
+    warnings.warn(f"I don't recognize fridge `{FRIDGE}`")
 
 # parameterize the fit
 params = Parameters()

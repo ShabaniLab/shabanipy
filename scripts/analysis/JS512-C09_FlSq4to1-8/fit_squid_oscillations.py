@@ -77,11 +77,16 @@ plot(bfield / 1e-3, ic_p / 1e-6, ax=ax, color="w", lw=0, marker=".")
 plot(bfield / 1e-3, ic_n / 1e-6, ax=ax, color="w", lw=0, marker=".")
 fig.savefig(str(OUTPATH) + "_ic-extraction.png")
 
-# TODO: make handedness consistent with ./fit_cpr.py
-if False:  # np.sign(HANDEDNESS) < 0:
-    bfield *= -1
-    bfield = np.flip(bfield)
+# in vector10, positive Bx points into the daughterboard
+if FRIDGE == "vector10":
+    bfield = np.flip(bfield) * -1
     ic_p = np.flip(ic_p)
+    ic_n = np.flip(ic_n)
+# in vector9, positive Bx points out of the daughterboard
+elif FRIDGE == "vector9":
+    pass
+else:
+    warnings.warn(f"I don't recognize fridge `{FRIDGE}`")
 
 
 def estimate_radians_per_tesla(bfield: np.ndarray, ic: np.ndarray):
@@ -204,14 +209,14 @@ def estimate_bfield_offset(bfield: np.ndarray, ic_p: np.ndarray, ic_n=None):
     return bfield_guess
 
 
-# parameterize the fit; assume Ic1 >> Ic2
+# parameterize the fit
 params = Parameters()
 params.add(f"transparency1", value=0.5, max=1)
 params.add(f"transparency2", value=0.5, max=1)
 if EQUAL_TRANSPARENCIES:
     params["transparency2"].set(expr="transparency1")
-params.add(f"switching_current1", value=np.mean(ic_p))
-params.add(f"switching_current2", value=(np.max(ic_p) - np.min(ic_p)) / 2)
+params.add(f"switching_current1", value=(np.max(ic_p) - np.min(ic_p)) / 2)
+params.add(f"switching_current2", value=np.mean(ic_p))
 params.add(f"bfield_offset", value=estimate_bfield_offset(bfield, ic_p, ic_n))
 params.add(f"radians_per_tesla", value=estimate_radians_per_tesla(bfield, ic_p))
 # anomalous phases; if both fixed, then there is no phase freedom in the model (aside
