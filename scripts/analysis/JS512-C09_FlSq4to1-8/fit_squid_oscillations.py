@@ -241,7 +241,7 @@ params.add(f"anom_phase1", value=0, vary=False)
 params.add(f"anom_phase2", value=0, vary=False)
 params.add(f"temperature", value=round(np.mean(temp_meas), 3), vary=False)
 params.add(f"gap", value=200e-6 * eV, vary=False)
-
+params.add(f"inductance", value=1e-9)
 
 # define the model to fit
 def squid_model(params: Parameters, bfield: np.ndarray, positive: bool = True):
@@ -256,6 +256,7 @@ def squid_model(params: Parameters, bfield: np.ndarray, positive: bool = True):
         cpr,
         (p["anom_phase2"], p["switching_current2"], p["transparency2"]),
         positive=positive,
+        inductance=p["inductance"],
     )
     return i_squid
 
@@ -332,6 +333,15 @@ def plot_fit(
             label="fit",
         )
     if guess is not None:
+        zero_inductance = guess.copy()
+        zero_inductance["inductance"].set(value=0)
+        plot(
+            phase / (2 * np.pi),
+            squid_model(zero_inductance, bfield, positive=positive) / 1e-6,
+            ax=ax,
+            label="guess (L=0)",
+            ls=":",
+        )
         plot(
             phase / (2 * np.pi),
             squid_model(guess, bfield, positive=positive) / 1e-6,
