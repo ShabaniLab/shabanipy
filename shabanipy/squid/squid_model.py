@@ -99,7 +99,7 @@ def compute_squid_current(
         cp1 = cpr1(phi1, *p1)
         cp2 = cpr2(phi2, *p2)
         total_current = cp1 + cp2
-        phi_ext = delta_phi + 2 * pi * e / h * inductance * (cp2 - cp1)
+        phi_ext = delta_phi - 2 * pi * e / h * inductance * (cp2 - cp1)
         # Interpolate the current as a function of the external phase and
         # compute the current at the requested points
         return interp1d(phi_ext, total_current, kind="cubic", copy=False)(phase)
