@@ -9,10 +9,12 @@
 """ Routines to bin Shapiro steps measurements.
 
 """
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, List
 from math import ceil, copysign, floor
 
 import numpy as np
+from scipy.signal import find_peaks, savgol_filter
+from scipy.ndimage import gaussian_filter
 
 from . import shapiro_step
 
@@ -207,3 +209,76 @@ def extract_step_weight(
     if abs(voltage[step_index] - index) > 0.5:
         raise ValueError(f"Step {index} does not exist in the data.")
     return histo[:, step_index]
+
+def extract_shapiro_qfactor(
+    power: np.ndarray,
+    voltage: np.ndarray,
+    counts: np.ndarray,
+    steps: Optional[List[int]] = [0,1,2],
+    steps_combo: Optional[List[int]] = [[1,2]],
+    savgol_windowl: Optional[int] = None,
+    savgol_polyorder: Optional[int] = None,
+    gaussian_sigma: Optional[float] = 1.5,
+    power_offset: Optional[float] = None,
+    power_limits: Optional[np.ndarray] = None,
+    debug: bool = False,
+) -> np.ndarray:
+    """Extract shapiro Q-factor
+    Parameters
+    ----------
+    voltage : np.ndarray
+        1D array of the voltage bins.
+    counts : np.ndarray
+        2D array of the histogram current counts.
+    steps : List[int]
+        Indexed of the steps that should be plotted.
+    steps_combo : List[int]
+        Step numbers to calculate Q-factor for.
+    savgol_windowl : int, optional
+        Window length of savgol_filter.
+    savgol_polyorder: int, optional
+        Polyorder of savgol_filter.
+    gaussian_sigma: float, optional
+        Sigma value for gaussian filter before processing.
+    power_offset: float, optional
+        Power offset for plot.
+    power_limits: float, optional
+        Limit power range on plot.
+
+    Returns
+    -------
+    q_factor : np.ndarray
+        1D array of the q-factors for the specified step combos.
+
+    """
+    p = power[:, 0]
+    if p[0] > p[1]:
+        p = p[::-1]
+        counts = counts[::-1]
+
+    weights = [extract_step_weight(voltage, counts, i) for i in steps]
+    weights = savgol_filter(weights,savgol_windowl,savgol_polyorder) if savgol_windowl and savgol_polyorder else weights
+    
+    if power_offset:
+        p_offset = np.float64(power_offset)
+    else:
+        #Extract the 0 step to normalize the power and fix power offset
+        #In some cases sigma value for guassian_filter maybe be unsuitable. 
+        #Same goes for max height ratio (height=coeffcient*max) and distance when finding peaks
+        weight = extract_step_weight(voltage, counts, 0)
+        weight = 1/(weight + 0.01*weight[0])
+        peaks, _ = find_peaks(weight, height=0.2*np.max(weight))
+        p_offset = p[peaks[0]]
+    
+    print("Power Offset = ", p_offset)
+    data = dict(zip(steps,weights))
+    q_factor = np.zeros(len(steps_combo))
+
+    for i, q_combo in enumerate(steps_combo):
+        if power_limits is not None:
+            masked_power = (power_limits[0]<p-p_offset) & (p-p_offset<power_limits[1])
+            q_factor[i] = np.max(gaussian_filter(data[q_combo[0]][masked_power],gaussian_sigma))/np.max(gaussian_filter(data[q_combo[1]][masked_power],gaussian_sigma))
+        else:
+            q_factor[i] = np.max(gaussian_filter(data[q_combo[0]],gaussian_sigma))/np.max(gaussian_filter(data[q_combo[1]],gaussian_sigma))
+
+    return q_factor
