@@ -224,7 +224,7 @@ def plot_shapiro_histogram(
     counts = savgol_filter(counts,savgol_windowl,savgol_polyorder) if savgol_windowl and savgol_polyorder else counts
 
     #Normalize counts by critical current
-    counts *= 1e6/I_c
+    counts *= 1/I_c
 
     if transpose:
         extent = (p[0] - p_offset, p[-1] - p_offset, voltage[0], voltage[-1])
@@ -290,6 +290,7 @@ def plot_step_weights(
     rn: Optional[Union[float, np.ndarray]] = None,
     savgol_windowl: Optional[int] = None,
     savgol_polyorder: Optional[int] = None,
+    gaussian_sigma: Optional[float] = 1.5,
     power_offset: Optional[float] = None,
     counts_limits: Optional[np.ndarray] = None,
     power_limits: Optional[np.ndarray] = None,
@@ -313,9 +314,11 @@ def plot_step_weights(
     rn : Union[float, np.ndarray], optional
         Normal resistance of the device.
     savgol_windowl : int, optional
-        Window length of savgol_filter.
+        Window length of savgol_filter for data before processing.
     savgol_polyorder: int, optional
-        Polyorder of savgol_filter.
+        Polyorder of savgol_filter for data before processing.
+    gaussian_sigma: float, optional
+        Sigma value for gaussian filter before processing.
     power_offset: float, optional
         Power offset for plot.
     counts_limits : np.ndarray, optional
@@ -328,6 +331,11 @@ def plot_step_weights(
     """
     f = plt.figure(constrained_layout=True, dpi = 400, figsize = fig_size if fig_size else (15,12))
     m_ax = f.gca()
+    
+    p = power[:, 0]
+    if p[0] > p[1]:
+        p = p[::-1]
+        counts = counts[::-1]
 
     if not isinstance(ic, float):
         ic = np.average(ic)
@@ -340,14 +348,14 @@ def plot_step_weights(
     # Normalize the power by rn*ic**2 which should be the right scaling if rn is provided
     if isinstance(rn, float):
         rn = np.average(rn)
-        p = power[:, 0] - 10 * np.log10(rn * ic ** 2)
+        p = p - 10 * np.log10(rn * ic ** 2)
     else:
-        p = power[:, 0]
+        p = p
     
     if power_offset:
         p_offset = np.float64(power_offset)
     else:
-        #Extract the 0 step to normalize the power and fix power offset
+        # Extract the 0 step to normalize the power and fix power offset
         #In some cases sigma value for guassian_filter maybe be unsuitable. 
         #Same goes for max height ratio (height=coeffcient*max) and distance when finding peaks
         weight = extract_step_weight(voltage, counts, 0)
@@ -356,15 +364,17 @@ def plot_step_weights(
         p_offset = p[peaks[0]]
     
     print("Power Offset = ", p_offset)
-
+    
     #Plot figure and smooth using gaussian_filter with a sigma of 1.5
     for i, w in zip(steps, weights):
-        m_ax.plot(p - p_offset, gaussian_filter(w,1.5), label=f"Step {i}", linewidth = 7)
+        m_ax.plot(p - p_offset, gaussian_filter(w,gaussian_sigma), label=f"Step {i}", linewidth = 7)
         if power_limits:
-            masked_power = power_limits[0]<p-p_offset<power_limits[1]
-            print(f"Step {i}",f"Max = {np.max(w[masked_power])}")
+            masked_power = (power_limits[0]<p-p_offset) & (p-p_offset<power_limits[1])
+            print(f"Step {i}",f"Max = {np.max(gaussian_filter(w[masked_power],gaussian_sigma))}")
+            print(f"Step {i}",f"Avg = {np.average(gaussian_filter(w[masked_power],gaussian_sigma))}")
         else:
-            print(f"Step {i}",f"Max = {np.max(w)}")
+            print(f"Step {i}",f"Max = {np.max(gaussian_filter(w,gaussian_sigma))}")
+            print(f"Step {i}",f"Avg = {np.average(gaussian_filter(w,gaussian_sigma))}")
     
     if power_limits:
             m_ax.set_xlim(power_limits)
@@ -374,3 +384,4 @@ def plot_step_weights(
     m_ax.set_xlabel("RF Power (dB)")
     m_ax.set_ylabel("Counts (I$_c$)")
     m_ax.legend()
+

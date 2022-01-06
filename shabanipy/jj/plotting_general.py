@@ -26,6 +26,56 @@ from shabanipy.jj.fraunhofer.deterministic_reconstruction import extract_current
 from shabanipy.plotting import jy_pink
 
 
+def plot_vi_dr_curve(
+    bias: np.ndarray,
+    voltage_drop: np.ndarray,
+    dr: np.ndarray,
+    savgol_windowl: Optional[int] = None,
+    savgol_polyorder: Optional[int] = None,
+    bias_limits: Optional[np.ndarray] = None,
+    text: Optional[str] = None,
+    fig_size: Optional[np.ndarray] = None,
+    debug: bool = False,
+) -> None:
+    """Plot the Voltage drop and dR 
+
+    Parameters
+    ----------
+    bias : np.ndarray
+        2D array of the bias current.
+    voltage_drop : np.ndarray
+        2D array of the measured voltage drop.
+    savgol_windowl : int, optional
+        Window length of savgol_filter applied to voltage drop.
+    savgol_polyorder: int, optional
+        Polyorder of savgol_filter applied to voltage drop.
+    bias_limits : np.ndarray, optional
+        bias axis plot limits.
+    fig_size : np.ndarray, optional
+        Figure size of plot.
+    debug : bool, optional
+        Should debug information be provided, by default False.
+
+    """
+    fig, ax = plt.subplots(constrained_layout=True, figsize = fig_size if fig_size else mpl.rcParams['figure.figsize'])
+    m_ax = fig.gca()
+    
+    # Use savgol_filter if params are available
+    voltage_drop = savgol_filter(voltage_drop,savgol_windowl,savgol_polyorder) if savgol_windowl and savgol_polyorder else voltage_drop
+    
+
+    m_ax.grid()
+    ax2 = ax.twinx()
+    ax.plot(bias*1e6, voltage_drop*1e3, color = 'blue', linewidth = 3)
+    ax2.plot(bias*1e6, np.abs(dr),color = 'red', linewidth = 3)
+    ax2.set_xlabel('Bias(µV)', labelpad = 20)
+    ax.set_ylabel(r'V$_{Drop}$(mV)', labelpad = 20, color = 'blue')
+    ax2.set_ylabel(r'dR(Ω)', labelpad = 20, color = 'red')
+    if bias_limits:
+        ax.set_xlim(bias_limits)
+    if text:
+        ax.text(0.025,0.9,text, fontsize = 15, ha='left', va='center',transform=ax.transAxes)
+
 def plot_fraunhofer(
     out_field: np.ndarray,
     bias: np.ndarray,
@@ -521,6 +571,8 @@ def plot_inplane_vs_Ic_Rn(
     voltage_drop: np.ndarray,
     ic_voltage_threshold: float,
     high_bias_threshold: float,
+    ic_extraction_method: Optional[str] = 'iv_analysis',
+    switching_bias_threshold: Optional[float] = 2e-5,
     savgol_windowl: Optional[int] = None,
     savgol_polyorder: Optional[int] = None,
     ic_limits: Optional[np.ndarray] = None,
@@ -545,6 +597,11 @@ def plot_inplane_vs_Ic_Rn(
     high_bias_threshold : float
         Positive bias value above which the data can be used to extract the
         normal resistance.
+    ic_extraction_method: str, Optional
+        Choose method to extract critical current. Default is using "iv_analysis" function but sometimes
+        "extract_switching_current" works better.
+    switching_bias_threshold: float, Optional
+        Value of threshold for extract_switching_current function
     savgol_windowl : int, optional
         Window length of savgol_filter.
     savgol_polyorder: int, optional
@@ -568,11 +625,16 @@ def plot_inplane_vs_Ic_Rn(
     voltage_drop = savgol_filter(voltage_drop,savgol_windowl,savgol_polyorder) if savgol_windowl and savgol_polyorder else voltage_drop
     
     x = analyse_vi_curve(bias, voltage_drop, ic_voltage_threshold,high_bias_threshold)
+    
+    if ic_extraction_method == 'extract_switching_current':
+        ic = extract_switching_current(bias,voltage_drop,switching_bias_threshold)
+    elif ic_extraction_method == 'iv_analysis':
+        ic = x[2]
 
     m_ax.grid()
     ax2 = ax.twinx()
     ax2.plot(inplane_field*1000, x[0], color = 'red', linewidth = 5, marker = 'x', markersize = 10)
-    ax.plot(inplane_field*1000, x[2]*1e6, color = 'blue', linewidth = 5, marker = 'o', markersize = 10)
+    ax.plot(inplane_field*1000, ic*1e6,color = 'blue', linewidth = 5, marker = 'o', markersize = 10)
     ax.set_xlabel('In-plane Field (mT)', labelpad = 20)
     ax2.set_ylabel(r'R$_{n}$(Ω)', labelpad = 20, color = 'red')
     ax.set_ylabel(r'I$_{c}$(µA)', labelpad = 20, color = 'blue')
@@ -586,9 +648,11 @@ def plot_inplane_vs_Ic_Rn(
 def plot_inplane_vs_IcRn(
     inplane_field: np.ndarray,
     bias: np.ndarray,
-    dV_dI: np.ndarray,
+    voltage_drop: np.ndarray,
     ic_voltage_threshold: float,
     high_bias_threshold: float,
+    ic_extraction_method: Optional[str] = 'iv_analysis',
+    switching_bias_threshold: Optional[float] = 2e-5,
     savgol_windowl: Optional[int] = None,
     savgol_polyorder: Optional[int] = None,
     icrn_limits: Optional[np.ndarray] = None,
@@ -604,14 +668,19 @@ def plot_inplane_vs_IcRn(
         2D array of the applied in-plane magnetic field.
     bias : np.ndarray
         2D array of the bias current.
-    dV_dI : np.ndarray
-        2D array of the differential resistance.
+    voltage_drop : np.ndarray
+        2D array of the measured voltage drop.
     ic_voltage_threshold : float
         Voltage threshold in V above which the junction is not considered to carry a
         supercurrent anymore. Used in the determination of the critical current.
     high_bias_threshold : float
         Positive bias value above which the data can be used to extract the
         normal resistance.
+    ic_extraction_method: str, Optional
+        Choose method to extract critical current. Default is using "iv_analysis" function but sometimes
+        "extract_switching_current" works better.
+    switching_bias_threshold: float, Optional
+        Value of threshold for extract_switching_current function    
     savgol_windowl : int, optional
         Window length of savgol_filter.
     savgol_polyorder: int, optional
@@ -630,12 +699,16 @@ def plot_inplane_vs_IcRn(
     m_ax = f.gca()
     
     # Use savgol_filter if params are available
-    dV_dI = savgol_filter(dV_dI,savgol_windowl,savgol_polyorder) if savgol_windowl and savgol_polyorder else dV_dI
+    voltage_drop = savgol_filter(voltage_drop,savgol_windowl,savgol_polyorder) if savgol_windowl and savgol_polyorder else voltage_drop
     
-    x = analyse_vi_curve(bias, dV_dI, ic_voltage_threshold,high_bias_threshold)
+    x = analyse_vi_curve(bias, voltage_drop, ic_voltage_threshold,high_bias_threshold)
+    if ic_extraction_method == 'extract_switching_current':
+        ic = extract_switching_current(bias,voltage_drop,switching_bias_threshold)
+    elif ic_extraction_method == 'iv_analysis':
+        ic = x[2]
 
     m_ax.grid()
-    m_ax.plot(inplane_field[:,0]*1000, x[0]*x[2]*1e6, color = 'green', linewidth = 5, marker = 'x', markersize = 10)
+    m_ax.plot(inplane_field[:,0]*1000, x[0]*ic*1e6, color = 'green', linewidth = 5, marker = 'x', markersize = 10)
     m_ax.set_xlabel('In-plane Field (mT)', labelpad = 20)
     m_ax.set_ylabel(r'I$_{c}$R$_{n}$(Ω)', labelpad = 20, color = 'green')
     if in_field_limits:
