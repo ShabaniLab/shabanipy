@@ -102,17 +102,18 @@ def analyse_vi_curve(
 
         masked_mv_l = np.where(np.greater(mv[:index],-ic_voltage_threshold))[0]
         masked_mv_r = np.where(np.less(mv[index:],ic_voltage_threshold))[0] +index
-        # # Extract the critical current on the positive and negative branch
+
+        # Extract the critical current on the positive and negative branch
         ldidv = np.diff(mv[masked_mv_l])/np.diff(cb[masked_mv_l])
         rdidv = np.diff(mv[masked_mv_r])/np.diff(cb[masked_mv_r])
 
-        lpeak, _ = find_peaks(ldidv, max(ldidv)*0.4 )
-        rpeak, _ = find_peaks(rdidv, max(rdidv)*0.4 )
+        lpeak, _ = find_peaks(ldidv, max(ldidv)*0.5 )
+        rpeak, _ = find_peaks(rdidv, max(rdidv)*0.5 )
         
         if lpeak.size == 0:
             ic_n = 0.0
         else:
-            ic_n = abs(cb[lpeak[-1]])
+            ic_n = abs(cb[masked_mv_l[0]+lpeak[-1]])
         
         if rpeak.size == 0:
             ic_p = 0.0
