@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from lmfit import Minimizer, Parameters, fit_report
+from lmfit import Minimizer, Parameters, ci_report, conf_interval, fit_report
 from lmfit.minimizer import MinimizerResult
 from matplotlib import pyplot as plt
 from scipy.constants import eV
@@ -35,16 +35,31 @@ parser.add_argument(
 parser.add_argument(
     "--dry-run",
     "-n",
-    action="store_true",
     default=False,
+    action="store_true",
     help="do preliminary analysis but don't run fit",
 )
 parser.add_argument(
     "--plot-guess",
     "-g",
-    action="store_true",
     default=False,
+    action="store_true",
     help="plot the initial guess along with the best fit",
+)
+parser.add_argument(
+    "--conf-interval",
+    "-c",
+    nargs="*",
+    type=int,
+    metavar=("σ1", "σ2"),
+    help="calculate confidence intervals (optional list of ints specifying sigma values to pass to lmfit.conf_interval)",
+)
+parser.add_argument(
+    "--verbose",
+    "-v",
+    default=False,
+    action="store_true",
+    help="print more information to stdout",
 )
 args = parser.parse_args()
 
@@ -290,13 +305,20 @@ else:
         residuals, params, fcn_args=(bfield, ic_p, ic_n if BOTH_BRANCHES else None)
     )
     result = mini.minimize()
-    print("done.")
+    print("...done.")
     print(fit_report(result))
     with open(str(OUTPATH) + "_fit-report.txt", "w") as f:
         f.write(fit_report(result))
     with open(str(OUTPATH) + "_fit-params.txt", "w") as f:
         with redirect_stdout(f):
             result.params.pretty_print(precision=8)
+
+    if args.conf_interval is not None:
+        print("Calculating confidence intervals (this takes a while)...", end="")
+        sigmas = args.conf_interval if args.conf_interval else None
+        ci = conf_interval(mini, result, sigmas=sigmas, verbose=args.verbose)
+        print("...done.")
+        print(ci_report(ci, ndigits=10))
 
 # plot the initial guess and best fit over the data
 def plot_fit(
