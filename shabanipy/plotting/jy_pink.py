@@ -41,4 +41,6 @@ color_pts = [
     (208, 127, 127),
 ]
 
-register_color_map("jy_pink", color_pts)
+
+def register():
+    register_color_map("jy_pink", color_pts)

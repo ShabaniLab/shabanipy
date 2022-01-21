@@ -22,7 +22,7 @@ from scipy.signal import find_peaks
 
 from shabanipy.dvdi import extract_switching_current
 from shabanipy.labber import LabberData
-from shabanipy.plotting import plot, plot2d, jy_pink
+from shabanipy.plotting import jy_pink, plot, plot2d
 from shabanipy.squid.cpr import finite_transparency_jj_current as cpr
 from shabanipy.squid.squid_model import compute_squid_current
 
@@ -69,6 +69,7 @@ with open(Path(__file__).parent / args.config_path) as f:
     exec(f.read())
 
 Path(OUTDIR).mkdir(parents=True, exist_ok=True)
+jy_pink.register()
 plt.style.use(["jy_pink", "fullscreen13"])
 
 # load the data
