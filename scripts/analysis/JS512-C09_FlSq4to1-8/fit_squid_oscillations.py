@@ -106,7 +106,7 @@ plot(bfield / 1e-3, ic_p / 1e-6, ax=ax, color="w", lw=0, marker=".")
 plot(bfield / 1e-3, ic_n / 1e-6, ax=ax, color="w", lw=0, marker=".")
 fig.savefig(str(OUTPATH) + "_ic-extraction.png")
 
-# in vector10, positive Bx points into the daughterboard
+# in vector10, positive Bx points into the daughterboard (depends on mount orientation)
 if FRIDGE == "vector10":
     bfield = np.flip(bfield) * -1
     ic_p = np.flip(ic_p)
@@ -276,6 +276,19 @@ def squid_model(params: Parameters, bfield: np.ndarray, positive: bool = True):
     return i_squid
 
 
+# scale the residuals to get a somewhat meaningful χ2 value
+ibias_step = np.diff(ibias, axis=-1)
+uncertainty = np.mean(ibias_step)
+if not np.allclose(ibias_step, uncertainty):
+    warnings.warn(
+        "Bias current has variable step sizes; "
+        "the magnitude of the χ2 statistic may not be meaningful."
+    )
+if BOTH_BRANCHES:
+    sqrt_npoints = np.sqrt(len(ic_p) + len(ic_n))
+else:
+    sqrt_npoints = np.sqrt(len(ic_p))
+
 # define the objective function to minimize
 def residuals(
     params: Parameters,
@@ -293,7 +306,7 @@ def residuals(
     if ic_n is not None:
         data = np.concatenate((data, ic_n))
         model = np.concatenate((model, squid_model(params, bfield, positive=False)))
-    return data - model
+    return (data - model) / uncertainty / sqrt_npoints
 
 
 # fit the data
