@@ -11,12 +11,10 @@ import warnings
 from contextlib import redirect_stdout
 from functools import partial
 from pathlib import Path
-from typing import Optional
 
 import corner
 import numpy as np
-from lmfit import Minimizer, Parameters, ci_report, conf_interval, fit_report
-from lmfit.minimizer import MinimizerResult
+from lmfit import Model
 from matplotlib import pyplot as plt
 from scipy.constants import eV
 from scipy.signal import find_peaks
@@ -247,43 +245,60 @@ def estimate_bfield_offset(bfield: np.ndarray, ic_p: np.ndarray, ic_n=None):
     return bfield_guess
 
 
-# parameterize the fit
-params = Parameters()
-params.add(f"transparency1", value=0.5, max=1)
-params.add(f"transparency2", value=0.5, max=1)
+# define the model to fit
+def squid_model(
+    bfield: np.ndarray,
+    transparency1: float,
+    transparency2: float,
+    switching_current1: float,
+    switching_current2: float,
+    bfield_offset: float,
+    radians_per_tesla: float,
+    anom_phase1: float,
+    anom_phase2: float,
+    temperature: float,
+    gap: float,
+    inductance: float,
+):
+    """The model function to fit against the data."""
+    bfield = bfield - bfield_offset
+
+    i_squid = [
+        compute_squid_current(
+            bfield * radians_per_tesla,
+            cpr,
+            (anom_phase1, switching_current1, transparency1),
+            cpr,
+            (anom_phase2, switching_current2, transparency2),
+            positive=positive,
+            inductance=inductance,
+        )
+        for positive in ((True, False) if BOTH_BRANCHES else (True,))
+    ]
+    return np.array(i_squid).flatten()
+
+
+model = Model(squid_model)
+
+# initialize the parameters
+params = model.make_params()
+params["transparency1"].set(value=0.5, max=1)
+params["transparency2"].set(value=0.5, max=1)
 if EQUAL_TRANSPARENCIES:
     params["transparency2"].set(expr="transparency1")
-params.add(f"switching_current1", value=(np.max(ic_p) - np.min(ic_p)) / 2)
-params.add(f"switching_current2", value=np.mean(ic_p))
-params.add(f"bfield_offset", value=estimate_bfield_offset(bfield, ic_p, ic_n))
-params.add(f"radians_per_tesla", value=estimate_radians_per_tesla(bfield, ic_p))
+params["switching_current1"].set(value=(np.max(ic_p) - np.min(ic_p)) / 2)
+params["switching_current2"].set(value=np.mean(ic_p))
+params["bfield_offset"].set(value=estimate_bfield_offset(bfield, ic_p, ic_n))
+params["radians_per_tesla"].set(value=estimate_radians_per_tesla(bfield, ic_p))
 # anomalous phases; if both fixed, then there is no phase freedom in the model (aside
 # from bfield_offset), as the two gauge-invariant phases are fixed by two constraints:
 #     1. flux quantization:         γ1 - γ2 = 2πΦ/Φ_0 (mod 2π),
 #     2. supercurrent maximization: I_tot = max_γ1 { I_1(γ1) + I_2(γ1 - 2πΦ/Φ_0) }
-params.add(f"anom_phase1", value=0, vary=False)
-params.add(f"anom_phase2", value=0, vary=False)
-params.add(f"temperature", value=round(np.mean(temp_meas), 3), vary=False)
-params.add(f"gap", value=200e-6 * eV, vary=False)
-params.add(f"inductance", value=1e-9)
-
-# define the model to fit
-def squid_model(params: Parameters, bfield: np.ndarray, positive: bool = True):
-    """The model function to fit against the data."""
-    p = params.valuesdict()
-    bfield = bfield - p["bfield_offset"]
-
-    i_squid = compute_squid_current(
-        bfield * p["radians_per_tesla"],
-        cpr,
-        (p["anom_phase1"], p["switching_current1"], p["transparency1"]),
-        cpr,
-        (p["anom_phase2"], p["switching_current2"], p["transparency2"]),
-        positive=positive,
-        inductance=p["inductance"],
-    )
-    return i_squid
-
+params["anom_phase1"].set(value=0, vary=False)
+params["anom_phase2"].set(value=0, vary=False)
+params["temperature"].set(value=round(np.mean(temp_meas), 3), vary=False)
+params["gap"].set(value=200e-6 * eV, vary=False)
+params["inductance"].set(value=1e-9)
 
 # scale the residuals to get a somewhat meaningful χ2 value
 ibias_step = np.diff(ibias, axis=-1)
@@ -293,89 +308,55 @@ if not np.allclose(ibias_step, uncertainty):
         "Bias current has variable step sizes; "
         "the magnitude of the χ2 statistic may not be meaningful."
     )
-if BOTH_BRANCHES:
-    sqrt_npoints = np.sqrt(len(ic_p) + len(ic_n))
-else:
-    sqrt_npoints = np.sqrt(len(ic_p))
-
-# define the objective function to minimize
-def residuals(
-    params: Parameters,
-    bfield: np.ndarray,
-    ic_p: np.ndarray,
-    ic_n: Optional[np.ndarray] = None,
-):
-    """Difference between data and model to minimize with respect to `params`.
-
-    If the negative critical current branch is provided via `ic_n`, both branches are
-    fit simultaneously by concatenating the positive- and negative-branch arrays.
-    """
-    data = ic_p
-    model = squid_model(params, bfield)
-    if ic_n is not None:
-        data = np.concatenate((data, ic_n))
-        model = np.concatenate((model, squid_model(params, bfield, positive=False)))
-    return (data - model) / uncertainty
-
-
-def chisq_weighted_residuals(params, bfield, ic_p, ic_n=None):
-    """Residuals weighted to give a more meaningful chi-squared statistic."""
-    return residuals(params, bfield, ic_p, ic_n) / sqrt_npoints
-
 
 # fit the data
-if args.dry_run:
-    result = None
-else:
+if not args.dry_run:
     print("Optimizing fit...", end="")
-    mini = Minimizer(
-        chisq_weighted_residuals,
-        params,
-        fcn_args=(bfield, ic_p, ic_n if BOTH_BRANCHES else None),
+    result = model.fit(
+        data=np.array([ic_p, ic_n]).flatten() if BOTH_BRANCHES else ic_p,
+        weights=1 / uncertainty,
+        bfield=bfield,
+        params=params,
+        verbose=args.verbose,
     )
-    result = mini.minimize()
     print("...done.")
-    print(fit_report(result))
+    print(result.fit_report())
     with open(str(OUTPATH) + "_fit-report.txt", "w") as f:
-        f.write(fit_report(result))
+        f.write(result.fit_report())
     with open(str(OUTPATH) + "_fit-params.txt", "w") as f:
         with redirect_stdout(f):
             result.params.pretty_print(precision=8)
 
     if args.conf_interval is not None:
         print("Calculating confidence intervals (this takes a while)...", end="")
-        sigmas = args.conf_interval if args.conf_interval else None
-        ci = conf_interval(mini, result, sigmas=sigmas, verbose=args.verbose)
+        ci_kwargs = dict(verbose=args.verbose)
+        if args.conf_interval:
+            ci_kwargs.update(dict(sigmas=args.conf_interval))
+        result.conf_interval(**ci_kwargs)
         print("...done.")
-        print(ci_report(ci, ndigits=10))
+        print(result.ci_report(ndigits=10))
 
     if args.emcee:
         print("Calculating posteriors with emcee...")
-        mcmc_mini = Minimizer(
-            residuals,
-            params,
-            fcn_args=(bfield, ic_p, ic_n if BOTH_BRANCHES else None,),
-            # nan_policy="omit",
-        )
-        mcmc_result = mcmc_mini.emcee(
+        mcmc_result = model.fit(
+            data=[ic_p, ic_n] if BOTH_BRANCHES else [ic_p],
+            weights=1 / uncertainty,
+            bfield=bfield,
             params=result.params,
-            steps=1000,
-            nwalkers=100,
-            burn=300,
-            thin=1,
-            is_weighted=True,
+            # nan_policy="omit",
+            method="emcee",
+            fit_kws=dict(steps=1000, nwalkers=100, burn=300, thin=1, is_weighted=True),
         )
         print("...done.")
         print("emcee medians")
         print("-------------")
-        print(fit_report(mcmc_result))
+        print(mcmc_result.fit_report())
         # TODO calculate max likelihood estimate and 1σ error bars
 
-        fig, ax = plot(
-            mcmc_result.acceptance_fraction,
-            xlabel="walker",
-            ylabel="acceptance fraction",
-        )
+        fig, ax = plt.subplots()
+        ax.plot(mcmc_result.acceptance_fraction)
+        ax.set_xlabel("walker")
+        ax.set_ylabel("acceptance fraction")
         fig.savefig(str(OUTPATH) + "_emcee-acceptance-fraction.png")
         fig = corner.corner(
             mcmc_result.flatchain,
@@ -385,70 +366,45 @@ else:
         fig.savefig(str(OUTPATH) + "_emcee-corner.png")
 
 
-# plot the initial guess and best fit over the data
-def plot_fit(
-    bfield: np.ndarray,
-    ic: np.ndarray,
-    result: Optional[MinimizerResult] = None,
-    guess: Optional[Parameters] = None,
-    positive: bool = True,
-    ax: Optional[plt.Axes] = None,
-):
-    popt = (
-        result.params.valuesdict()
-        if result is not None
-        else guess.valuesdict()
-        if guess is not None
-        else params
-    )
-    phase = (bfield - popt["bfield_offset"]) * popt["radians_per_tesla"]
-    _, ax = plot(
+# plot the best fit and initial guess over the data
+popt = result.params.valuesdict() if not args.dry_run else params
+phase = (bfield - popt["bfield_offset"]) * popt["radians_per_tesla"]
+if BOTH_BRANCHES:
+    fig, (ax_p, ax_n) = plt.subplots(2, 1, sharex=True)
+    plot(
         phase / (2 * np.pi),
-        ic / 1e-6,
-        marker=".",
+        ic_n / 1e-6,
+        ax=ax_n,
         xlabel="phase [2π]",
         ylabel="switching current [μA]",
         label="data",
-        stamp=COOLDOWN_SCAN,
-        ax=ax,
+        marker=".",
     )
-    if result is not None:
-        plot(
-            phase / (2 * np.pi),
-            squid_model(result.params, bfield, positive=positive) / 1e-6,
-            ax=ax,
-            label="fit",
-        )
-    if guess is not None:
-        zero_inductance = guess.copy()
-        zero_inductance["inductance"].set(value=0)
-        plot(
-            phase / (2 * np.pi),
-            squid_model(zero_inductance, bfield, positive=positive) / 1e-6,
-            ax=ax,
-            label="guess (L=0)",
-            ls=":",
-        )
-        plot(
-            phase / (2 * np.pi),
-            squid_model(guess, bfield, positive=positive) / 1e-6,
-            ax=ax,
-            label="guess",
-        )
-
-
-if BOTH_BRANCHES:
-    fig, (ax, ax2) = plt.subplots(2, 1, sharex=True)
-    plot_fit(
-        bfield,
-        ic_n,
-        result=result,
-        guess=params if args.plot_guess else None,
-        positive=False,
-        ax=ax2,
-    )
+    if not args.dry_run:
+        best_p, best_n = np.split(result.best_fit, 2)
+        plot(phase / (2 * np.pi), best_n / 1e-6, ax=ax_n, label="fit")
+    if args.plot_guess:
+        init_p, init_n = np.split(model.eval(bfield=bfield, params=params), 2)
+        plot(phase / (2 * np.pi), init_n / 1e-6, ax=ax_n, label="guess")
 else:
-    fig, ax = plt.subplots()
-plot_fit(bfield, ic_p, result=result, guess=params if args.plot_guess else None, ax=ax)
+    fig, ax_p = plt.subplots()
+    if not args.dry_run:
+        best_p = result.best_fit
+    if args.plot_guess:
+        init_p = model.eval(bfield=bfield, params=params)
+plot(
+    phase / (2 * np.pi),
+    ic_p / 1e-6,
+    ax=ax_p,
+    xlabel="phase [2π]",
+    ylabel="switching current [μA]",
+    label="data",
+    marker=".",
+    stamp=COOLDOWN_SCAN,
+)
+if not args.dry_run:
+    plot(phase / (2 * np.pi), best_p / 1e-6, ax=ax_p, label="fit")
+if args.plot_guess:
+    plot(phase / (2 * np.pi), init_p / 1e-6, ax=ax_p, label="guess")
 fig.savefig(str(OUTPATH) + "_fit.png")
 plt.show()
