@@ -13,6 +13,7 @@ from functools import partial
 from pathlib import Path
 from typing import Optional
 
+import corner
 import numpy as np
 from lmfit import Minimizer, Parameters, ci_report, conf_interval, fit_report
 from lmfit.minimizer import MinimizerResult
@@ -53,6 +54,13 @@ parser.add_argument(
     type=int,
     metavar=("σ1", "σ2"),
     help="calculate confidence intervals (optional list of ints specifying sigma values to pass to lmfit.conf_interval)",
+)
+parser.add_argument(
+    "--emcee",
+    "-m",
+    default=False,
+    action="store_true",
+    help="run a Markov Chain Monte Carlo sampler and plot with `corner`",
 )
 parser.add_argument(
     "--verbose",
@@ -307,7 +315,12 @@ def residuals(
     if ic_n is not None:
         data = np.concatenate((data, ic_n))
         model = np.concatenate((model, squid_model(params, bfield, positive=False)))
-    return (data - model) / uncertainty / sqrt_npoints
+    return (data - model) / uncertainty
+
+
+def chisq_weighted_residuals(params, bfield, ic_p, ic_n=None):
+    """Residuals weighted to give a more meaningful chi-squared statistic."""
+    return residuals(params, bfield, ic_p, ic_n) / sqrt_npoints
 
 
 # fit the data
@@ -316,7 +329,9 @@ if args.dry_run:
 else:
     print("Optimizing fit...", end="")
     mini = Minimizer(
-        residuals, params, fcn_args=(bfield, ic_p, ic_n if BOTH_BRANCHES else None)
+        chisq_weighted_residuals,
+        params,
+        fcn_args=(bfield, ic_p, ic_n if BOTH_BRANCHES else None),
     )
     result = mini.minimize()
     print("...done.")
@@ -333,6 +348,42 @@ else:
         ci = conf_interval(mini, result, sigmas=sigmas, verbose=args.verbose)
         print("...done.")
         print(ci_report(ci, ndigits=10))
+
+    if args.emcee:
+        print("Calculating posteriors with emcee...")
+        mcmc_mini = Minimizer(
+            residuals,
+            params,
+            fcn_args=(bfield, ic_p, ic_n if BOTH_BRANCHES else None,),
+            # nan_policy="omit",
+        )
+        mcmc_result = mcmc_mini.emcee(
+            params=result.params,
+            steps=1000,
+            nwalkers=100,
+            burn=300,
+            thin=1,
+            is_weighted=True,
+        )
+        print("...done.")
+        print("emcee medians")
+        print("-------------")
+        print(fit_report(mcmc_result))
+        # TODO calculate max likelihood estimate and 1σ error bars
+
+        fig, ax = plot(
+            mcmc_result.acceptance_fraction,
+            xlabel="walker",
+            ylabel="acceptance fraction",
+        )
+        fig.savefig(str(OUTPATH) + "_emcee-acceptance-fraction.png")
+        fig = corner.corner(
+            mcmc_result.flatchain,
+            labels=mcmc_result.var_names,
+            truths=list(mcmc_result.params.valuesdict().values()),
+        )
+        fig.savefig(str(OUTPATH) + "_emcee-corner.png")
+
 
 # plot the initial guess and best fit over the data
 def plot_fit(
