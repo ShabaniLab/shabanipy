@@ -339,31 +339,39 @@ if not args.dry_run:
     if args.emcee:
         print("Calculating posteriors with emcee...")
         mcmc_result = model.fit(
-            data=[ic_p, ic_n] if BOTH_BRANCHES else [ic_p],
+            data=np.array([ic_p, ic_n]).flatten() if BOTH_BRANCHES else ic_p,
             weights=1 / uncertainty,
             bfield=bfield,
             params=result.params,
             # nan_policy="omit",
             method="emcee",
-            fit_kws=dict(steps=1000, nwalkers=100, burn=300, thin=1, is_weighted=True),
+            fit_kws=dict(steps=1000, nwalkers=100, burn=200, thin=10, is_weighted=True),
         )
         print("...done.")
-        print("emcee medians")
-        print("-------------")
+        print("\nemcee medians and (averaged) +-1σ quantiles")
+        print("------------------------------")
         print(mcmc_result.fit_report())
-        # TODO calculate max likelihood estimate and 1σ error bars
+        print("\nemcee max likelihood estimates")
+        print("------------------------------")
+        mle_loc = np.argmax(mcmc_result.lnprob)
+        mle_loc = np.unravel_index(mle_loc, mcmc_result.lnprob.shape)
+        mle = mcmc_result.chain[mle_loc]
+        for i, p in enumerate([p for p in mcmc_result.params.values() if p.vary]):
+            print(f"{p.name}: {mle[i]}")
 
         fig, ax = plt.subplots()
         ax.plot(mcmc_result.acceptance_fraction)
         ax.set_xlabel("walker")
         ax.set_ylabel("acceptance fraction")
         fig.savefig(str(OUTPATH) + "_emcee-acceptance-fraction.png")
-        fig = corner.corner(
-            mcmc_result.flatchain,
-            labels=mcmc_result.var_names,
-            truths=list(mcmc_result.params.valuesdict().values()),
-        )
-        fig.savefig(str(OUTPATH) + "_emcee-corner.png")
+        with plt.style.context("classic"):
+            fig = corner.corner(
+                mcmc_result.flatchain,
+                labels=mcmc_result.var_names,
+                truths=[p.value for p in mcmc_result.params.values() if p.vary],
+                labelpad=0.1,
+            )
+            fig.savefig(str(OUTPATH) + "_emcee-corner.png")
 
 
 # plot the best fit and initial guess over the data
