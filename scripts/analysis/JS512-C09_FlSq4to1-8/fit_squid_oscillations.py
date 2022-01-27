@@ -74,6 +74,7 @@ with open(Path(__file__).parent / args.config_path) as f:
     print(f"Using config file `{f.name}`")
     exec(f.read())
 
+print(f"All output will be saved to `{OUTDIR}`")
 Path(OUTDIR).mkdir(parents=True, exist_ok=True)
 jy_pink.register()
 plt.style.use(["jy_pink", "fullscreen13"])
