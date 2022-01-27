@@ -6,6 +6,6 @@
 #
 # The full license is in the file LICENCE, distributed with this software.
 # -----------------------------------------------------------------------------
-"""Utility tools used throughout the project.
+"""Utility tools used throughout the project."""
 
-"""
+from .lmfit_utils import to_dataframe

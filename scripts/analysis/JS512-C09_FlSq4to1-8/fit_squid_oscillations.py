@@ -24,8 +24,10 @@ from shabanipy.labber import LabberData
 from shabanipy.plotting import jy_pink, plot, plot2d
 from shabanipy.squid.cpr import finite_transparency_jj_current as cpr
 from shabanipy.squid.squid_model import compute_squid_current
+from shabanipy.utils import to_dataframe
 
 print = partial(print, flush=True)
+
 # set up the command-line interface
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
@@ -325,7 +327,7 @@ if not args.dry_run:
     with open(str(OUTPATH) + "_fit-report.txt", "w") as f:
         f.write(result.fit_report())
     with open(str(OUTPATH) + "_fit-params.txt", "w") as f, redirect_stdout(f):
-        result.params.pretty_print(precision=8)
+        print(to_dataframe(result.params))
 
     if args.conf_interval is not None:
         print("Calculating confidence intervals (this takes a while)...", end="")
