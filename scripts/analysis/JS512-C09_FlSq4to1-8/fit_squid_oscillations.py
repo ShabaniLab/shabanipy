@@ -324,9 +324,8 @@ if not args.dry_run:
     print(result.fit_report())
     with open(str(OUTPATH) + "_fit-report.txt", "w") as f:
         f.write(result.fit_report())
-    with open(str(OUTPATH) + "_fit-params.txt", "w") as f:
-        with redirect_stdout(f):
-            result.params.pretty_print(precision=8)
+    with open(str(OUTPATH) + "_fit-params.txt", "w") as f, redirect_stdout(f):
+        result.params.pretty_print(precision=8)
 
     if args.conf_interval is not None:
         print("Calculating confidence intervals (this takes a while)...", end="")
