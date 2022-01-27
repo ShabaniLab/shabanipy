@@ -7,12 +7,14 @@
 # -----------------------------------------------------------------------------
 """Fit SQUID oscillations to a two-junction CPR model."""
 import argparse
+import builtins
 import warnings
 from contextlib import redirect_stdout
 from functools import partial
 from pathlib import Path
 
 import corner
+import matplotlib as mpl
 import numpy as np
 from lmfit import Model
 from matplotlib import pyplot as plt
@@ -26,6 +28,7 @@ from shabanipy.squid.cpr import finite_transparency_jj_current as cpr
 from shabanipy.squid.squid_model import compute_squid_current
 
 print = partial(print, flush=True)
+
 # set up the command-line interface
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
@@ -76,6 +79,14 @@ with open(Path(__file__).parent / args.config_path) as f:
 
 print(f"All output will be saved to `{OUTDIR}`")
 Path(OUTDIR).mkdir(parents=True, exist_ok=True)
+mpl.figure.Figure.savesavefig = mpl.figure.Figure.savefig
+mpl.figure.Figure.savefig = lambda self, suffix, *args, **kwargs: self.savesavefig(
+    str(OUTPATH) + suffix, *args, **kwargs
+)
+def open(suffix, *args, **kwargs):
+    return builtins.open(str(OUTDIR) + suffix, *args, **kwargs)
+
+
 jy_pink.register()
 plt.style.use(["jy_pink", "fullscreen13"])
 
@@ -103,7 +114,7 @@ fig, ax = plot2d(
     title="raw data",
     stamp=COOLDOWN_SCAN,
 )
-fig.savefig(str(OUTPATH) + "_raw-data.png")
+fig.savefig("_raw-data.png")
 
 # extract the switching currents
 ic_n, ic_p = extract_switching_current(
@@ -112,7 +123,7 @@ ic_n, ic_p = extract_switching_current(
 ax.set_title("$I_c$ extraction")
 plot(bfield / 1e-3, ic_p / 1e-6, ax=ax, color="w", lw=0, marker=".")
 plot(bfield / 1e-3, ic_n / 1e-6, ax=ax, color="w", lw=0, marker=".")
-fig.savefig(str(OUTPATH) + "_ic-extraction.png")
+fig.savefig("_ic-extraction.png")
 
 # in vector10, positive Bx points into the daughterboard (depends on mount orientation)
 if FRIDGE == "vector10":
@@ -163,7 +174,7 @@ def estimate_radians_per_tesla(bfield: np.ndarray, ic: np.ndarray):
         f"period = {round(1 / freq_guess / 1e-6)} μT",
         transform=ax.transAxes,
     )
-    fig.savefig(str(OUTPATH) + "_fft.png")
+    fig.savefig("_fft.png")
     return 2 * np.pi * freq_guess
 
 
@@ -242,7 +253,7 @@ def estimate_bfield_offset(bfield: np.ndarray, ic_p: np.ndarray, ic_n=None):
         transform=ax.transAxes,
     )
     ax.legend()
-    fig.savefig(str(OUTPATH) + "_bfield-offset.png")
+    fig.savefig("_bfield-offset.png")
     return bfield_guess
 
 
@@ -322,9 +333,9 @@ if not args.dry_run:
     )
     print("...done.")
     print(result.fit_report())
-    with open(str(OUTPATH) + "_fit-report.txt", "w") as f:
+    with open("_fit-report.txt", "w") as f:
         f.write(result.fit_report())
-    with open(str(OUTPATH) + "_fit-params.txt", "w") as f, redirect_stdout(f):
+    with open("_fit-params.txt", "w") as f, redirect_stdout(f):
         result.params.pretty_print(precision=8)
 
     if args.conf_interval is not None:
@@ -363,7 +374,7 @@ if not args.dry_run:
         ax.plot(mcmc_result.acceptance_fraction)
         ax.set_xlabel("walker")
         ax.set_ylabel("acceptance fraction")
-        fig.savefig(str(OUTPATH) + "_emcee-acceptance-fraction.png")
+        fig.savefig("_emcee-acceptance-fraction.png")
         with plt.style.context("classic"):
             fig = corner.corner(
                 mcmc_result.flatchain,
@@ -371,7 +382,7 @@ if not args.dry_run:
                 truths=[p.value for p in mcmc_result.params.values() if p.vary],
                 labelpad=0.1,
             )
-            fig.savefig(str(OUTPATH) + "_emcee-corner.png")
+            fig.savefig("_emcee-corner.png")
 
 
 # plot the best fit and initial guess over the data
@@ -414,5 +425,5 @@ if not args.dry_run:
     plot(phase / (2 * np.pi), best_p / 1e-6, ax=ax_p, label="fit")
 if args.plot_guess:
     plot(phase / (2 * np.pi), init_p / 1e-6, ax=ax_p, label="guess")
-fig.savefig(str(OUTPATH) + "_fit.png")
+fig.savefig("_fit.png")
 plt.show()
