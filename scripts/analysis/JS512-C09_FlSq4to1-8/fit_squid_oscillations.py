@@ -15,6 +15,7 @@ from pathlib import Path
 import corner
 import numpy as np
 from lmfit import Model
+from lmfit.model import save_modelresult
 from matplotlib import pyplot as plt
 from scipy.constants import eV
 from scipy.signal import find_peaks
@@ -22,9 +23,9 @@ from scipy.signal import find_peaks
 from shabanipy.dvdi import extract_switching_current
 from shabanipy.labber import LabberData
 from shabanipy.plotting import jy_pink, plot, plot2d
-from shabanipy.squid.cpr import finite_transparency_jj_current as cpr
-from shabanipy.squid.squid_model import compute_squid_current
 from shabanipy.utils import to_dataframe
+
+from squid_model_func import squid_model_func
 
 print = partial(print, flush=True)
 
@@ -248,40 +249,7 @@ def estimate_bfield_offset(bfield: np.ndarray, ic_p: np.ndarray, ic_n=None):
     return bfield_guess
 
 
-# define the model to fit
-def squid_model(
-    bfield: np.ndarray,
-    transparency1: float,
-    transparency2: float,
-    switching_current1: float,
-    switching_current2: float,
-    bfield_offset: float,
-    radians_per_tesla: float,
-    anom_phase1: float,
-    anom_phase2: float,
-    temperature: float,
-    gap: float,
-    inductance: float,
-):
-    """The model function to fit against the data."""
-    bfield = bfield - bfield_offset
-
-    i_squid = [
-        compute_squid_current(
-            bfield * radians_per_tesla,
-            cpr,
-            (anom_phase1, switching_current1, transparency1),
-            cpr,
-            (anom_phase2, switching_current2, transparency2),
-            positive=positive,
-            inductance=inductance,
-        )
-        for positive in ((True, False) if BOTH_BRANCHES else (True,))
-    ]
-    return np.array(i_squid).flatten()
-
-
-model = Model(squid_model)
+model = Model(squid_model_func, both_branches=BOTH_BRANCHES)
 
 # initialize the parameters
 params = model.make_params()
@@ -338,6 +306,8 @@ if not args.dry_run:
         print("...done.")
         print(result.ci_report(ndigits=10))
 
+    save_modelresult(result, str(OUTPATH) + "_model-result.json")
+
     if args.emcee:
         print("Calculating posteriors with emcee...")
         mcmc_result = model.fit(
@@ -350,6 +320,7 @@ if not args.dry_run:
             fit_kws=dict(steps=1000, nwalkers=100, burn=200, thin=10, is_weighted=True),
         )
         print("...done.")
+        save_modelresult(mcmc_result, str(OUTPATH) + "_mcmc-result.json")
         print("\nemcee medians and (averaged) +-1σ quantiles")
         print("------------------------------")
         print(mcmc_result.fit_report())
