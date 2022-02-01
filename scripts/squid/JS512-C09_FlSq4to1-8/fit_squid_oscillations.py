@@ -109,11 +109,12 @@ with LabberData(INPATH) as f:
     temp_meas = f.get_data(config["CH_TEMP_MEAS"])
 
 # check for significant temperature deviations
-MAX_TEMPERATURE_STD = 1e-3
-temp_std = np.std(temp_meas)
-if temp_std > MAX_TEMPERATURE_STD:
+MAX_TEMPERATURE_DIFF = 1e-3
+temp_mean = np.mean(temp_meas)
+if np.any(np.abs(temp_meas - temp_mean) > MAX_TEMPERATURE_DIFF):
     warnings.warn(
-        f"Temperature standard deviation {temp_std} K > {MAX_TEMPERATURE_STD} K"
+        f"max|T - Tmean| > {MAX_TEMPERATURE_DIFF} K "
+        f"(mean={temp_mean}, std={np.std(temp_meas)})"
     )
 
 # plot the raw data
