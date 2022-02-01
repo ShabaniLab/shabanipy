@@ -20,6 +20,7 @@ from shabanipy.jj.utils import extract_switching_current
 from shabanipy.plotting import jy_pink, plot, plot2d
 from shabanipy.plotting.utils import stamp
 
+jy_pink.register()
 style.use(["presentation", "jy_pink"])
 scans = {
     "WFS02_078": {"jj_width": 4e-6, "jj_length": 1e-6, "threshold": 50},

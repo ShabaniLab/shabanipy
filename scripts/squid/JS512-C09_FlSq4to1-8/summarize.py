@@ -36,6 +36,7 @@ handler.formatter = ConsoleFormatter()
 logger.addHandler(handler)
 configure_logging()
 
+jy_pink.register()
 plt.style.use(["presentation", "jy_pink"])
 
 DV_DI = r"$\mathrm{d}V/\mathrm{d}I$ ($\Omega$)"
