@@ -8,8 +8,10 @@
 """Fit SQUID oscillations to a two-junction CPR model."""
 import argparse
 import warnings
+from configparser import ConfigParser, ExtendedInterpolation
 from contextlib import redirect_stdout
 from functools import partial
+from importlib import import_module
 from pathlib import Path
 
 import corner
@@ -22,7 +24,7 @@ from scipy.constants import eV
 from scipy.signal import find_peaks
 
 from shabanipy.dvdi import extract_switching_current
-from shabanipy.labber import LabberData
+from shabanipy.labber import LabberData, get_data_dir
 from shabanipy.plotting import jy_pink, plot, plot2d
 from shabanipy.utils import to_dataframe
 
@@ -76,19 +78,35 @@ args = parser.parse_args()
 # load the config file
 with open(Path(__file__).parent / args.config_path) as f:
     print(f"Using config file `{f.name}`")
-    exec(f.read())
+    config = ConfigParser(interpolation=ExtendedInterpolation())
+    config.read_file(f)
+    config = config["dummy"]
 
+
+OUTDIR = f"{__file__.split('.py')[0].replace('_', '-')}-results/"
 print(f"All output will be saved to `{OUTDIR}`")
 Path(OUTDIR).mkdir(parents=True, exist_ok=True)
+
+OUTPATH = Path(OUTDIR) / (config["COOLDOWN"] + "_" + config["SCAN"])
+INPATH = Path(config.get("LABBERDATA_DIR", get_data_dir())) / config["DATAPATH"]
+AMPS_PER_T = getattr(
+    import_module("shabanipy.constants"),
+    f"{config['FRIDGE'].upper()}_AMPS_PER_TESLA_{config['PERP_AXIS'].upper()}",
+)
+if config["FRIDGE"] not in str(INPATH):
+    warnings.warn(
+        f"I can't double check that {config['DATAPATH']} is from {config['FRIDGE']}"
+    )
+
 jy_pink.register()
 plt.style.use(["jy_pink", "fullscreen13"])
 
 # load the data
-with LabberData(DATAPATH) as f:
-    bfield = f.get_data(CHAN_FIELD_PERP) / AMPS_PER_T
-    ibias, lockin = f.get_data(CHAN_LOCKIN, get_x=True)
+with LabberData(INPATH) as f:
+    bfield = f.get_data(config["CH_FIELD_PERP"]) / AMPS_PER_T
+    ibias, lockin = f.get_data(config["CH_LOCKIN"], get_x=True)
     dvdi = np.abs(lockin)
-    temp_meas = f.get_data(CHAN_TEMP_MEAS)
+    temp_meas = f.get_data(config["CH_TEMP_MEAS"])
 
 # check for significant temperature deviations
 MAX_TEMPERATURE_STD = 1e-3
@@ -105,13 +123,17 @@ fig, ax = plot2d(
     ylabel="dc bias (μA)",
     zlabel="dV/dI (Ω)",
     title="raw data",
-    stamp=COOLDOWN_SCAN,
+    stamp=config["COOLDOWN"] + "_" + config["SCAN"],
 )
 fig.savefig(str(OUTPATH) + "_raw-data.png")
 
 # extract the switching currents
 ic_n, ic_p = extract_switching_current(
-    ibias, dvdi, side="both", threshold=RESISTANCE_THRESHOLD, interp=True,
+    ibias,
+    dvdi,
+    side="both",
+    threshold=config.getfloat("RESISTANCE_THRESHOLD"),
+    interp=True,
 )
 ax.set_title("$I_c$ extraction")
 plot(bfield / 1e-3, ic_p / 1e-6, ax=ax, color="w", lw=0, marker=".")
@@ -119,15 +141,15 @@ plot(bfield / 1e-3, ic_n / 1e-6, ax=ax, color="w", lw=0, marker=".")
 fig.savefig(str(OUTPATH) + "_ic-extraction.png")
 
 # in vector10, positive Bx points into the daughterboard (depends on mount orientation)
-if FRIDGE == "vector10":
+if config["FRIDGE"] == "vector10":
     bfield = np.flip(bfield) * -1
     ic_p = np.flip(ic_p)
     ic_n = np.flip(ic_n)
 # in vector9, positive Bx points out of the daughterboard
-elif FRIDGE == "vector9":
+elif config["FRIDGE"] == "vector9":
     pass
 else:
-    warnings.warn(f"I don't recognize fridge `{FRIDGE}`")
+    warnings.warn(f"I don't recognize fridge `{config['FRIDGE']}`")
 
 
 def estimate_radians_per_tesla(bfield: np.ndarray, ic: np.ndarray):
@@ -156,7 +178,7 @@ def estimate_radians_per_tesla(bfield: np.ndarray, ic: np.ndarray):
         xlabel="frequency [mT$^{-1}$]",
         ylabel="|FFT| [arb. u.]",
         title="frequency guess",
-        stamp=COOLDOWN_SCAN,
+        stamp=config["COOLDOWN"] + "_" + config["SCAN"],
         marker="o",
     )
     ax.axvline(freq_guess / 1e3, color="k")
@@ -218,7 +240,7 @@ def estimate_bfield_offset(bfield: np.ndarray, ic_p: np.ndarray, ic_n=None):
         ic_p / 1e-6,
         ylabel="supercurrent [μA]",
         title="bfield offset guess",
-        stamp=COOLDOWN_SCAN,
+        stamp=config["COOLDOWN"] + "_" + config["SCAN"],
         ax=ax,
         marker=".",
     )
@@ -250,13 +272,13 @@ def estimate_bfield_offset(bfield: np.ndarray, ic_p: np.ndarray, ic_n=None):
     return bfield_guess
 
 
-model = Model(squid_model_func, both_branches=BOTH_BRANCHES)
+model = Model(squid_model_func, both_branches=config.getboolean("BOTH_BRANCHES"))
 
 # initialize the parameters
 params = model.make_params()
 params["transparency1"].set(value=0.5, max=1)
 params["transparency2"].set(value=0.5, max=1)
-if EQUAL_TRANSPARENCIES:
+if config.getboolean("EQUAL_TRANSPARENCIES"):
     params["transparency2"].set(expr="transparency1")
 params["switching_current1"].set(value=(np.max(ic_p) - np.min(ic_p)) / 2)
 params["switching_current2"].set(value=np.mean(ic_p))
@@ -285,7 +307,9 @@ if not np.allclose(ibias_step, uncertainty):
 if not args.dry_run:
     print("Optimizing fit...", end="")
     result = model.fit(
-        data=np.array([ic_p, ic_n]).flatten() if BOTH_BRANCHES else ic_p,
+        data=np.array([ic_p, ic_n]).flatten()
+        if config.getboolean("BOTH_BRANCHES")
+        else ic_p,
         weights=1 / uncertainty,
         bfield=bfield,
         params=params,
@@ -312,7 +336,9 @@ if not args.dry_run:
     if args.emcee:
         print("Calculating posteriors with emcee...")
         mcmc_result = model.fit(
-            data=np.array([ic_p, ic_n]).flatten() if BOTH_BRANCHES else ic_p,
+            data=np.array([ic_p, ic_n]).flatten()
+            if config.getboolean("BOTH_BRANCHES")
+            else ic_p,
             weights=1 / uncertainty,
             bfield=bfield,
             params=result.params,
@@ -351,7 +377,7 @@ if not args.dry_run:
 # plot the best fit and initial guess over the data
 popt = result.params.valuesdict() if not args.dry_run else params
 phase = (bfield - popt["bfield_offset"]) * popt["radians_per_tesla"]
-if BOTH_BRANCHES:
+if config.getboolean("BOTH_BRANCHES"):
     fig, (ax_p, ax_n) = plt.subplots(2, 1, sharex=True)
     plot(
         phase / (2 * np.pi),
@@ -381,7 +407,7 @@ plot(
     ylabel="switching current [μA]",
     label="data",
     marker=".",
-    stamp=COOLDOWN_SCAN,
+    stamp=config["COOLDOWN"] + "_" + config["SCAN"],
 )
 if not args.dry_run:
     plot(phase / (2 * np.pi), best_p / 1e-6, ax=ax_p, label="fit")
@@ -395,7 +421,11 @@ DataFrame(
         "ic_p": ic_p,
         "fit_p": best_p,
         "init_p": init_p,
-        **({"ic_n": ic_n, "fit_n": best_n, "init_n": init_n} if BOTH_BRANCHES else {}),
+        **(
+            {"ic_n": ic_n, "fit_n": best_n, "init_n": init_n}
+            if config.getboolean("BOTH_BRANCHES")
+            else {}
+        ),
     }
 ).to_csv(str(OUTPATH) + "_fit.csv", index=False)
 plt.show()
