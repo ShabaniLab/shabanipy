@@ -17,6 +17,7 @@ import numpy as np
 from lmfit import Model
 from lmfit.model import save_modelresult
 from matplotlib import pyplot as plt
+from pandas import DataFrame
 from scipy.constants import eV
 from scipy.signal import find_peaks
 
@@ -364,15 +365,14 @@ if BOTH_BRANCHES:
     if not args.dry_run:
         best_p, best_n = np.split(result.best_fit, 2)
         plot(phase / (2 * np.pi), best_n / 1e-6, ax=ax_n, label="fit")
+    init_p, init_n = np.split(model.eval(bfield=bfield, params=params), 2)
     if args.plot_guess:
-        init_p, init_n = np.split(model.eval(bfield=bfield, params=params), 2)
         plot(phase / (2 * np.pi), init_n / 1e-6, ax=ax_n, label="guess")
 else:
     fig, ax_p = plt.subplots()
     if not args.dry_run:
         best_p = result.best_fit
-    if args.plot_guess:
-        init_p = model.eval(bfield=bfield, params=params)
+    init_p = model.eval(bfield=bfield, params=params)
 plot(
     phase / (2 * np.pi),
     ic_p / 1e-6,
@@ -388,4 +388,14 @@ if not args.dry_run:
 if args.plot_guess:
     plot(phase / (2 * np.pi), init_p / 1e-6, ax=ax_p, label="guess")
 fig.savefig(str(OUTPATH) + "_fit.png")
+DataFrame(
+    {
+        "bfield": bfield,
+        "phase": phase,
+        "ic_p": ic_p,
+        "fit_p": best_p,
+        "init_p": init_p,
+        **({"ic_n": ic_n, "fit_n": best_n, "init_n": init_n} if BOTH_BRANCHES else {}),
+    }
+).to_csv(str(OUTPATH) + "_fit.csv", index=False)
 plt.show()
