@@ -83,24 +83,29 @@ with open(Path(__file__).parent / args.config_path) as f:
     ini.read_file(f)
     config = ini[args.config_section]
 
-
-OUTDIR = f"{__file__.split('.py')[0].replace('_', '-')}-results/{config['DEVICE']}"
-print(f"All output will be saved to `{OUTDIR}`")
-Path(OUTDIR).mkdir(parents=True, exist_ok=True)
-
-OUTPATH = Path(OUTDIR) / f"{config['COOLDOWN']}-{config['SCAN']}"
+# get the path to the datafile
 INPATH = Path(config.get("LABBERDATA_DIR", get_data_dir())) / config["DATAPATH"]
+
+# magnet coil current-per-field conversion factor
 AMPS_PER_T = getattr(
     import_module("shabanipy.constants"),
     f"{config['FRIDGE'].upper()}_AMPS_PER_TESLA_{config['PERP_AXIS'].upper()}",
 )
+# sanity check conversion factor is correct (relies on my local file hierarchy)
 if config["FRIDGE"] not in str(INPATH):
     warnings.warn(
         f"I can't double check that {config['DATAPATH']} is from {config['FRIDGE']}"
     )
 
+# set up plot styles
 jy_pink.register()
 plt.style.use(["jy_pink", "fullscreen13"])
+
+# set up output directory and filename prefix
+OUTDIR = f"{__file__.split('.py')[0].replace('_', '-')}-results/{config['DEVICE']}"
+print(f"All output will be saved to `{OUTDIR}`")
+Path(OUTDIR).mkdir(parents=True, exist_ok=True)
+OUTPATH = Path(OUTDIR) / f"{config['COOLDOWN']}-{config['SCAN']}"
 
 # load the data
 with LabberData(INPATH) as f:
