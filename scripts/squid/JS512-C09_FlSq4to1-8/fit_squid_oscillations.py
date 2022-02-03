@@ -84,11 +84,11 @@ with open(Path(__file__).parent / args.config_path) as f:
     config = ini[args.config_section]
 
 
-OUTDIR = f"{__file__.split('.py')[0].replace('_', '-')}-results/"
+OUTDIR = f"{__file__.split('.py')[0].replace('_', '-')}-results/{config['DEVICE']}"
 print(f"All output will be saved to `{OUTDIR}`")
 Path(OUTDIR).mkdir(parents=True, exist_ok=True)
 
-OUTPATH = Path(OUTDIR) / (config["COOLDOWN"] + "_" + config["SCAN"])
+OUTPATH = Path(OUTDIR) / f"{config['COOLDOWN']}-{config['SCAN']}"
 INPATH = Path(config.get("LABBERDATA_DIR", get_data_dir())) / config["DATAPATH"]
 AMPS_PER_T = getattr(
     import_module("shabanipy.constants"),
