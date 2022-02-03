@@ -35,8 +35,9 @@ print = partial(print, flush=True)
 # set up the command-line interface
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
-    "config_path", help="path to a config file, relative to this script."
+    "config_path", help="path to .ini config file, relative to this script."
 )
+parser.add_argument("config_section", help="section of the .ini config file to use")
 parser.add_argument(
     "--dry-run",
     "-n",
@@ -78,9 +79,9 @@ args = parser.parse_args()
 # load the config file
 with open(Path(__file__).parent / args.config_path) as f:
     print(f"Using config file `{f.name}`")
-    config = ConfigParser(interpolation=ExtendedInterpolation())
-    config.read_file(f)
-    config = config["dummy"]
+    ini = ConfigParser(interpolation=ExtendedInterpolation())
+    ini.read_file(f)
+    config = ini[args.config_section]
 
 
 OUTDIR = f"{__file__.split('.py')[0].replace('_', '-')}-results/"
