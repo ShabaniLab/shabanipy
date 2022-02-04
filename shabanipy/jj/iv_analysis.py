@@ -26,6 +26,7 @@ def analyse_vi_curve(
     measured_voltage: np.ndarray,
     ic_voltage_threshold: float = 1e-4,
     high_bias_threshold: float = 10e-6,
+    fix_voffset: bool = False,
     debug: bool = False,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Extract the critical and excess current along with the normal resistance.
@@ -46,6 +47,9 @@ def analyse_vi_curve(
     high_bias_threshold : float, optional
         Positive bias value above which the data can be used to extract the
         normal resistance.
+    fix_voffset : bool, optional
+        If true, correct any voltage offset so that the superconducting region is at 0V.
+        Then the `ic_voltage_threshold` refers to the corrected voltage values.
     debug : bool, optional
         Generate summary plots of the fitting.
 
@@ -81,6 +85,8 @@ def analyse_vi_curve(
         # Extract the relevant sweeps.
         cb = current_bias[m_index]
         mv = measured_voltage[m_index]
+        if fix_voffset:
+            mv = correct_voltage_offset(cb, mv, n_peak_width=2)
 
         # Determine the hot and cold electron side
         if cb[0] < 0.0:

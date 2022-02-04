@@ -26,10 +26,9 @@ def test_voltage_offset_symmetric():
     r2 = (voltage[0] - voltage[1]) / (current[0] - current[1])
 
     # 1D tests
-    off, rn_c, rn_h, ic_c, ic_h, ie_c, ie_h = analyse_vi_curve(
-        current, voltage, 5, 0.05, 0.5, True
+    rn_c, rn_h, ic_c, ic_h, ie_c, ie_h = analyse_vi_curve(
+        current, voltage, 0.05, 0.5, True,
     )
-    assert off == 0
     assert abs(rn_c - r1) < 1e-6
     assert abs(rn_h - r2) < 1e-6
     assert ic_c == current[70]
@@ -37,10 +36,9 @@ def test_voltage_offset_symmetric():
     assert abs(ie_c - 0.275) < 1e-6
     assert abs(ie_h - 0.025) < 1e-6
 
-    off, rn_c, rn_h, ic_c, ic_h, ie_c, ie_h = analyse_vi_curve(
-        current[::-1], voltage[::-1] + 0.1, 5, 0.05, 0.5, True
+    rn_c, rn_h, ic_c, ic_h, ie_c, ie_h = analyse_vi_curve(
+        current[::-1], voltage[::-1] + 0.1, 0.05, 0.5, True,
     )
-    assert off == 0.1
     assert abs(rn_c - r2) < 1e-6
     assert abs(rn_h - r1) < 1e-6
     assert ic_c == -current[40]
@@ -56,11 +54,10 @@ def test_voltage_offset_symmetric():
     v2d[0] = voltage
     v2d[1] = voltage[::-1] + 0.1
 
-    off, rn_c, rn_h, ic_c, ic_h, ie_c, ie_h = analyse_vi_curve(
-        c2d, v2d, 5, 0.05, 0.5, False
+    rn_c, rn_h, ic_c, ic_h, ie_c, ie_h = analyse_vi_curve(
+        c2d, v2d, 0.05, 0.5, True,
     )
 
-    np.testing.assert_array_almost_equal(off, np.array([0.0, 0.1]))
     np.testing.assert_array_almost_equal(rn_c, np.array([r1, r2]))
     np.testing.assert_array_almost_equal(rn_h, np.array([r2, r1]))
     np.testing.assert_array_equal(ic_c, np.array([current[70], -current[40]]))
@@ -76,11 +73,10 @@ def test_voltage_offset_symmetric():
     v3d[0, ..., :] = voltage
     v3d[1, ..., :] = voltage[::-1] + 0.1
 
-    off, rn_c, rn_h, ic_c, ic_h, ie_c, ie_h = analyse_vi_curve(
-        c3d, v3d, 5, 0.05, 0.5, False
+    rn_c, rn_h, ic_c, ic_h, ie_c, ie_h = analyse_vi_curve(
+        c3d, v3d, 0.05, 0.5, True,
     )
 
-    np.testing.assert_array_almost_equal(off, np.array([[0.0, 0.0], [0.1, 0.1]]))
     np.testing.assert_array_almost_equal(rn_c, np.array([[r1, r1], [r2, r2]]))
     np.testing.assert_array_almost_equal(rn_h, np.array([[r2, r2], [r1, r1]]))
     np.testing.assert_array_equal(
