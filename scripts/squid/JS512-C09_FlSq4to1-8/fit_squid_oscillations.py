@@ -139,12 +139,12 @@ ic_n, ic_p = extract_switching_current(
     ibias,
     dvdi,
     side="both",
-    threshold=config.getfloat("RESISTANCE_THRESHOLD"),
+    threshold=config.getfloat("RESISTANCE_THRESHOLD", fallback=None),
     interp=True,
 )
 ax.set_title("$I_c$ extraction")
-plot(bfield / 1e-3, ic_p / 1e-6, ax=ax, color="w", lw=0, marker=".")
-plot(bfield / 1e-3, ic_n / 1e-6, ax=ax, color="w", lw=0, marker=".")
+plot(bfield / 1e-3, ic_p / 1e-6, ax=ax, color="k", lw=1)
+plot(bfield / 1e-3, ic_n / 1e-6, ax=ax, color="k", lw=1)
 fig.savefig(str(OUTPATH) + "_ic-extraction.png")
 
 # in vector10, positive Bx points into the daughterboard (depends on mount orientation)

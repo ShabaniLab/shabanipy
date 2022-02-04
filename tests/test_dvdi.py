@@ -78,6 +78,44 @@ class TestExtractSwitchingCurrent(unittest.TestCase):
             [[1.5, 0.5, 1.5], [0.5, 1.5, 1.5]],
         )
 
+    def test_auto_threshold_1d(self):
+        bias = np.array([-2, -1, 0, 1, 2])
+        dvdi = np.array([2, 1, 0, 4, 8])
+        self.assertEqual(
+            extract_switching_current(bias, dvdi, threshold=None, interp=True), 1
+        )
+        self.assertEqual(
+            extract_switching_current(
+                bias, dvdi, threshold=None, side="negative", interp=True
+            ),
+            -1,
+        )
+        self.assertEqual(
+            extract_switching_current(
+                bias, dvdi, threshold=None, side="both", interp=True
+            ),
+            (-1, 1),
+        )
+
+    def test_auto_threshold_2d(self):
+        bias = np.array([[-2, -1, 0, 1, 2], [-4, -2, 0, 2, 4]])
+        dvdi = np.array([[2, 1, 0, 2, 4], [10, 5, 0, 3, 6]])
+        assert_array_equal(
+            extract_switching_current(bias, dvdi, threshold=None, interp=True), [1, 2]
+        )
+        assert_array_equal(
+            extract_switching_current(
+                bias, dvdi, threshold=None, side="negative", interp=True
+            ),
+            [-1, -2],
+        )
+        assert_array_equal(
+            extract_switching_current(
+                bias, dvdi, threshold=None, side="both", interp=True
+            ),
+            [[-1, -2], [1, 2]],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
