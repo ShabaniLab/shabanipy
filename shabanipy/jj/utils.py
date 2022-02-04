@@ -69,30 +69,46 @@ def compute_voltage_offset(
     dydx = np.diff(measured_voltage)
     l_dydx = dydx[:midpoint]
     r_dydx = dydx[midpoint:]
+    
+    if np.size(l_dydx)!=0:
+        # Find the most prominent peaks on each side of the zero bias current
+        peaks_left, _ = find_peaks(l_dydx, max(l_dydx[bound_l:])/5)
+        # Manually evaluate the width of the peaks since they can be very asymetric
+        peak_l=peaks_left[-1]
+        lw = 0
+    
+        l_peak_value = l_dydx[peak_l]
+        while l_dydx[peak_l + lw] > l_peak_value / 2:
+            lw += 1
+            # Break if at the end of the array
+            if peak_l + lw >= len(l_dydx-1):
+                break
+    else:
+        lw = 0
+        peak_l = 0
 
+    # print(r_dydx, bound_r, midpoint)
+
+    if np.size(r_dydx)!= 0 :
+        if np.size(l_dydx) != 0 :
     # Find the most prominent peaks on each side of the zero bias current
-    peaks_left, _ = find_peaks(l_dydx, max(l_dydx[bound_l:])/5)
-    peaks_right, _ = find_peaks(r_dydx, max(r_dydx[:bound_r-midpoint])/5)
-    
-    # Manually evaluate the width of the peaks since they can be very asymetric
-    peak_l=peaks_left[-1]
-    peak_r=peaks_right[0]
-    lw = 0
-    
-    l_peak_value = l_dydx[peak_l]
-    while l_dydx[peak_l + lw] > l_peak_value / 2:
-        lw += 1
-        # Break if at the end of the array
-        if peak_l + lw >= len(l_dydx-1):
-            break
+            peaks_right, _ = find_peaks(r_dydx, max(r_dydx[:bound_r-midpoint])/5)
+        else:
+            peaks_right, _ = find_peaks(r_dydx, max(r_dydx)/5)
 
-    rw = 0
-    r_peak_value = r_dydx[peak_r]
-    while r_dydx[peak_r - rw] > r_peak_value / 2:
-        rw += 1
-        # Break if at the end of the array
-        if peak_r - rw <= 0:
-            break
+    # Manually evaluate the width of the peaks since they can be very asymetric
+        peak_r=peaks_right[0]
+
+        rw = 0
+        r_peak_value = r_dydx[peak_r]
+        while r_dydx[peak_r - rw] > r_peak_value / 2:
+            rw += 1
+            # Break if at the end of the array
+            if peak_r - rw <= 0:
+                break
+    else:
+        rw = 0
+        peak_r = 0
 
     # Keep only the data between the two peaks
     area = measured_voltage[
@@ -246,7 +262,7 @@ def extract_switching_current(
     """
     # Correct of the DMM voltage offset(superconducting region should be around zero)
 
-    volt_or_res = correct_voltage_offset(bias,volt_or_res,2) if correct_v_offset else volt_or_res
+    volt_or_res = correct_voltage_offset(bias,volt_or_res,1) if correct_v_offset else volt_or_res
 
     if side not in ("positive", "negative"):
         raise ValueError(f"Side should be 'positive' or 'negative', found {side}.")
