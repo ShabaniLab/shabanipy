@@ -40,10 +40,10 @@ def analyse_vi_curve(
         N+1D array of the current bias applied on the junction in A.
     measured_voltage : np.ndarray
         N+1D array of the voltage accross the junction in V.
-    ic_voltage_threshold : float
+    ic_voltage_threshold : float, optional
         Voltage threshold in V above which the junction is not considered to carry a
         supercurrent anymore. Used in the determination of the critical current.
-    high_bias_threshold : float
+    high_bias_threshold : float, optional
         Positive bias value above which the data can be used to extract the
         normal resistance.
     debug : bool, optional
@@ -51,8 +51,6 @@ def analyse_vi_curve(
 
     Returns
     -------
-    voltage_offset_correction : np.ndarray
-        Offset used to correct the measured voltage. ND array
     rn_c : np.ndarray
         Normal resistance evaluated on the cold electron side. ND array
     rn_h : np.ndarray
