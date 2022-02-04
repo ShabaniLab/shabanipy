@@ -74,7 +74,7 @@ def plot_vi_dr_curve(
     if bias_limits:
         ax.set_xlim(bias_limits)
     if text:
-        ax.text(0.025,0.9,text, fontsize = 15, ha='left', va='center',transform=ax.transAxes)
+        ax.text(0.025,0.85,text, fontsize = 15, ha='left', va='center',transform=ax.transAxes)
 
 def plot_fraunhofer(
     out_field: np.ndarray,
@@ -158,6 +158,7 @@ def plot_extracted_switching_current(
     bias: np.ndarray,
     voltage_drop: np.ndarray,
     threshold: float,
+    out_field_range: Optional[float] = None,
     current_field_conversion: Optional[float] = None,
     correct_v_offset: Optional[bool] = True,
     symmetrize_fraun: Optional[bool] = False,
@@ -182,6 +183,8 @@ def plot_extracted_switching_current(
     threshold : float
         Since there's a shift in the DMM the superconducting region isn't exactly around zero. This value is not constant and needs to be adjusted.
         This threshold sets the voltage range around zero used to determine the swicthing current. Usually the threshold is of the order of 1e-4.
+    out_field_range : float
+        Range of out-of-plane field to extract critical current from.
     current_field_conversion : float, optional
         Convert current being applied by Keithley to out-of-plane field in units of mA:mT. 
     correct_v_offset : bool, optional
@@ -210,13 +213,19 @@ def plot_extracted_switching_current(
     
     #Convert from current to field if conversion factor is available
     out_field = out_field/current_field_conversion if current_field_conversion else out_field
+    
+    if out_field_range:
+        mask = (out_field[:,0]<out_field_range) & (-out_field_range<out_field[:,0])
+        out_field = out_field[mask]
+        bias = bias[mask]
+        voltage_drop = voltage_drop[mask]
 
     #Extract switching current and use savgol_filter if params are available
     ic = extract_switching_current(bias, voltage_drop,
      threshold = threshold,
      correct_v_offset = True if correct_v_offset  else None
      )
-
+    # ic = ic-min(ic)
     ic = savgol_filter(ic, savgol_windowl, savgol_polyorder) if savgol_windowl and savgol_polyorder else ic
 
     #Find max of fraunhofer(which should be in the center) and center field around 0
@@ -228,7 +237,7 @@ def plot_extracted_switching_current(
     pm = m_ax.plot(field*1e3, #field: 1e3 factor to convert from T to mT 
         ic*1e6,    #ic: 1e6 factor to convert from A to µA
         color = 'royalblue',
-        linewidth = 5
+        linewidth = 3
         )
 
     if out_field_limits:
@@ -329,6 +338,7 @@ def plot_current_distribution(
     threshold: float,
     jj_length: float,
     jj_width: float,
+    out_field_range: Optional[float] = None,
     current_field_conversion: Optional[float] = None,
     correct_v_offset: Optional[bool] = True,
     symmetrize_fraun: Optional[bool] = False,
@@ -357,6 +367,8 @@ def plot_current_distribution(
         Length of the junction in meters.
     jj_width : float
         Width of the junction in meters.
+    out_field_range : float
+        Range of out-of-plane field to extract critical current from.
     current_field_conversion : float, optional
         Convert current being applied by Keithley to out-of-plane field in units of mA:mT
     correct_v_offset : bool, optional
@@ -391,11 +403,17 @@ def plot_current_distribution(
     #Convert from current to field if conversion factor is available
     out_field = out_field/current_field_conversion if current_field_conversion else out_field
 
+    if out_field_range:
+        mask = (out_field[:,0]<out_field_range) & (-out_field_range<out_field[:,0])
+        out_field = out_field[mask]
+        bias = bias[mask]
+        voltage_drop = voltage_drop[mask]
     #Extract switching current and use savgol_filter if params are available
     ic = extract_switching_current(bias, voltage_drop,
      threshold = threshold,
      correct_v_offset = True if correct_v_offset else None
      )
+    # ic = ic-min(ic)
     ic = savgol_filter(ic, savgol_windowl, savgol_polyorder) if savgol_windowl and savgol_polyorder else ic
 
     #Find max of fraunhofer(which should be in the center) and center field around 0
