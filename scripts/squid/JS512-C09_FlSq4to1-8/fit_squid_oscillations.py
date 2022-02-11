@@ -403,18 +403,19 @@ if not args.dry_run:
 if args.plot_guess:
     plot(phase / (2 * np.pi), init_p / 1e-6, ax=ax_p, label="guess")
 fig.savefig(str(OUTPATH) + "_fit.png")
-DataFrame(
-    {
-        "bfield": bfield,
-        "phase": phase,
-        "ic_p": ic_p,
-        "fit_p": best_p,
-        "init_p": init_p,
-        **(
-            {"ic_n": ic_n, "fit_n": best_n, "init_n": init_n}
-            if config.getboolean("BOTH_BRANCHES")
-            else {}
-        ),
-    }
-).to_csv(str(OUTPATH) + "_fit.csv", index=False)
+if not args.dry_run:
+    DataFrame(
+        {
+            "bfield": bfield,
+            "phase": phase,
+            "ic_p": ic_p,
+            "fit_p": best_p,
+            "init_p": init_p,
+            **(
+                {"ic_n": ic_n, "fit_n": best_n, "init_n": init_n}
+                if config.getboolean("BOTH_BRANCHES")
+                else {}
+            ),
+        }
+    ).to_csv(str(OUTPATH) + "_fit.csv", index=False)
 plt.show()
