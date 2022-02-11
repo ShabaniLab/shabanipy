@@ -7,4 +7,4 @@
 # The full license is in the file LICENCE, distributed with this software.
 # -----------------------------------------------------------------------------
 """Analysis of SQUID data."""
-from .estimate import estimate_frequency
+from .estimate import estimate_boffset, estimate_frequency
