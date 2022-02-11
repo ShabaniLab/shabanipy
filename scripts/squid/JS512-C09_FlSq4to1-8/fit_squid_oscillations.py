@@ -26,6 +26,7 @@ from scipy.signal import find_peaks
 from shabanipy.dvdi import extract_switching_current
 from shabanipy.labber import LabberData, get_data_dir
 from shabanipy.plotting import jy_pink, plot, plot2d
+from shabanipy.squid import estimate_frequency
 from shabanipy.utils import to_dataframe
 
 from squid_model_func import squid_model_func
@@ -159,47 +160,6 @@ else:
     warnings.warn(f"I don't recognize fridge `{config['FRIDGE']}`")
 
 
-def estimate_radians_per_tesla(bfield: np.ndarray, ic: np.ndarray):
-    """Estimate the field-to-phase conversion factor by Fourier transform.
-
-    The strongest frequency component (excluding the dc component) is returned.
-    """
-    dbs = np.unique(np.diff(bfield))
-    try:
-        (db,) = dbs
-    except ValueError:
-        db = np.mean(dbs)
-        if not np.allclose(dbs, dbs[0], atol=0):
-            warnings.warn(
-                "Samples are not uniformly spaced in B-field;"
-                "rad/T conversion factor estimate might be poor"
-            )
-    abs_fft = np.abs(np.fft.rfft(ic)[1:])  # ignore DC component
-    freq = np.fft.fftfreq(len(ic), d=db)[1 : len(bfield) // 2 + 1]
-    freq_guess = freq[np.argmax(abs_fft)]
-
-    # plot the FFT and resulting guess
-    fig, ax = plot(
-        freq / 1e3,
-        abs_fft,
-        xlabel="frequency [mT$^{-1}$]",
-        ylabel="|FFT| [arb. u.]",
-        title="frequency guess",
-        stamp=config["COOLDOWN"] + "_" + config["SCAN"],
-        marker="o",
-    )
-    ax.axvline(freq_guess / 1e3, color="k")
-    ax.text(
-        0.3,
-        0.5,
-        f"frequency = {np.round(freq_guess / 1e3)} mT$^{{-1}}$\n"
-        f"period = {round(1 / freq_guess / 1e-6)} μT",
-        transform=ax.transAxes,
-    )
-    fig.savefig(str(OUTPATH) + "_fft.png")
-    return 2 * np.pi * freq_guess
-
-
 def estimate_bfield_offset(bfield: np.ndarray, ic_p: np.ndarray, ic_n=None):
     """Estimate the coil field at which the true flux is integral.
 
@@ -290,7 +250,8 @@ if config.getboolean("EQUAL_TRANSPARENCIES"):
 params["switching_current1"].set(value=(np.max(ic_p) - np.min(ic_p)) / 2)
 params["switching_current2"].set(value=np.mean(ic_p))
 params["bfield_offset"].set(value=estimate_bfield_offset(bfield, ic_p, ic_n))
-params["radians_per_tesla"].set(value=estimate_radians_per_tesla(bfield, ic_p))
+cyc_per_T, freqs, abs_fft = estimate_frequency(bfield, ic_p)
+params["radians_per_tesla"].set(value=2 * np.pi * cyc_per_T)
 # anomalous phases; if both fixed, then there is no phase freedom in the model (aside
 # from bfield_offset), as the two gauge-invariant phases are fixed by two constraints:
 #     1. flux quantization:         γ1 - γ2 = 2πΦ/Φ_0 (mod 2π),
@@ -300,6 +261,27 @@ params["anom_phase2"].set(value=0, vary=False)
 params["temperature"].set(value=round(np.mean(temp_meas), 3), vary=False)
 params["gap"].set(value=200e-6 * eV, vary=False)
 params["inductance"].set(value=1e-9)
+
+# plot the radians_per_tesla estimate
+fig, ax = plot(
+    freqs / 1e3,
+    abs_fft,
+    xlabel="frequency [mT$^{-1}$]",
+    ylabel="|FFT| [arb.]",
+    title="frequency estimate",
+    stamp=config["COOLDOWN"] + "_" + config["SCAN"],
+    marker="o",
+)
+ax.set_ylim(0, np.max(abs_fft[1:]) * 1.05)  # ignore dc component
+ax.axvline(cyc_per_T / 1e3, color="k")
+ax.text(
+    0.3,
+    0.5,
+    f"frequency $\sim$ {np.round(cyc_per_T / 1e3)} mT$^{{-1}}$\n"
+    f"period $\sim$ {round(1 / cyc_per_T / 1e-6)} μT",
+    transform=ax.transAxes,
+)
+fig.savefig(str(OUTPATH) + "_fft.png")
 
 # scale the residuals to get a somewhat meaningful χ2 value
 ibias_step = np.diff(ibias, axis=-1)

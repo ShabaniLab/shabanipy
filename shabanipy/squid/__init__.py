@@ -6,6 +6,5 @@
 #
 # The full license is in the file LICENCE, distributed with this software.
 # -----------------------------------------------------------------------------
-"""Utility functions to analyse squid data.
-
-"""
+"""Analysis of SQUID data."""
+from .estimate import estimate_frequency
