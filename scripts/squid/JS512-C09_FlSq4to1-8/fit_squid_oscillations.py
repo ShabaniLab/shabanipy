@@ -114,15 +114,7 @@ with LabberData(INPATH) as f:
     ibias, lockin = f.get_data(config["CH_LOCKIN"], get_x=True)
     dvdi = np.abs(lockin)
     temp_meas = f.get_data(config["CH_TEMP_MEAS"])
-
-# check for significant temperature deviations
-MAX_TEMPERATURE_DIFF = 1e-3
-temp_mean = np.mean(temp_meas)
-if np.any(np.abs(temp_meas - temp_mean) > MAX_TEMPERATURE_DIFF):
-    warnings.warn(
-        f"max|T - Tmean| > {MAX_TEMPERATURE_DIFF} K "
-        f"(mean={temp_mean}, std={np.std(temp_meas)})"
-    )
+    f.warn_not_constant(config["CH_TEMP_MEAS"])
 
 # plot the raw data
 fig, ax = plot2d(

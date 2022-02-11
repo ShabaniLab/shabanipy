@@ -12,6 +12,7 @@
 import logging
 import os
 import re
+import warnings
 from dataclasses import dataclass, field
 from functools import cached_property, reduce
 from pathlib import Path
@@ -673,6 +674,30 @@ class LabberData:
             return full_x, full_data
         else:
             return full_data
+
+    def warn_not_constant(
+        self, name_or_index: Union[str, int], max_deviation: Optional[float] = None
+    ):
+        """Issue a warning if `name_or_index` data is not roughly constant.
+
+        Parameters
+        ----------
+        name_or_index
+            The name or index of the channel whose data will be checked.
+        max_deviation : optional
+            The largest deviation from the mean that will not issue a warning.
+            If None, defaults to 1% of the mean.
+        """
+        data = self.get_data(name_or_index)
+        mean = np.mean(data)
+        if max_deviation is None:
+            max_deviation = 0.01 * mean
+        abs_deviation = np.abs(data - mean)
+        if np.any(abs_deviation > max_deviation):
+            warnings.warn(
+                f"Channel `{name_or_index}` deviates from mean "
+                f"by {np.max(abs_deviation)} > {max_deviation}"
+            )
 
     def _name_or_index_to_index(self, name_or_index: Union[str, int]) -> int:
         """Provide the index of a channel from its name."""
