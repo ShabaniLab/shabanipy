@@ -323,9 +323,7 @@ class LabberData:
                         for k, v in rel_params.items()
                         # Preserve only the parameters useful to the relation
                         # \W is a non word character (no letter no digit)
-                        if re.match(
-                            r"(.*\W+" + f"{k})|{k}" + r"(\W+.*|$)", relation
-                        )
+                        if re.match(r"(.*\W+" + f"{k})|{k}" + r"(\W+.*|$)", relation)
                     },
                 )
             else:
@@ -367,9 +365,7 @@ class LabberData:
         for step in steps:
             if step.relation is not None:
                 step.is_ramped |= any(
-                    s.is_ramped
-                    for s in steps
-                    if s.name in step.relation[1].values()
+                    s.is_ramped for s in steps if s.name in step.relation[1].values()
                 )
 
         return steps
