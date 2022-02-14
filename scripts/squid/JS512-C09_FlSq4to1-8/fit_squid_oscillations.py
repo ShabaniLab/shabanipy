@@ -39,6 +39,13 @@ parser.add_argument(
 )
 parser.add_argument("config_section", help="section of the .ini config file to use")
 parser.add_argument(
+    "--both-branches",
+    "-b",
+    default=False,
+    action="store_true",
+    help="fit +ve and -ve critical current branches simultaneously",
+)
+parser.add_argument(
     "--dry-run",
     "-n",
     default=False,
@@ -151,7 +158,7 @@ else:
     warnings.warn(f"I don't recognize fridge `{config['FRIDGE']}`")
 
 
-model = Model(squid_model_func, both_branches=config.getboolean("BOTH_BRANCHES"))
+model = Model(squid_model_func, both_branches=args.both_branches)
 
 # initialize the parameters
 params = model.make_params()
@@ -161,7 +168,9 @@ if config.getboolean("EQUAL_TRANSPARENCIES"):
     params["transparency2"].set(expr="transparency1")
 params["switching_current1"].set(value=(np.max(ic_p) - np.min(ic_p)) / 2)
 params["switching_current2"].set(value=np.mean(ic_p))
-boffset, (peak_idxs, peak_idxs_n) = estimate_boffset(bfield, ic_p, ic_n)
+boffset, peak_idxs = estimate_boffset(
+    bfield, ic_p, ic_n if args.both_branches else None
+)
 params["bfield_offset"].set(value=boffset)
 cyc_per_T, (freqs, abs_fft) = estimate_frequency(bfield, ic_p)
 params["radians_per_tesla"].set(value=2 * np.pi * cyc_per_T)
@@ -197,14 +206,14 @@ ax.text(
 fig.savefig(str(OUTPATH) + "_fft.png")
 
 # plot the bfield_offset estimate
-if config.getboolean("BOTH_BRANCHES"):
+if args.both_branches:
     fig, (ax, ax2) = plt.subplots(2, 1, sharex=True)
     ax2.set_xlabel("x coil field [mT]")
     plot(
         bfield / 1e-3, ic_n / 1e-6, ylabel="supercurrent [μA]", ax=ax2, marker=".",
     )
     ax2.plot(
-        bfield[peak_idxs_n] / 1e-3, ic_n[peak_idxs_n] / 1e-6, lw=0, marker="o",
+        bfield[peak_idxs[-1]] / 1e-3, ic_n[peak_idxs[-1]] / 1e-6, lw=0, marker="o",
     )
     ax2.axvline(boffset / 1e-3, color="k")
 else:
@@ -221,7 +230,7 @@ plot(
 )
 ax.axvline(boffset / 1e-3, color="k")
 ax.plot(
-    bfield[peak_idxs] / 1e-3, ic_p[peak_idxs] / 1e-6, lw=0, marker="o",
+    bfield[peak_idxs[0]] / 1e-3, ic_p[peak_idxs[0]] / 1e-6, lw=0, marker="o",
 )
 ax.text(
     0.5,
@@ -246,9 +255,7 @@ if not np.allclose(ibias_step, uncertainty):
 if not args.dry_run:
     print("Optimizing fit...", end="")
     result = model.fit(
-        data=np.array([ic_p, ic_n]).flatten()
-        if config.getboolean("BOTH_BRANCHES")
-        else ic_p,
+        data=np.array([ic_p, ic_n]).flatten() if args.both_branches else ic_p,
         weights=1 / uncertainty,
         bfield=bfield,
         params=params,
@@ -275,9 +282,7 @@ if not args.dry_run:
     if args.emcee:
         print("Calculating posteriors with emcee...")
         mcmc_result = model.fit(
-            data=np.array([ic_p, ic_n]).flatten()
-            if config.getboolean("BOTH_BRANCHES")
-            else ic_p,
+            data=np.array([ic_p, ic_n]).flatten() if args.both_branches else ic_p,
             weights=1 / uncertainty,
             bfield=bfield,
             params=result.params,
@@ -316,7 +321,7 @@ if not args.dry_run:
 # plot the best fit and initial guess over the data
 popt = result.params.valuesdict() if not args.dry_run else params
 phase = (bfield - popt["bfield_offset"]) * popt["radians_per_tesla"]
-if config.getboolean("BOTH_BRANCHES"):
+if args.both_branches:
     fig, (ax_p, ax_n) = plt.subplots(2, 1, sharex=True)
     plot(
         phase / (2 * np.pi),
@@ -363,7 +368,7 @@ if not args.dry_run:
             "init_p": init_p,
             **(
                 {"ic_n": ic_n, "fit_n": best_n, "init_n": init_n}
-                if config.getboolean("BOTH_BRANCHES")
+                if args.both_branches
                 else {}
             ),
         }
