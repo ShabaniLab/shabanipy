@@ -16,34 +16,40 @@ from .utils import stamp as sp_stamp
 
 
 def plot(
-    x, y, xlabel=None, ylabel=None, title=None, ax=None, stamp=None, **plot_kwargs
-):
+    x: np.ndarray,
+    y: np.ndarray,
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    title: Optional[str] = None,
+    ax: Optional[plt.Axes] = None,
+    stamp: Optional[str] = None,
+    **plot_kwargs
+) -> Tuple[plt.Figure, plt.Axes]:
     """Plot 1-dimensional data y(x).
 
     Parameters
     ----------
-    x, y : np.ndarray
+    x, y
         The data y as a function of the variable x.
         Compatible shapes are determined by matplotlib's plot function.
 
     Optional parameters
     -------------------
-    xlabel, ylabel : str
+    xlabel, ylabel
         The axes labels.
-    title : str
+    title
         The plot title.
-    ax : matplotlib Axes or AxesSubplot
+    ax
         The axes in which to plot.
         If None, a new Figure and AxesSubplot will be created.
-    stamp : str
+    stamp
         A small text label to put on the plot.
-    **plot_kwargs : dict
+    **plot_kwargs
         Keyword arguments to pass to matplotlib's plot function.
 
     Returns
     -------
-    (Figure, Axes or AxesSubplot)
-        The figure and axes where the data was plotted.
+    The figure and axes where the data was plotted.
     """
     fig, ax = _fig_ax(ax)
     if title is not None:
@@ -63,43 +69,42 @@ def plot(
 
 # TODO support line cuts
 def plot2d(
-    x,
-    y,
-    z,
-    xlabel=None,
-    ylabel=None,
-    zlabel=None,
-    title=None,
-    ax=None,
-    stamp=None,
+    x: np.ndarray,
+    y: np.ndarray,
+    z: np.ndarray,
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    zlabel: Optional[str] = None,
+    title: Optional[str] = None,
+    ax: Optional[plt.Axes] = None,
+    stamp: Optional[str] = None,
     **pcm_kwargs
-):
+) -> Tuple[plt.Figure, plt.Axes]:
     """Plot 2-dimensional data z(x, y) in a color plot with a colorbar.
 
     Parameters
     ----------
-    x, y, z : np.ndarray
+    x, y, z
         The data z as a function of variables x and y.
         Compatible shapes are determined by matplotlib's pcolormesh.
 
     Optional parameters
     -------------------
-    xlabel, ylabel, zlabel : str
+    xlabel, ylabel, zlabel
         The axes labels. The zlabel will be applied to the colorbar.
-    title : str
+    title
         The plot title.
-    ax : matplotlib Axes or AxesSubplot
+    ax
         The axes in which to plot.
         If None, a new Figure and AxesSubplot will be created.
-    stamp : str
+    stamp
         A small text label to put on the plot.
-    **pcm_kwargs : dict
+    **pcm_kwargs
         Keyword arguments to pass to matplotlib's pcolormesh.
 
     Returns
     -------
-    (Figure, Axes or AxesSubplot)
-        The figure and axes where the data was plotted.
+    The figure and axes where the data was plotted.
     """
     fig, ax = _fig_ax(ax)
     if title is not None:
