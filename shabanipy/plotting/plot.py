@@ -112,9 +112,12 @@ def plot2d(
     extend_min = "vmin" in pcm_kwargs and pcm_kwargs["vmin"] > np.min(z)
     extend_max = "vmax" in pcm_kwargs and pcm_kwargs["vmax"] < np.max(z)
     extend = (
-        "both" if extend_min and extend_max
-        else "min" if extend_min
-        else "max" if extend_max
+        "both"
+        if extend_min and extend_max
+        else "min"
+        if extend_min
+        else "max"
+        if extend_max
         else "neither"
     )
     cb = fig.colorbar(mesh, ax=ax, extend=extend, label=zlabel)
