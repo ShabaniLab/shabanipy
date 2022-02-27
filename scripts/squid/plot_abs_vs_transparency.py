@@ -18,7 +18,15 @@ phase = np.linspace(0, 2 * np.pi, 200)
 transparency = np.arange(0, 0.81, 0.2)
 transparency = np.append(transparency, [0.99, 0.9999])
 
-plt.style.use({"figure.constrained_layout.use": True})
+plt.style.use(
+    {
+        "figure.constrained_layout.use": True,
+        "font.size": 12,
+        "axes.labelsize": 20,
+        "xtick.labelsize": 20,
+        "ytick.labelsize": 20,
+    }
+)
 fig, ax = plt.subplots()
 ax.set_xlabel("phase [$2\pi$]")
 ax.set_ylabel("energy [$\Delta$]")

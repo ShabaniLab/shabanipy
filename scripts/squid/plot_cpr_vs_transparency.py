@@ -24,7 +24,15 @@ phase = np.linspace(0, 2 * np.pi, 200)
 transparency = np.arange(0, 0.81, 0.2)
 transparency = np.append(transparency, [0.99, 0.9999])
 
-plt.style.use({"figure.constrained_layout.use": True})
+plt.style.use(
+    {
+        "figure.constrained_layout.use": True,
+        "font.size": 12,
+        "axes.labelsize": 20,
+        "xtick.labelsize": 20,
+        "ytick.labelsize": 20,
+    }
+)
 fig, ax = plt.subplots()
 if args.temperature != 0 and args.gap != 0:
     ax.set_title(f"$T$={args.temperature}K, $\\Delta$={round(args.gap / 1e-3, 3)}meV")
