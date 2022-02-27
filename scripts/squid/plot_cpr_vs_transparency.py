@@ -36,16 +36,18 @@ plt.style.use(
 fig, ax = plt.subplots()
 if args.temperature != 0 and args.gap != 0:
     ax.set_title(f"$T$={args.temperature}K, $\\Delta$={round(args.gap / 1e-3, 3)}meV")
-ax.set_xlabel("phase [$2\pi$]")
+ax.set_xlabel("phase")
 ax.set_ylabel("supercurrent [$I_c$]")
 jy_pink.register()
 for i, tau in enumerate(transparency):
     lines = ax.plot(
-        phase / (2 * np.pi),
+        phase,
         cpr(phase, 1, tau, temperature=args.temperature, gap=args.gap * eV),
         label=f"{round(tau, 4)}",
         color=plt.get_cmap("jy_pink")(i / len(transparency)),
     )
+ax.set_xticks([0, np.pi, 2 * np.pi])
+ax.set_xticklabels(["0", "π", "2π"])
 
 ax.legend(title="transparency")
 plt.show()

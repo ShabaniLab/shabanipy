@@ -28,16 +28,18 @@ plt.style.use(
     }
 )
 fig, ax = plt.subplots()
-ax.set_xlabel("phase [$2\pi$]")
+ax.set_xlabel("phase")
 ax.set_ylabel("energy [$\Delta$]")
 jy_pink.register()
 for (i, tau), sign in product(enumerate(transparency), (1, -1)):
     ax.plot(
-        phase / (2 * np.pi),
+        phase,
         sign * abse(phase, transparency=tau, gap=1),
         label=f"{round(tau, 4)}" if sign == 1 else None,
         color=plt.get_cmap("jy_pink")(i / len(transparency)),
     )
+ax.set_xticks([0, np.pi, 2 * np.pi])
+ax.set_xticklabels(["0", "π", "2π"])
 
 ax.legend(title="transparency")
 plt.show()
