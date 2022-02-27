@@ -6,6 +6,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.constants import eV
 
+from shabanipy.plotting import jy_pink
 from shabanipy.squid.cpr import finite_transparency_jj_current as cpr
 
 parser = argparse.ArgumentParser(
@@ -23,16 +24,19 @@ phase = np.linspace(0, 2 * np.pi, 200)
 transparency = np.arange(0, 0.81, 0.2)
 transparency = np.append(transparency, [0.99, 0.9999])
 
+plt.style.use({"figure.constrained_layout.use": True})
 fig, ax = plt.subplots()
-ax.set_title(f"$T$={args.temperature}K, $\\Delta$={round(args.gap / 1e-3, 3)}meV")
+if args.temperature != 0 and args.gap != 0:
+    ax.set_title(f"$T$={args.temperature}K, $\\Delta$={round(args.gap / 1e-3, 3)}meV")
 ax.set_xlabel("phase [$2\pi$]")
 ax.set_ylabel("supercurrent [$I_c$]")
-for tau in transparency:
+jy_pink.register()
+for i, tau in enumerate(transparency):
     lines = ax.plot(
         phase / (2 * np.pi),
         cpr(phase, 1, tau, temperature=args.temperature, gap=args.gap * eV),
         label=f"{round(tau, 4)}",
-        color=plt.get_cmap("viridis")(tau),
+        color=plt.get_cmap("jy_pink")(i / len(transparency)),
     )
 
 ax.legend(title="transparency")
