@@ -147,9 +147,7 @@ def plot_labberdata(
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
     zlabel: Optional[str] = None,
-    xtransform: Optional[Callable] = None,
-    ytransform: Optional[Callable] = None,
-    ztransform: Optional[Callable] = None,
+    transform: Optional[Callable] = None,
     title: Optional[str] = None,
     ax: Optional[plt.Axes] = None,
     style: Union[str, Dict, Path, List] = "default",
@@ -166,8 +164,10 @@ def plot_labberdata(
         Channel names or vector channel `x_name`s specifying which data to plot.
     xlabel, ylabel, zlabel
         Axes labels.  If None, the names from `x`, `y`, and `z` will be used.
-    xtransform, ytransform, ztransform
-        Functions with signature `np.ndarray -> np.ndarray` used to transform the data.
+    transform
+        Function with the signature `Tuple[np.ndarray] -> Tuple[np.ndarray]`,
+        i.e. (x, y, z) -> (x_transformed, y_transformed, z_transformed) used to
+        transform the data.
     title
         Plot title.
     ax
@@ -208,9 +208,8 @@ def plot_labberdata(
     data = np.broadcast_arrays(*data)
 
     # apply transformations
-    for i, (d, transform) in enumerate(zip(data, (xtransform, ytransform, ztransform))):
-        if transform is not None:
-            data[i] = transform(data[i])
+    if transform is not None:
+        data = transform(*data)
 
     # plot
     plt.style.use(style)
