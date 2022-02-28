@@ -148,6 +148,8 @@ def plot_labberdata(
     ylabel: Optional[str] = None,
     zlabel: Optional[str] = None,
     transform: Optional[Callable] = None,
+    xlim: Optional[Tuple[float]] = None,
+    ylim: Optional[Tuple[float]] = None,
     title: Optional[str] = None,
     ax: Optional[plt.Axes] = None,
     style: Union[str, Dict, Path, List] = "default",
@@ -168,6 +170,10 @@ def plot_labberdata(
         Function with the signature `Tuple[np.ndarray] -> Tuple[np.ndarray]`,
         i.e. (x, y, z) -> (x_transformed, y_transformed, z_transformed) used to
         transform the data.
+    xlim, ylim
+        x- and y-axis limits, in the form (min, max), referring to the transformed data
+        if `transform` is given.  If either min or max is None, the limit is left
+        unchanged.
     title
         Plot title.
     ax
@@ -213,7 +219,7 @@ def plot_labberdata(
 
     # plot
     plt.style.use(style)
-    return plot2d(
+    fig, ax = plot2d(
         *data,
         # TODO: automatically add units in the default case
         xlabel=xlabel if xlabel is not None else x,
@@ -222,6 +228,10 @@ def plot_labberdata(
         title=title,
         **kwargs
     )
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)
+
+    return fig, ax
 
 
 def _fig_ax(ax=None):
