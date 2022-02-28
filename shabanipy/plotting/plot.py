@@ -78,6 +78,7 @@ def plot2d(
     title: Optional[str] = None,
     ax: Optional[plt.Axes] = None,
     stamp: Optional[str] = None,
+    extend_min: Optional[bool] = None,
     **pcm_kwargs
 ) -> Tuple[plt.Figure, plt.Axes]:
     """Plot 2-dimensional data z(x, y) in a color plot with a colorbar.
@@ -99,6 +100,9 @@ def plot2d(
         If None, a new Figure and AxesSubplot will be created.
     stamp
         A small text label to put on the plot.
+    extend_min
+        Option to override automatic colorbar extensions (i.e. arrows) when colorbar
+        does not span the full range of data.
     **pcm_kwargs
         Keyword arguments to pass to matplotlib's pcolormesh.
 
@@ -119,7 +123,8 @@ def plot2d(
     pcm_kwargs.setdefault("shading", "auto")
     mesh = ax.pcolormesh(x, y, z, **pcm_kwargs)
 
-    extend_min = "vmin" in pcm_kwargs and pcm_kwargs["vmin"] > np.min(z)
+    if extend_min is None:
+        extend_min = "vmin" in pcm_kwargs and pcm_kwargs["vmin"] > np.min(z)
     extend_max = "vmax" in pcm_kwargs and pcm_kwargs["vmax"] < np.max(z)
     extend = (
         "both"
