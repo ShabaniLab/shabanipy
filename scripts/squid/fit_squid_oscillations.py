@@ -20,7 +20,8 @@ from lmfit import Model
 from lmfit.model import save_modelresult
 from matplotlib import pyplot as plt
 from pandas import DataFrame
-from scipy.constants import eV
+from scipy.constants import eV, physical_constants
+from scipy.signal import butter, sosfilt
 
 from shabanipy.dvdi import extract_switching_current
 from shabanipy.labber import LabberData, get_data_dir
@@ -31,6 +32,8 @@ from shabanipy.utils import to_dataframe
 from squid_model_func import squid_model_func
 
 print = partial(print, flush=True)
+
+PHI0 = physical_constants["mag. flux quantum"][0]
 
 # set up the command-line interface
 parser = argparse.ArgumentParser(
@@ -53,6 +56,16 @@ parser.add_argument(
     default=False,
     action="store_true",
     help="constrain junction transparencies to be equal",
+)
+parser.add_argument(
+    "--filter-fraunhofer",
+    "-f",
+    default=False,
+    action="store_true",
+    help=(
+        "filter out low-frequency fraunhofer envelope; "
+        "only supported for --branch=p currently"
+    ),
 )
 parser.add_argument(
     "--dry-run",
@@ -238,8 +251,35 @@ if boffset is None:
         ic_n if args.branch != "p" else None,
     )
 params["bfield_offset"].set(value=boffset)
+
+# TODO clean up
+# filter out low-frequency fraunhofer envelope
+if args.filter_fraunhofer:
+    ## TODO clean up, same logic as in estimate_frequency
+    dbs = np.unique(np.diff(bfield))
+    try:
+        (db,) = dbs
+    except ValueError:
+        db = np.mean(dbs)
+        if not np.allclose(dbs, dbs[0], atol=0):
+            warnings.warn(
+                "Samples are not uniformly spaced in magnetic field; "
+                "this will affect fraunhofer filtering"
+            )
+    # sos = butter(100, config.getfloat("LOOP_AREA") / PHI0 / 2, btype="highpass", fs=1/db, output="sos")
+    # ic_p_filtered = sosfilt(sos, ic_p)
+    # manual highpass step-filter
+    fft = np.fft.rfft(ic_p)
+    fftfreqs = np.fft.fftfreq(len(ic_p), d=db)[: len(bfield) // 2 + 1]
+    fft = np.where(
+        (fftfreqs > 0) & (fftfreqs < config.getfloat("LOOP_AREA") / PHI0), 0, fft
+    )
+    ic_p_filtered = np.fft.irfft(fft, n=len(ic_p))
 cyc_per_T, (freqs, abs_fft) = estimate_frequency(
     bfield, ic_p if args.branch in {"p", "b"} else ic_n
+)
+cyc_per_T, (freqs_filt, abs_fft_filt) = estimate_frequency(
+    bfield, ic_p_filtered if args.branch in {"p", "b"} else ic_n
 )
 params["radians_per_tesla"].set(value=2 * np.pi * cyc_per_T)
 # anomalous phases; if both fixed, then there is no phase freedom in the model (aside
@@ -252,7 +292,7 @@ params["temperature"].set(value=round(np.mean(temp_meas), 3), vary=False)
 params["gap"].set(value=200e-6 * eV, vary=False)
 params["inductance"].set(value=1e-9)
 
-# plot the radians_per_tesla estimate
+# plot the radians_per_tesla estimate and fraunhofer filter
 fig, ax = plot(
     freqs / 1e3,
     abs_fft,
@@ -260,7 +300,7 @@ fig, ax = plot(
     ylabel="|FFT| (arb.)",
     title="frequency estimate",
     stamp=config["COOLDOWN"] + "_" + config["SCAN"],
-    marker="o",
+    label="data",
 )
 ax.set_ylim(0, np.max(abs_fft[1:]) * 1.05)  # ignore dc component
 ax.axvline(cyc_per_T / 1e3, color="k")
@@ -271,7 +311,16 @@ ax.text(
     f"period $\sim$ {round(1 / cyc_per_T / 1e-6)} μT",
     transform=ax.transAxes,
 )
+if args.filter_fraunhofer:
+    plot(
+        freqs_filt / 1e3, abs_fft_filt, ax=ax, label="filtered",
+    )
+    ax.legend()
 fig.savefig(str(OUTPATH) + "_fft.png")
+
+# from now on deal with the filtered data
+if args.filter_fraunhofer:
+    ic_p = ic_p_filtered
 
 # plot the bfield_offset estimate
 if args.branch == "p":
