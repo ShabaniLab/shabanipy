@@ -172,12 +172,12 @@ plot(bfield / 1e-3, ic_p / 1e-6, ax=ax, color="k", lw=1)
 plot(bfield / 1e-3, ic_n / 1e-6, ax=ax, color="k", lw=1)
 fig.savefig(str(OUTPATH) + "_ic-extraction.png")
 
-# in vector10, positive Bx points into the daughterboard (depends on mount orientation)
+# vector10 Bx points opposite vector9 Bx
+# (vector10 mount orientation has since changed on 2022/01/25)
 if config["FRIDGE"] == "vector10":
     bfield = np.flip(bfield) * -1
     ic_p = np.flip(ic_p)
     ic_n = np.flip(ic_n)
-# in vector9, positive Bx points out of the daughterboard
 elif config["FRIDGE"] == "vector9":
     pass
 else:
