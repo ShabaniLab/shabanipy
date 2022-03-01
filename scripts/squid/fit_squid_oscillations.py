@@ -48,6 +48,13 @@ parser.add_argument(
     help="fit +ve and -ve critical current branches simultaneously",
 )
 parser.add_argument(
+    "--equal-transparencies",
+    "-e",
+    default=False,
+    action="store_true",
+    help="constrain junction transparencies to be equal",
+)
+parser.add_argument(
     "--dry-run",
     "-n",
     default=False,
@@ -170,7 +177,7 @@ model = Model(squid_model_func, both_branches=args.both_branches)
 params = model.make_params()
 params["transparency1"].set(value=0.5, max=1)
 params["transparency2"].set(value=0.5, max=1)
-if config.getboolean("EQUAL_TRANSPARENCIES"):
+if args.equal_transparencies:
     params["transparency2"].set(expr="transparency1")
 params["switching_current1"].set(value=(np.max(ic_p) - np.min(ic_p)) / 2)
 params["switching_current2"].set(value=np.mean(ic_p))
