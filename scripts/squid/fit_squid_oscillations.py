@@ -225,9 +225,13 @@ else:  # args.branch == "b"
     ic_mean_guess = np.mean(ic_mean)
 params["switching_current1"].set(value=ic_amp_guess, min=0)
 params["switching_current2"].set(value=ic_mean_guess, min=0)
-boffset, (peak_idxs, valley_idxs) = estimate_boffset(
-    bfield, ic_p if args.branch != "n" else None, ic_n if args.branch != "p" else None
-)
+boffset = config.getfloat("BOFFSET_GUESS")
+if boffset is None:
+    boffset, (peak_idxs, valley_idxs) = estimate_boffset(
+        bfield,
+        ic_p if args.branch != "n" else None,
+        ic_n if args.branch != "p" else None,
+    )
 params["bfield_offset"].set(value=boffset)
 cyc_per_T, (freqs, abs_fft) = estimate_frequency(
     bfield, ic_p if args.branch in {"p", "b"} else ic_n
@@ -287,9 +291,10 @@ if args.branch in {"p", "b"}:
         marker=".",
     )
     ax_p.axvline(boffset / 1e-3, color="k")
-    ax.plot(
-        bfield[peak_idxs] / 1e-3, ic_p[peak_idxs] / 1e-6, lw=0, marker="o",
-    )
+    if "BOFFSET_GUESS" not in config:
+        ax_p.plot(
+            bfield[peak_idxs] / 1e-3, ic_p[peak_idxs] / 1e-6, lw=0, marker="o",
+        )
 if args.branch in {"n", "b"}:
     plot(
         bfield / 1e-3,
@@ -300,9 +305,10 @@ if args.branch in {"n", "b"}:
         marker=".",
     )
     ax_n.axvline(boffset / 1e-3, color="k")
-    ax.plot(
-        bfield[valley_idxs] / 1e-3, ic_n[valley_idxs] / 1e-6, lw=0, marker="o",
-    )
+    if "BOFFSET_GUESS" not in config:
+        ax_n.plot(
+            bfield[valley_idxs] / 1e-3, ic_n[valley_idxs] / 1e-6, lw=0, marker="o",
+        )
 ax = ax_p if args.branch in {"p", "b"} else ax_n
 ax.text(
     0.5,
