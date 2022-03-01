@@ -5,7 +5,7 @@
 #
 # The full license is in the file LICENCE, distributed with this software.
 # -----------------------------------------------------------------------------
-"""Fit SQUID oscillations to a two-junction CPR model."""
+"""Fit SQUID oscillations to a two-junction transparent CPR model."""
 import argparse
 import warnings
 from configparser import ConfigParser, ExtendedInterpolation
@@ -33,9 +33,11 @@ from squid_model_func import squid_model_func
 print = partial(print, flush=True)
 
 # set up the command-line interface
-parser = argparse.ArgumentParser(description=__doc__)
+parser = argparse.ArgumentParser(
+    description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
 parser.add_argument(
-    "config_path", help="path to .ini config file, relative to this script."
+    "config_path", help="path to .ini config file, relative to this script"
 )
 parser.add_argument("config_section", help="section of the .ini config file to use")
 parser.add_argument(
