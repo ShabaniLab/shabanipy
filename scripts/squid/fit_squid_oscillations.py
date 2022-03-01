@@ -64,9 +64,12 @@ parser.add_argument(
 parser.add_argument(
     "--plot-guess",
     "-g",
-    default=False,
+    default=None,
     action="store_true",
-    help="plot the initial guess along with the best fit",
+    help=(
+        "plot the initial guess along with the best fit; "
+        "if None, defaults to --dry-run"
+    ),
 )
 parser.add_argument(
     "--conf-interval",
@@ -91,6 +94,8 @@ parser.add_argument(
     help="print more information to stdout",
 )
 args = parser.parse_args()
+if args.plot_guess is None:
+    args.plot_guess = args.dry_run
 
 # load the config file
 with open(Path(__file__).parent / args.config_path) as f:
