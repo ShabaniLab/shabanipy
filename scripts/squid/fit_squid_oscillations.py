@@ -125,14 +125,22 @@ OUTDIR = (
 )
 print(f"All output will be saved to `{OUTDIR}`")
 Path(OUTDIR).mkdir(parents=True, exist_ok=True)
-OUTPATH = Path(OUTDIR) / f"{config['COOLDOWN']}-{config['SCAN']}_{args.branch}"
+FILTER_STR = f"_{config.getfloat('FILTER_VALUE')}" if "FILTER_VALUE" in config else ""
+OUTPATH = Path(OUTDIR) / (
+    f"{config['COOLDOWN']}-{config['SCAN']}{FILTER_STR}_{args.branch}"
+)
 
 # load the data
 with LabberData(INPATH) as f:
-    bfield = f.get_data(config["CH_FIELD_PERP"]) / AMPS_PER_T
-    ibias, lockin = f.get_data(config["CH_LOCKIN"], get_x=True)
+    if config.get("FILTER_CH") and config.getfloat("FILTER_VALUE"):
+        filters = {config["FILTER_CH"]: config.getfloat("FILTER_VALUE")}
+    else:
+        filters = None
+
+    bfield = f.get_data(config["CH_FIELD_PERP"], filters=filters) / AMPS_PER_T
+    ibias, lockin = f.get_data(config["CH_LOCKIN"], get_x=True, filters=filters)
     dvdi = np.abs(lockin)
-    temp_meas = f.get_data(config["CH_TEMP_MEAS"])
+    temp_meas = f.get_data(config["CH_TEMP_MEAS"], filters=filters)
     f.warn_not_constant(config["CH_TEMP_MEAS"])
 
 # plot the raw data
