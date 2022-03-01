@@ -109,7 +109,11 @@ jy_pink.register()
 plt.style.use(["jy_pink", "fullscreen13"])
 
 # set up output directory and filename prefix
-OUTDIR = f"{__file__.split('.py')[0].replace('_', '-')}-results/{config['DEVICE']}"
+OUTDIR = (
+    f"{__file__.split('.py')[0].replace('_', '-')}-results/"
+    f"{config['WAFER']}-{config['PIECE']}_{config['LAYOUT']}/"
+    f"{config['DEVICE']}"
+)
 print(f"All output will be saved to `{OUTDIR}`")
 Path(OUTDIR).mkdir(parents=True, exist_ok=True)
 OUTPATH = Path(OUTDIR) / f"{config['COOLDOWN']}-{config['SCAN']}"
