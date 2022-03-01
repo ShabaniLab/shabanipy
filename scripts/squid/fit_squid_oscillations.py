@@ -108,10 +108,15 @@ with open(Path(__file__).parent / args.config_path) as f:
 INPATH = Path(config.get("LABBERDATA_DIR", get_data_dir())) / config["DATAPATH"]
 
 # magnet coil current-per-field conversion factor
-AMPS_PER_T = getattr(
-    import_module("shabanipy.constants"),
-    f"{config['FRIDGE'].upper()}_AMPS_PER_TESLA_{config['PERP_AXIS'].upper()}",
-)
+if "Source current" in config["CH_FIELD_PERP"]:
+    print("Scaling magnet source current to field")
+    AMPS_PER_T = getattr(
+        import_module("shabanipy.constants"),
+        f"{config['FRIDGE'].upper()}_AMPS_PER_TESLA_{config['PERP_AXIS'].upper()}",
+    )
+else:
+    AMPS_PER_T = 1
+
 # sanity check conversion factor is correct (relies on my local file hierarchy)
 if config["FRIDGE"] not in str(INPATH):
     warnings.warn(
