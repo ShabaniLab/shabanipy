@@ -52,7 +52,7 @@ def estimate_boffset(
     ----------
     bfield
         Magnetic field values.
-    ic_p
+    ic_p : optional
         Positive branch of the SQUID critical current.
     ic_n : optional
         Negative branch of the SQUID critical current.
@@ -60,17 +60,27 @@ def estimate_boffset(
     Returns
     -------
     boffset
-        The position of a peak near the center of the `bfield` range.
-        If `ic_n` is given, the point midway between the peak in `ic_p` and the valley in
-        `ic_n` near the center is returned.
-    (peak_idxs,) or (peak_idxs, peak_idxs_n)
-        Indices of the peaks in `ic_p` (and of the valleys in `ic_n` if given).
+        The position of a peak in `ic_p` or a valley in `ic_n` near the center of the
+        `bfield` range.  If both `ic_p` and `ic_n` are given, the point midway between
+        the peak in `ic_p` and the valley in `ic_n` is returned.
+    (peak_idxs, valley_idxs)
+        Indices of the peaks (valleys) in `ic_p` (`ic_n`).  If either branch was not
+        given, the corresponding value will be None.
     """
-    peak_idxs, _ = find_peaks(ic_p, prominence=(np.max(ic_p) - np.min(ic_p)) / 2)
-    boffset = bfield[peak_idxs[len(peak_idxs) // 2]]
+    # neither branch given
+    assert (
+        ic_p is not None or ic_n is not None
+    ), "A positive or negative critical current branch (or both) must be provided."
+    # one branch or the other given
+    if ic_p is not None:
+        peak_idxs, _ = find_peaks(ic_p, prominence=(np.max(ic_p) - np.min(ic_p)) / 2)
+        boffset_p = bfield[peak_idxs[len(peak_idxs) // 2]]
+        if ic_n is None:
+            return boffset_p, (peak_idxs, None)
     if ic_n is not None:
-        peak_idxs_n, _ = find_peaks(-ic_n, prominence=(np.max(ic_n) - np.min(ic_n)) / 2)
-        boffset_n = bfield[peak_idxs_n[len(peak_idxs_n) // 2]]
-        boffset = (boffset + boffset_n) / 2
-        return boffset, (peak_idxs, peak_idxs_n)
-    return boffset, (peak_idxs,)
+        valley_idxs, _ = find_peaks(-ic_n, prominence=(np.max(ic_n) - np.min(ic_n)) / 2)
+        boffset_n = bfield[valley_idxs[len(valley_idxs) // 2]]
+        if ic_p is None:
+            return boffset_n, (None, valley_idxs)
+    # both branches given
+    return (boffset_p + boffset_n) / 2, (peak_idxs, valley_idxs)

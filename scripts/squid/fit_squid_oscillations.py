@@ -41,11 +41,11 @@ parser.add_argument(
 )
 parser.add_argument("config_section", help="section of the .ini config file to use")
 parser.add_argument(
-    "--both-branches",
+    "--branch",
     "-b",
-    default=False,
-    action="store_true",
-    help="fit +ve and -ve critical current branches simultaneously",
+    choices=["p", "n", "b"],
+    default="n",
+    help="fit positive (p), negative (n), or both branches simultaneously (b)",
 )
 parser.add_argument(
     "--equal-transparencies",
@@ -125,7 +125,7 @@ OUTDIR = (
 )
 print(f"All output will be saved to `{OUTDIR}`")
 Path(OUTDIR).mkdir(parents=True, exist_ok=True)
-OUTPATH = Path(OUTDIR) / f"{config['COOLDOWN']}-{config['SCAN']}"
+OUTPATH = Path(OUTDIR) / f"{config['COOLDOWN']}-{config['SCAN']}_{args.branch}"
 
 # load the data
 with LabberData(INPATH) as f:
@@ -171,7 +171,27 @@ else:
     warnings.warn(f"I don't recognize fridge `{config['FRIDGE']}`")
 
 
-model = Model(squid_model_func, both_branches=args.both_branches)
+model = Model(
+    squid_model_func,
+    positive=(True,)
+    if args.branch == "p"
+    else (False,)
+    if args.branch == "n"
+    else (True, False),  # args.branch == "b"
+    param_names=[
+        "transparency1",
+        "transparency2",
+        "switching_current1",
+        "switching_current2",
+        "bfield_offset",
+        "radians_per_tesla",
+        "anom_phase1",
+        "anom_phase2",
+        "temperature",
+        "gap",
+        "inductance",
+    ],
+)
 
 # initialize the parameters
 params = model.make_params()
@@ -179,13 +199,26 @@ params["transparency1"].set(value=0.5, max=1)
 params["transparency2"].set(value=0.5, max=1)
 if args.equal_transparencies:
     params["transparency2"].set(expr="transparency1")
-params["switching_current1"].set(value=(np.max(ic_p) - np.min(ic_p)) / 2)
-params["switching_current2"].set(value=np.mean(ic_p))
-boffset, peak_idxs = estimate_boffset(
-    bfield, ic_p, ic_n if args.both_branches else None
+ic_amp = [np.abs(np.max(ic) - np.min(ic)) / 2 for ic in [ic_p, ic_n]]
+ic_mean = [np.abs(np.mean(ic)) for ic in [ic_p, ic_n]]
+if args.branch == "p":
+    ic_amp_guess = ic_amp[0]
+    ic_mean_guess = ic_mean[0]
+elif args.branch == "n":
+    ic_amp_guess = ic_amp[-1]
+    ic_mean_guess = ic_mean[-1]
+else:  # args.branch == "b"
+    ic_amp_guess = np.mean(ic_amp)
+    ic_mean_guess = np.mean(ic_mean)
+params["switching_current1"].set(value=ic_amp_guess, min=0)
+params["switching_current2"].set(value=ic_mean_guess, min=0)
+boffset, (peak_idxs, valley_idxs) = estimate_boffset(
+    bfield, ic_p if args.branch != "n" else None, ic_n if args.branch != "p" else None
 )
 params["bfield_offset"].set(value=boffset)
-cyc_per_T, (freqs, abs_fft) = estimate_frequency(bfield, ic_p)
+cyc_per_T, (freqs, abs_fft) = estimate_frequency(
+    bfield, ic_p if args.branch in {"p", "b"} else ic_n
+)
 params["radians_per_tesla"].set(value=2 * np.pi * cyc_per_T)
 # anomalous phases; if both fixed, then there is no phase freedom in the model (aside
 # from bfield_offset), as the two gauge-invariant phases are fixed by two constraints:
@@ -201,8 +234,8 @@ params["inductance"].set(value=1e-9)
 fig, ax = plot(
     freqs / 1e3,
     abs_fft,
-    xlabel="frequency [mT$^{-1}$]",
-    ylabel="|FFT| [arb.]",
+    xlabel="frequency (mT$^{-1}$)",
+    ylabel="|FFT| (arb.)",
     title="frequency estimate",
     stamp=config["COOLDOWN"] + "_" + config["SCAN"],
     marker="o",
@@ -219,32 +252,45 @@ ax.text(
 fig.savefig(str(OUTPATH) + "_fft.png")
 
 # plot the bfield_offset estimate
-if args.both_branches:
-    fig, (ax, ax2) = plt.subplots(2, 1, sharex=True)
-    ax2.set_xlabel("x coil field [mT]")
+if args.branch == "p":
+    fig, ax_p = plt.subplots()
+    ax_p.set_xlabel("x coil field (mT)")
+    ax_p.set_title("bfield offset estimate")
+elif args.branch == "n":
+    fig, ax_n = plt.subplots()
+    ax_n.set_xlabel("x coil field (mT)")
+    ax_n.set_title("bfield offset estimate")
+else:  # args.branch == "b":
+    fig, (ax_p, ax_n) = plt.subplots(2, 1, sharex=True)
+    ax_n.set_xlabel("x coil field (mT)")
+    ax_p.set_title("bfield offset estimate")
+if args.branch in {"p", "b"}:
     plot(
-        bfield / 1e-3, ic_n / 1e-6, ylabel="supercurrent [μA]", ax=ax2, marker=".",
+        bfield / 1e-3,
+        ic_p / 1e-6,
+        ylabel="switching current (μA)",
+        stamp=config["COOLDOWN"] + "_" + config["SCAN"],
+        ax=ax_p,
+        marker=".",
     )
-    ax2.plot(
-        bfield[peak_idxs[-1]] / 1e-3, ic_n[peak_idxs[-1]] / 1e-6, lw=0, marker="o",
+    ax_p.axvline(boffset / 1e-3, color="k")
+    ax.plot(
+        bfield[peak_idxs] / 1e-3, ic_p[peak_idxs] / 1e-6, lw=0, marker="o",
     )
-    ax2.axvline(boffset / 1e-3, color="k")
-else:
-    fig, ax = plt.subplots()
-    ax.set_xlabel("x coil field [mT]")
-plot(
-    bfield / 1e-3,
-    ic_p / 1e-6,
-    ylabel="supercurrent [μA]",
-    title="bfield offset estimate",
-    stamp=config["COOLDOWN"] + "_" + config["SCAN"],
-    ax=ax,
-    marker=".",
-)
-ax.axvline(boffset / 1e-3, color="k")
-ax.plot(
-    bfield[peak_idxs[0]] / 1e-3, ic_p[peak_idxs[0]] / 1e-6, lw=0, marker="o",
-)
+if args.branch in {"n", "b"}:
+    plot(
+        bfield / 1e-3,
+        ic_n / 1e-6,
+        ylabel="switching current (μA)",
+        stamp=config["COOLDOWN"] + "_" + config["SCAN"],
+        ax=ax_n,
+        marker=".",
+    )
+    ax_n.axvline(boffset / 1e-3, color="k")
+    ax.plot(
+        bfield[valley_idxs] / 1e-3, ic_n[valley_idxs] / 1e-6, lw=0, marker="o",
+    )
+ax = ax_p if args.branch in {"p", "b"} else ax_n
 ax.text(
     0.5,
     0.5,
@@ -267,8 +313,14 @@ if not np.allclose(ibias_step, uncertainty):
 # fit the data
 if not args.dry_run:
     print("Optimizing fit...", end="")
+    if args.branch == "p":
+        data = ic_p
+    elif args.branch == "n":
+        data = ic_n
+    else:  # args.branch == "b"
+        data = np.array([ic_p, ic_n]).flatten()
     result = model.fit(
-        data=np.array([ic_p, ic_n]).flatten() if args.both_branches else ic_p,
+        data=data,
         weights=1 / uncertainty,
         bfield=bfield,
         params=params,
@@ -295,7 +347,7 @@ if not args.dry_run:
     if args.emcee:
         print("Calculating posteriors with emcee...")
         mcmc_result = model.fit(
-            data=np.array([ic_p, ic_n]).flatten() if args.both_branches else ic_p,
+            data=data,
             weights=1 / uncertainty,
             bfield=bfield,
             params=result.params,
@@ -334,56 +386,77 @@ if not args.dry_run:
 # plot the best fit and initial guess over the data
 popt = result.params.valuesdict() if not args.dry_run else params
 phase = (bfield - popt["bfield_offset"]) * popt["radians_per_tesla"]
-if args.both_branches:
+if args.branch == "p":
+    fig, ax_p = plt.subplots()
+    ax_p.set_xlabel("phase (2π)")
+    init_p = model.eval(bfield=bfield, params=params)
+    if not args.dry_run:
+        best_p = result.best_fit
+elif args.branch == "n":
+    fig, ax_n = plt.subplots()
+    ax_n.set_xlabel("phase (2π)")
+    init_n = model.eval(bfield=bfield, params=params)
+    if not args.dry_run:
+        best_n = result.best_fit
+else:  # args.branch == "b"
     fig, (ax_p, ax_n) = plt.subplots(2, 1, sharex=True)
+    ax_n.set_xlabel("phase (2π)")
+    init_p, init_n = np.split(model.eval(bfield=bfield, params=params), 2)
+    if not args.dry_run:
+        best_p, best_n = np.split(result.best_fit, 2)
+if args.branch in {"p", "b"}:
+    plot(
+        phase / (2 * np.pi),
+        ic_p / 1e-6,
+        ax=ax_p,
+        ylabel="switching current (μA)",
+        label="data",
+        marker=".",
+        linewidth=0,
+    )
+    if not args.dry_run:
+        plot(phase / (2 * np.pi), best_p / 1e-6, ax=ax_p, label="fit")
+    ax_p.legend()
+if args.branch in {"n", "b"}:
     plot(
         phase / (2 * np.pi),
         ic_n / 1e-6,
         ax=ax_n,
-        xlabel="phase [2π]",
-        ylabel="switching current [μA]",
+        ylabel="switching current (μA)",
         label="data",
         marker=".",
+        linewidth=0,
     )
     if not args.dry_run:
-        best_p, best_n = np.split(result.best_fit, 2)
         plot(phase / (2 * np.pi), best_n / 1e-6, ax=ax_n, label="fit")
-    init_p, init_n = np.split(model.eval(bfield=bfield, params=params), 2)
-    if args.plot_guess:
-        plot(phase / (2 * np.pi), init_n / 1e-6, ax=ax_n, label="guess")
-else:
-    fig, ax_p = plt.subplots()
-    if not args.dry_run:
-        best_p = result.best_fit
-    init_p = model.eval(bfield=bfield, params=params)
-plot(
-    phase / (2 * np.pi),
-    ic_p / 1e-6,
-    ax=ax_p,
-    xlabel="phase [2π]",
-    ylabel="switching current [μA]",
-    label="data",
-    marker=".",
-    stamp=config["COOLDOWN"] + "_" + config["SCAN"],
-)
-if not args.dry_run:
-    plot(phase / (2 * np.pi), best_p / 1e-6, ax=ax_p, label="fit")
-if args.plot_guess:
-    plot(phase / (2 * np.pi), init_p / 1e-6, ax=ax_p, label="guess")
+    ax_n.legend()
 fig.savefig(str(OUTPATH) + "_fit.png")
+if args.plot_guess:
+    if args.branch in {"p", "b"}:
+        plot(phase / (2 * np.pi), init_p / 1e-6, ax=ax_p, label="guess")
+        ax_p.legend()
+    if args.branch in {"n", "b"}:
+        plot(phase / (2 * np.pi), init_n / 1e-6, ax=ax_n, label="guess")
+        ax_n.legend()
+    fig.savefig(str(OUTPATH) + "_guess.png")
+
+# save the fit plot data to csv for later re-plotting
 if not args.dry_run:
     DataFrame(
         {
             "bfield": bfield,
             "phase": phase,
-            "ic_p": ic_p,
-            "fit_p": best_p,
-            "init_p": init_p,
+            **(
+                {"ic_p": ic_p, "fit_p": best_p, "init_p": init_p}
+                if args.branch in {"p", "b"}
+                else {}
+            ),
             **(
                 {"ic_n": ic_n, "fit_n": best_n, "init_n": init_n}
-                if args.both_branches
+                if args.branch in {"n", "b"}
                 else {}
             ),
         }
     ).to_csv(str(OUTPATH) + "_fit.csv", index=False)
+
 plt.show()
