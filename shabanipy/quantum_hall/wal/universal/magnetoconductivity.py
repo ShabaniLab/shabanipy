@@ -9,7 +9,6 @@
 """Routines to compute the correction to the magneto-conductivity.
 
 """
-from math import cos, exp, pi
 from typing import Union
 
 import numpy as np
@@ -57,19 +56,19 @@ def wal_magneto_conductance(
 
         def _inner(fields, l_phi, traces, lengths, surfaces, cosjs):
             xj = np.exp(-lengths / l_phi) * 0.5 * traces * (1 + cosjs)
+            sigma_ref = -2 * F * np.sum(xj) / len(traces)
             a = xj * np.cos(fields * surfaces)
-            return -2 * F * np.sum(a) / len(traces)
+            return -2 * F * np.sum(a) / len(traces) - sigma_ref
 
     else:
 
         def _inner(fields, l_phi, traces, lengths, surfaces, cosjs):
             sigma = np.empty_like(fields)
+            xj = np.exp(-lengths / l_phi) * 0.5 * traces * (1 + cosjs)
+            sigma_ref = -2 * F * np.sum(xj) / len(traces)
             for i, f in enumerate(fields):
-                xj = np.exp(-lengths / l_phi) * 0.5 * traces * (1 + cosjs)
                 a = xj * np.cos(f * surfaces)
-
                 sigma[i] = -2 * F * np.sum(a) / len(traces)
-
-            return sigma
+            return sigma - sigma_ref
 
     return _inner
