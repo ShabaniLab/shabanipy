@@ -1,4 +1,5 @@
 """Functions used to estimate SQUID model parameters."""
+import warnings
 from typing import Tuple
 
 import numpy as np
