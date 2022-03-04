@@ -252,8 +252,16 @@ elif args.branch == "n":
 else:  # args.branch == "b"
     ic_amp_guess = np.mean(ic_amp)
     ic_mean_guess = np.mean(ic_mean)
-params["switching_current1"].set(value=ic_amp_guess, min=0)
-params["switching_current2"].set(value=ic_mean_guess, min=0)
+params["switching_current1"].set(
+    value=config.getfloat("SWITCHING_CURRENT1", ic_amp_guess),
+    min=0,
+    vary=False if config.getfloat("SWITCHING_CURRENT1") else True,
+)
+params["switching_current2"].set(
+    value=config.getfloat("SWITCHING_CURRENT2", ic_mean_guess),
+    min=0,
+    vary=False if config.getfloat("SWITCHING_CURRENT2") else True,
+)
 boffset = config.getfloat("BOFFSET_GUESS")
 if boffset is None:
     boffset, (peak_idxs, valley_idxs) = estimate_boffset(
