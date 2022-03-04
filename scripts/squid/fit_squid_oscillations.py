@@ -263,35 +263,17 @@ if boffset is None:
     )
 params["bfield_offset"].set(value=boffset)
 
-# TODO clean up
 # filter out low-frequency fraunhofer envelope
-if args.filter_fraunhofer:
-    ## TODO clean up, same logic as in estimate_frequency
-    dbs = np.unique(np.diff(bfield))
-    try:
-        (db,) = dbs
-    except ValueError:
-        db = np.mean(dbs)
-        if not np.allclose(dbs, dbs[0], atol=0):
-            warnings.warn(
-                "Samples are not uniformly spaced in magnetic field; "
-                "this will affect fraunhofer filtering"
-            )
-    # sos = butter(100, config.getfloat("LOOP_AREA") / PHI0 / 2, btype="highpass", fs=1/db, output="sos")
-    # ic_p_filtered = sosfilt(sos, ic_p)
-    # manual highpass step-filter
-    fft = np.fft.rfft(ic_p)
-    fftfreqs = np.fft.fftfreq(len(ic_p), d=db)[: len(bfield) // 2 + 1]
-    fft = np.where(
-        (fftfreqs > 0) & (fftfreqs < config.getfloat("LOOP_AREA") / PHI0), 0, fft
-    )
-    ic_p_filtered = np.fft.irfft(fft, n=len(ic_p))
-cyc_per_T, (freqs, abs_fft) = estimate_frequency(
+cyc_per_T, (freqs, fft) = estimate_frequency(
     bfield, ic_p if args.branch in {"p", "b"} else ic_n
 )
-cyc_per_T, (freqs_filt, abs_fft_filt) = estimate_frequency(
-    bfield, ic_p_filtered if args.branch in {"p", "b"} else ic_n
-)
+if args.filter_fraunhofer:
+    # manual highpass step-filter
+    fft_filt = np.where(
+        (freqs > 0) & (freqs < config.getfloat("LOOP_AREA") / PHI0), 0, fft
+    )
+    ic_filtered = np.fft.irfft(fft_filt, n=len(bfield))
+    cyc_per_T, (freqs_filt, fft_filt) = estimate_frequency(bfield, ic_filtered)
 params["radians_per_tesla"].set(value=2 * np.pi * cyc_per_T)
 # anomalous phases; if both fixed, then there is no phase freedom in the model (aside
 # from bfield_offset), as the two gauge-invariant phases are fixed by two constraints:
@@ -304,6 +286,7 @@ params["gap"].set(value=200e-6 * eV, vary=False)
 params["inductance"].set(value=1e-9)
 
 # plot the radians_per_tesla estimate and fraunhofer filter
+abs_fft = np.abs(fft)
 fig, ax = plot(
     freqs / 1e3,
     abs_fft,
@@ -324,14 +307,21 @@ ax.text(
 )
 if args.filter_fraunhofer:
     plot(
-        freqs_filt / 1e3, abs_fft_filt, ax=ax, label="filtered",
+        freqs_filt / 1e3, np.abs(fft_filt), ax=ax, label="filtered",
     )
     ax.legend()
 fig.savefig(str(OUTPATH) + "_fft.png")
 
 # from now on deal with the filtered data
 if args.filter_fraunhofer:
-    ic_p = ic_p_filtered
+    if args.branch == "p":
+        ic_p = ic_filtered
+    elif args.branch == "n":
+        ic_n = ic_filtered
+    else:  # args.branch == "b"
+        raise NotImplementedError(
+            "Filtering both positive and negative branches is currently unsupported"
+        )
 
 # plot the bfield_offset estimate
 if args.branch == "p":

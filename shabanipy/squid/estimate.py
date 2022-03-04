@@ -25,8 +25,8 @@ def estimate_frequency(
         The strongest nonzero frequency component.
     fftfreqs : np.ndarray
         The frequencies at which the Fourier transform of y(x) was computed.
-    abs_fft : np.ndarray
-        The magnitude of the Fourier transform of y(x).
+    fft : np.ndarray
+        The (complex) Fourier transform of y(x).
     """
     dxs = np.unique(np.diff(x))
     try:
@@ -38,10 +38,11 @@ def estimate_frequency(
                 "Samples are not uniformly spaced in the domain; "
                 "frequency estimation might be poor"
             )
-    abs_fft = np.abs(np.fft.rfft(y))
+    fft = np.fft.rfft(y)
+    abs_fft = np.abs(fft)
     fftfreqs = np.fft.rfftfreq(len(y), d=dx)
     max_freq = fftfreqs[np.argmax(abs_fft[1:]) + 1]  # ignore dc component
-    return max_freq, (fftfreqs, abs_fft)
+    return max_freq, (fftfreqs, fft)
 
 
 def estimate_boffset(
