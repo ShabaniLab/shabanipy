@@ -39,7 +39,7 @@ def estimate_frequency(
                 "frequency estimation might be poor"
             )
     abs_fft = np.abs(np.fft.rfft(y))
-    fftfreqs = np.fft.fftfreq(len(y), d=dx)[: len(x) // 2 + 1]
+    fftfreqs = np.fft.rfftfreq(len(y), d=dx)
     max_freq = fftfreqs[np.argmax(abs_fft[1:]) + 1]  # ignore dc component
     return max_freq, (fftfreqs, abs_fft)
 
