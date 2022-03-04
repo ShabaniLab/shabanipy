@@ -185,10 +185,21 @@ ic_n, ic_p = extract_switching_current(
     threshold=config.getfloat("RESISTANCE_THRESHOLD", fallback=None),
     interp=True,
 )
-ax.set_title("$I_c$ extraction")
+ax.set_title("$I_c$ extraction and field limit")
 plot(bfield / 1e-3, ic_p / 1e-6, ax=ax, color="k", lw=1)
 plot(bfield / 1e-3, ic_n / 1e-6, ax=ax, color="k", lw=1)
+for field_lim in ("FIELD_MIN", "FIELD_MAX"):
+    if config.getfloat(field_lim):
+        ax.axvline(config.getfloat(field_lim) / 1e-3, color="black", linestyle="--")
 fig.savefig(str(OUTPATH) + "_ic-extraction.png")
+
+# limit field range to fit
+for field_lim, op in zip(("FIELD_MIN", "FIELD_MAX"), (np.greater, np.less)):
+    if config.getfloat(field_lim):
+        mask = op(bfield, config.getfloat(field_lim))
+        bfield = bfield[mask, ...]
+        ic_p = ic_p[mask, ...]
+        ic_n = ic_n[mask, ...]
 
 # vector10 Bx points opposite vector9 Bx
 # (vector10 mount orientation has since changed on 2022/01/25)
