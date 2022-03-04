@@ -237,8 +237,8 @@ model = Model(
 
 # initialize the parameters
 params = model.make_params()
-params["transparency1"].set(value=0.5, max=1)
-params["transparency2"].set(value=0.5, max=1)
+params["transparency1"].set(value=0, min=0, max=1)
+params["transparency2"].set(value=0, min=0, max=1)
 if args.equal_transparencies:
     params["transparency2"].set(expr="transparency1")
 ic_amp = [np.abs(np.max(ic) - np.min(ic)) / 2 for ic in [ic_p, ic_n]]
