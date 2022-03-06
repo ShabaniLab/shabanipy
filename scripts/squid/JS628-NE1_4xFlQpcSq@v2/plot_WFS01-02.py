@@ -1,4 +1,4 @@
-"""Some data from vector9 cooldown WFS01."""
+"""Some data from vector9 cooldowns WFS01-02."""
 
 from pathlib import Path
 
@@ -140,5 +140,23 @@ with plt.rc_context({"image.cmap": "viridis", "figure.figsize": (8, 10)}):
         vmax=100,
     )
     savefig(fig, "WFS01-043")
+
+# cpr
+fig, _ = plot_labberdata(
+    "2022/03/Data_0302/JS628-NE1_4xFlQpcSq@v2_E_WFS02-013.hdf5",
+    x=BPERP,
+    xlabel="$B_\perp$ (μT)",
+    y=BIAS,
+    ylabel=BIAS_LABEL,
+    z=LOCKIN,
+    zlabel=LOCKIN_LABEL,
+    transform=lambda x, y, z: (x / 1e-6, y / 1e-6, np.abs(z)),
+    vmin=0,
+    vmax=100,
+    xlim=(-20, None),
+    ylim=(None, 0),
+)
+savefig(fig, "WFS02-013")
+
 
 plt.show()
