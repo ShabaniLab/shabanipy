@@ -5,7 +5,7 @@ All plot formatting/styling should be left to the package consumer (ideally cont
 by an mplstyle sheet).
 """
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, Optional, Tuple, Union
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -152,7 +152,6 @@ def plot_labberdata(
     ylim: Optional[Tuple[float]] = None,
     title: Optional[str] = None,
     ax: Optional[plt.Axes] = None,
-    style: Union[str, Dict, Path, List] = "default",
     **kwargs
 ) -> Tuple[plt.Figure, plt.Axes]:
     """Plot data from a Labber .hdf5 log file.
@@ -178,8 +177,6 @@ def plot_labberdata(
         Plot title.
     ax
         The matplotlib Axes in which to plot.
-    style
-        Matplotlib style specifications passed to `matplotlib.pyplot.style.use`.
     **kwargs
         Additional keyword arguments passed to the plotting function
         (`shabanipy.plotting.plot2d` in the case of 2d color plots).
@@ -205,12 +202,16 @@ def plot_labberdata(
                     data.append(vdata)
                     break
 
-    # normalize shapes against potentially vectorial data
+    # normalize shapes against potentially vectorial data and handle interrupted scans
+    # TODO refactor into LabberData.get_data
     dims = [d.ndim for d in data]
     max_dim = max(dims)
+    min_length = min([d.shape[0] for d in data])
     for i, d in enumerate(data):
         if d.ndim < max_dim:
-            data[i] = np.expand_dims(d, axis=tuple(-np.arange(1, 1 + max_dim - d.ndim)))
+            data[i] = np.expand_dims(
+                d[:min_length], axis=tuple(-np.arange(1, 1 + max_dim - d.ndim))
+            )
     data = np.broadcast_arrays(*data)
 
     # apply transformations
@@ -218,7 +219,6 @@ def plot_labberdata(
         data = transform(*data)
 
     # plot
-    plt.style.use(style)
     fig, ax = plot2d(
         *data,
         # TODO: automatically add units in the default case
