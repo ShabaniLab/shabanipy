@@ -1,4 +1,5 @@
 text.usetex     : True
+text.latex.preamble : \usepackage{siunitx}
 font.family     : serif
 font.serif      : Computer Modern Roman, Times
 font.sans-serif : Computer Modern Sans Serif, Helvetica
