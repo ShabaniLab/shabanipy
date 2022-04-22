@@ -3,7 +3,7 @@ from typing import Tuple
 
 import numpy as np
 
-from shabanipy.squid.cpr import finite_transparency_jj_current as cpr
+from shabanipy.jj import finite_transparency_jj_current as cpr
 from shabanipy.squid.squid_model import compute_squid_current
 
 

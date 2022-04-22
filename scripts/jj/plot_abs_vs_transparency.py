@@ -1,22 +1,16 @@
-"""Plot the current-phase relation of a Josephson junction for various transparencies."""
+"""Plot the Andreev bound state energy for various transparencies."""
 
 import argparse
+from itertools import product
 
 import numpy as np
 from matplotlib import pyplot as plt
-from scipy.constants import eV
 
+from shabanipy.jj import andreev_bound_state_energy as abse
 from shabanipy.plotting import jy_pink
-from shabanipy.squid.cpr import finite_transparency_jj_current as cpr
 
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-)
-parser.add_argument(
-    "--temperature", metavar="T", type=float, default=0, help="temperature in K"
-)
-parser.add_argument(
-    "--gap", metavar="Δ", type=float, default=200e-6, help="superconducting gap in eV"
 )
 args = parser.parse_args()
 
@@ -34,16 +28,14 @@ plt.style.use(
     }
 )
 fig, ax = plt.subplots()
-if args.temperature != 0 and args.gap != 0:
-    ax.set_title(f"$T$={args.temperature}K, $\\Delta$={round(args.gap / 1e-3, 3)}meV")
 ax.set_xlabel("phase")
-ax.set_ylabel("supercurrent [$I_c$]")
+ax.set_ylabel("energy [$\Delta$]")
 jy_pink.register()
-for i, tau in enumerate(transparency):
-    lines = ax.plot(
+for (i, tau), sign in product(enumerate(transparency), (1, -1)):
+    ax.plot(
         phase,
-        cpr(phase, 1, tau, temperature=args.temperature, gap=args.gap * eV),
-        label=f"{round(tau, 4)}",
+        sign * abse(phase, transparency=tau, gap=1),
+        label=f"{round(tau, 4)}" if sign == 1 else None,
         color=plt.get_cmap("jy_pink")(i / len(transparency)),
     )
 ax.set_xticks([0, np.pi, 2 * np.pi])

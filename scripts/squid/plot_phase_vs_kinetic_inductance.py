@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 from scipy.constants import physical_constants
 from tqdm import tqdm
 
-from shabanipy.squid.cpr import finite_transparency_jj_current as cpr
+from shabanipy.jj import finite_transparency_jj_current as cpr
 
 PHI0 = physical_constants["mag. flux quantum"][0]
 res = 1000

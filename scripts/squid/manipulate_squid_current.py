@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 from matplotlib.widgets import Slider
 from scipy.constants import physical_constants
 
-from shabanipy.squid.cpr import finite_transparency_jj_current as cpr
+from shabanipy.jj import finite_transparency_jj_current as cpr
 from shabanipy.squid.squid_model import compute_squid_current
 
 FLUX_QUANTUM = physical_constants["mag. flux quantum"][0]
