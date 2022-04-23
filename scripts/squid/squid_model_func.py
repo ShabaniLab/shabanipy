@@ -4,9 +4,10 @@ from typing import Tuple
 import numpy as np
 
 from shabanipy.jj import transparent_cpr as cpr
-from shabanipy.squid.squid_model import compute_squid_current
+from shabanipy.squid import critical_behavior
 
 
+# TODO this needs to be updated given squid code refactor
 def squid_model_func(
     bfield: np.ndarray,
     transparency1: float,
@@ -26,7 +27,7 @@ def squid_model_func(
     bfield = bfield - bfield_offset
 
     i_squid = [
-        compute_squid_current(
+        critical_behavior(
             bfield * radians_per_tesla,
             cpr,
             (anom_phase1, switching_current1, transparency1),
@@ -34,7 +35,7 @@ def squid_model_func(
             (anom_phase2, switching_current2, transparency2),
             positive=p,
             inductance=inductance,
-        )
+        )[1]
         for p in positive
     ]
     return np.array(i_squid).flatten()

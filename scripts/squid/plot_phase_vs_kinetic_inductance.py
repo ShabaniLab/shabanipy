@@ -1,12 +1,11 @@
-"""Plot the current-phase relation of a Josephson junction for various transparencies."""
-
+"""Plot the effect of inductance on SQUID phases."""
 
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.constants import physical_constants
-from tqdm import tqdm
 
 from shabanipy.jj import transparent_cpr as cpr
+from shabanipy.squid import critical_behavior
 
 PHI0 = physical_constants["mag. flux quantum"][0]
 res = 1000
@@ -16,30 +15,19 @@ ic2 = 200e-9
 ic1 = 10 * ic2
 inductance = 500e-12
 flux = np.linspace(0, PHI0, 100)
-phi1 = np.linspace(0, 2 * np.pi, res)
 
-phi2 = np.zeros((len(flux), len(phi1)))
-flux_ext = np.zeros((len(flux), len(phi1)))
-i_squid = np.zeros((len(flux), len(phi1)))
-print(f"Doing {len(flux)} iterations")
-for i, f in tqdm(enumerate(flux)):
-    for j, p1 in enumerate(phi1):
-        p2 = p1 - 2 * np.pi * f / PHI0  # flux quantization
-        i1 = cpr(p1, ic1, t1)
-        i2 = cpr(p2, ic2, t2)
-
-        phi2[i, j] = p2
-        flux_ext[i, j] = f + inductance * (i2 - i1) / 2
-        i_squid[i, j] = i1 + i2
-
-phi1_true = np.zeros(len(flux))
-phi2_true = np.zeros(len(flux))
-flux_ext_true = np.zeros(len(flux))
-for i, f in enumerate(flux):
-    idx_true = np.argmax(i_squid[i])
-    phi2_true[i] = phi2[i, idx_true]
-    flux_ext_true[i] = flux_ext[i, idx_true]
-    phi1_true[i] = phi2_true[i] + 2 * np.pi * f / PHI0
+_, phi_ext_true, _, phi1_true, _, phi2_true = critical_behavior(
+    flux * 2 * np.pi / PHI0,
+    cpr,
+    (0, ic1, t1),
+    cpr,
+    (0, ic2, t2),
+    inductance / PHI0,
+    branch="+",
+    nbrute=res,
+    return_jjs=True,
+)
+flux_ext_true = phi_ext_true / (2 * np.pi) * PHI0
 
 plt.style.use(
     {
@@ -85,14 +73,6 @@ ax.plot(
     color="tab:red",
 )
 ax.legend()
-fig.savefig(
-    f"phase-vs-fluxext_{int(inductance/1e-12)}pH-{int(round(ic1/1e-6))}uA-{int(round(ic2/1e-9))}nA-t1={round(t1, 1)}-t2={round(t2, 1)}.png",
-    format="png",
-)
-fig.savefig(
-    f"phase-vs-fluxext_{int(inductance/1e-12)}pH-{int(round(ic1/1e-6))}uA-{int(round(ic2/1e-9))}nA-t1={round(t1, 1)}-t2={round(t2, 1)}.svg",
-    format="svg",
-)
 
 fig, ax = plt.subplots()
 ax.set_xlabel("$\Phi_\mathrm{ext}$")
@@ -111,14 +91,6 @@ ax.plot(
     np.unwrap(flux, period=PHI0)[[0, -1]],
     linestyle="--",
     color="black",
-)
-fig.savefig(
-    f"flux-vs-fluxext_{int(inductance/1e-12)}pH-{int(round(ic1/1e-6))}uA-{int(round(ic2/1e-9))}nA-t1={round(t1, 1)}-t2={round(t2, 1)}.png",
-    format="png",
-)
-fig.savefig(
-    f"flux-vs-fluxext_{int(inductance/1e-12)}pH-{int(round(ic1/1e-6))}uA-{int(round(ic2/1e-9))}nA-t1={round(t1, 1)}-t2={round(t2, 1)}.svg",
-    format="svg",
 )
 
 plt.show()

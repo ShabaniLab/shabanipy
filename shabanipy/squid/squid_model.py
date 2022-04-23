@@ -6,100 +6,130 @@
 #
 # The full license is in the file LICENCE, distributed with this software.
 # -----------------------------------------------------------------------------
-"""Model functions used to describe SQUID oscillations.
+"""Functions used to model SQUID behavior."""
 
-"""
-from math import pi
+from typing import Callable, Iterable, Literal, Tuple, Union
 
 import numpy as np
-from scipy.constants import e, h
-from scipy.interpolate import interp1d
 
 
-def compute_squid_current(
-    phase,
-    cpr1,
-    parameters1,
-    cpr2,
-    parameters2,
-    positive=True,
-    aux_res=101,
-    inductance=0.0,
-    compute_phase=False,
-):
-    """Compute the SQUID current from 2 CPRs.
+def critical_behavior(
+    phase: Union[float, np.ndarray],
+    cpr1: Callable,
+    params1: Iterable,
+    cpr2: Callable,
+    params2: Iterable,
+    inductance: float = 0,
+    branch: Literal["+", "-"] = "+",
+    *,
+    nbrute: int = 101,
+    return_jjs: bool = False,
+) -> Tuple[Union[float, np.ndarray]]:
+    """Compute the critical behavior of a dc SQUID as a function of total phase.
+
+    This computes the phases of the junctions along the positive or negative branch of
+    the SQUID critical current, as a function of the SQUID phase 2πΦ/Φ0.  To compute the
+    behavior as a function of the externally applied phase, see
+    `critical_control`.
+
+    Sign conventions follow those of Tinkham Fig. 6.8 with positive B-field out of the
+    page:
+                                       I1(γ1)
+                                        --> 
+                                      ---X---
+                                  I  |       |
+                                -->--|  B ⊙  |-->--
+                                     |       |
+                                      ---X---
+                                        --> 
+                                       I2(γ2)
+
+    The junction phases γ1, γ2 are fully constrained by "flux quantization" (or more
+    accurately single-valuedness of the order parameter's phase),
+
+                                γ1 - γ2 = 2πΦ/Φ0                                (1)
+
+    and supercurrent maximization,
+
+                       Ic = max_{γ1,γ2} [ I1(γ1) + I2(γ2) ]                     (2)
+
+    The flux Φ threading the loop in (1) comprises the externally applied flux Φ_ext and
+    the self-induced flux arising from the current flowing in the loop of inductance
+    L > 0:
+
+                      Φ = Φ_ext + (L/2) [ I2(γ2) - I1(γ1) ]                     (3)
+
+    See Tinkham ed. 2 §6.4.1 and §6.5 for details.
 
     Parameters
     ----------
-    phase : np.ndarray
-        Phase at which to compute the SQUID current flow (1D array at most).
-    cpr1 : callable
-        Function used to compute the current in the first junction. The
-        callable should take the phase as first argument.
-    parameters1 : tuple
-        Parameters to use to compute the current in the first junction.
-    cpr2 : callable
-        Function used to compute the current in the second junction. The
-        callable should take the phase as first argument.
-    parameters2 : tuple
-        Parameters to use to compute the current in the second junction.
-    positive : bool, optional
-        Should the computed current be positive or negative
-    aux_res : int, optional
-        Number of points to use when optimizing the phase to get the maximum
-        current.
-    inductance : float, optional
-        Inductance of the loop in H
-    compute_phase : bool, optional
-        Computethe phase at which the squid current is maximal instead of the
-        current.
+    phase
+        Phase 2πΦ/Φ0 due to total flux threading the SQUID loop.  At most 1d.
+    cpr1, cpr2
+        Functions I(γ) used to compute the supercurrent in the junctions given their
+        phases as the first argument.
+    params1, params2
+        Parameters (γ0, ...) passed to `cpr`s.  The first argument is interpreted as an
+        anomalous phase shift such that γ -> γ - γ0.
+    inductance
+        Inductance of the SQUID loop, in units of Φ0/A where A is the unit of current
+        returned by `cpr`s.  E.g. if A is microamperes, inductance=1 corresponds to 2nH.
+        Must be nonnegative.
+    branch
+        Which branch of the SQUID critical current to compute.
+    nbrute
+        Number of points to use in the brute-force optimization of the SQUID current.
+    return_jjs
+        Return the phase and supercurrent of each junction as well.
 
+    Return values all correspond to the given `phase` values.
+
+    Returns
+    -------
+    squid_ic
+        SQUID critical current Ic.
+    phase_ext
+        Phase 2π(Φ_ext/Φ0) due to externally applied flux.
+    current1
+        Supercurrent I1 through junction 1 at the SQUID critical current.
+        Only returned if `return_jjs=True`.
+    phase1
+        Phase γ1 across junction 1 at the SQUID critical current.
+        Only returned if `return_jjs=True`.
+    current2
+        Same as `current1` but for junction 2.  Only returned if `return_jjs=True`.
+    phase2
+        Same as `phase1` but for junction 2.  Only returned if `return_jjs=True`.
     """
-    phi1, *p1 = parameters1
-    phi2, *p2 = parameters2
-    if inductance == 0.0:
-        aux = np.tile(np.linspace(0, 2 * np.pi, aux_res), (len(phase), 1))
-        phi1 += (aux.T + phase).T
-        phi2 += aux
-        cp1 = cpr1(phi1, *p1)
-        cp2 = cpr2(phi2, *p2)
-        total_current = cp1 + cp2
-        if positive:
-            if compute_phase:
-                index = np.argmax(total_current, axis=-1)
-                return aux[0, index]
-            return np.max(total_current, axis=-1)
-        else:
-            if compute_phase:
-                index = np.argmin(total_current, axis=-1)
-                return aux[0, index]
-            return np.min(total_current, axis=-1)
+    phase = np.atleast_1d(phase)
+    phase1_offset, *params1 = params1
+    phase2_offset, *params2 = params2
 
+    # use (1) to eliminate γ1 in (2) and extremize over γ2 for each Φ
+    phase2 = np.linspace(0, 2 * np.pi, nbrute) - phase2_offset
+    phase2 = np.tile(phase2, (len(phase), 1)).T
+    phase1 = phase2 + phase - phase1_offset
+    current1 = cpr1(phase1, *params1)
+    current2 = cpr2(phase2, *params2)
+    squid_current = current1 + current2
+    argopt = np.argmax if branch == "+" else np.argmin
+    idxopt = (argopt(squid_current, axis=0), np.arange(len(phase)))
+    squid_ic = squid_current[idxopt]
+
+    # use (3) to determine Φ_ext
+    current1_opt = current1[idxopt]
+    current2_opt = current2[idxopt]
+    phase_ext = phase - inductance * (current2_opt - current1_opt) * np.pi
+
+    if return_jjs:
+        output = [
+            squid_ic,
+            phase_ext,
+            current1_opt,
+            phase1[idxopt],
+            current2_opt,
+            phase2[idxopt],
+        ]
     else:
-        # In the presence of an inductance compute first the phase giving the
-        # larger current as a function of the phase difference between the two
-        # JJ.
-        delta_phi = np.linspace(2 * phase[0], 2 * phase[-1], 2 * len(phase) * 10)
-        optimal_aux = compute_squid_current(
-            delta_phi,
-            cpr1,
-            parameters1,
-            cpr2,
-            parameters2,
-            positive,
-            aux_res,
-            0.0,
-            True,
-        )
-
-        # Next compute the external phase that gave rise to the phase
-        # difference
-        phi1 += delta_phi + optimal_aux
-        phi2 += optimal_aux
-        cp1 = cpr1(phi1, *p1)
-        cp2 = cpr2(phi2, *p2)
-        total_current = cp1 + cp2
-        phi_ext = delta_phi - 2 * pi * e / h * inductance * (cp2 - cp1)
-        # Interpolate the current as a function of the external phase and
-        # compute the current at the requested points
-        return interp1d(phi_ext, total_current, kind="cubic", copy=False)(phase)
+        output = [squid_ic, phase_ext]
+    return [a.squeeze() for a in output]

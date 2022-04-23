@@ -11,7 +11,7 @@ from matplotlib.widgets import Slider
 from scipy.constants import physical_constants
 
 from shabanipy.jj import transparent_cpr as cpr
-from shabanipy.squid.squid_model import compute_squid_current
+from shabanipy.squid import critical_behavior
 
 FLUX_QUANTUM = physical_constants["mag. flux quantum"][0]
 phase = np.linspace(-2 * np.pi, 2 * np.pi, 500)
@@ -78,18 +78,18 @@ for param, ax in zip(params, slider_axs):
 
 
 def update(_=None):
-    for ax, branch in zip(axs, [True, False]):
+    for ax, branch in zip(axs, ["+", "-"]):
         (line,) = ax.get_lines()
         line.set_ydata(
-            compute_squid_current(
+            critical_behavior(
                 phase,
                 cpr,
                 (phi1.slider.val * np.pi, 1, tau1.slider.val),
                 cpr,
                 (phi2.slider.val * np.pi, 10 ** logratio.slider.val, tau2.slider.val,),
                 inductance=L.slider.val * FLUX_QUANTUM,
-                positive=branch,
-            ),
+                branch=branch,
+            )[0],
         )
         # remove pop and color=... for a cool trip
         ax.collections.pop()

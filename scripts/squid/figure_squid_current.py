@@ -12,7 +12,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from shabanipy.squid.squid_model import compute_squid_current
+from shabanipy.squid import critical_behavior
 from shabanipy.jj import transparent_cpr as cpr
 
 plt.rcParams['axes.linewidth'] = 1.5
@@ -25,7 +25,7 @@ fig, axes = plt.subplots(4, 3, figsize=(12,6),
                          constrained_layout=True, sharex=True, sharey='row')
 for i, a in enumerate((0.1, 0.5, 0.95, 1.5)):
     for j, t in enumerate((0.1, 0.5, 0.9)):
-        squid = compute_squid_current(phase_diff,
+        squid, *_ = critical_behavior(phase_diff,
                                       cpr, (0, 1, 0.9),
                                       cpr, (0, a, t))
         amplitude = (np.amax(squid) - np.min(squid))
