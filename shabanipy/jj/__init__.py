@@ -1,2 +1,2 @@
 from .andreev import andreev_bound_state_energy
-from .cpr import finite_transparency_jj_current, low_transparency_jj_current
+from .cpr import josephson_cpr, transparent_cpr

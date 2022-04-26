@@ -17,8 +17,11 @@ from numba import njit
 
 
 @njit
-def low_transparency_jj_current(phase, critical_current):
-    """Compute the current flowing through a junction of low transparency.
+def josephson_cpr(phase, critical_current):
+    """Compute the current flowing through a junction of zero transparency.
+
+    This is the 1st Josephson relation and is equivalent to
+    `transparent_cpr` with transparency=0.
 
     Parameters
     ----------
@@ -44,8 +47,7 @@ def _finite_helper(phase, transparency, temperature, gap):
 
 
 @njit
-def finite_transparency_jj_current(phase, critical_current, transparency,
-                                   temperature=0, gap=1):
+def transparent_cpr(phase, critical_current, transparency, temperature=0, gap=1):
     """Compute the current flowing through a junction of finite transparency.
 
     Parameters

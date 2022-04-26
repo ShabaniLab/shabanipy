@@ -13,7 +13,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from shabanipy.squid.squid_model import compute_squid_current
-from shabanipy.jj import finite_transparency_jj_current as cpr
+from shabanipy.jj import transparent_cpr as cpr
 
 plt.rcParams['axes.linewidth'] = 1.5
 plt.rcParams['font.size'] = 13

@@ -25,7 +25,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from shabanipy.squid.squid_model import compute_squid_current
-from shabanipy.jj import finite_transparency_jj_current as cpr
+from shabanipy.jj import transparent_cpr as cpr
 
 phase_diff = np.linspace(-2*np.pi, 2*np.pi, 1001)
 offset = 1.2
