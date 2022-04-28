@@ -8,9 +8,11 @@
 # -----------------------------------------------------------------------------
 """Functions used to model SQUID behavior."""
 
-from typing import Callable, Iterable, Literal, Tuple, Union
+from typing import Callable, Iterable, List, Literal, Union
+from warnings import warn
 
 import numpy as np
+from scipy.interpolate import interp1d
 
 
 def critical_behavior(
@@ -24,13 +26,12 @@ def critical_behavior(
     *,
     nbrute: int = 101,
     return_jjs: bool = False,
-) -> Tuple[Union[float, np.ndarray]]:
+) -> List[np.ndarray]:
     """Compute the critical behavior of a dc SQUID as a function of total phase.
 
     This computes the phases of the junctions along the positive or negative branch of
     the SQUID critical current, as a function of the SQUID phase 2πΦ/Φ0.  To compute the
-    behavior as a function of the externally applied phase, see
-    `critical_control`.
+    behavior as a function of the externally applied phase, see `critical_control`.
 
     Sign conventions follow those of Tinkham Fig. 6.8 with positive B-field out of the
     page:
@@ -87,14 +88,14 @@ def critical_behavior(
     Returns
     -------
     squid_ic
-        SQUID critical current Ic.
+        SQUID critical current Ic(Φ).
     phase_ext
         Phase 2π(Φ_ext/Φ0) due to externally applied flux.
     current1
-        Supercurrent I1 through junction 1 at the SQUID critical current.
+        Supercurrent I1(Φ) through junction 1 at the SQUID critical current.
         Only returned if `return_jjs=True`.
     phase1
-        Phase γ1 across junction 1 at the SQUID critical current.
+        Phase γ1(Φ) across junction 1 at the SQUID critical current.
         Only returned if `return_jjs=True`.
     current2
         Same as `current1` but for junction 2.  Only returned if `return_jjs=True`.
@@ -133,3 +134,68 @@ def critical_behavior(
     else:
         output = [squid_ic, phase_ext]
     return [a.squeeze() for a in output]
+
+
+def critical_control(
+    phase_ext: Union[float, np.ndarray], *args, nphase: int = 101, **kwargs,
+) -> np.ndarray:
+    """Compute the critical behavior of a dc SQUID as a function of applied phase.
+
+    This computes the phases of the junctions along the positive or negative branch of
+    the SQUID critical current, as a function of the externally applied phase
+    2π(Φ_ext/Φ0).  To compute the behavior as a function of the total phase, see
+    `critical_behavior`.
+
+    The behavior is first obtained as a function of total phase 2πΦ/Φ0 and then
+    interpolated to find the values corresponding to `phase_ext`.
+
+    For inductance L = 0, use `critical_behavior` directly as Φ_ext = Φ in this case.
+
+    Parameters
+    ----------
+    phase_ext
+        Phase 2π(Φ_ext/Φ0) due to externally applied flux.
+    *args
+        Positional arguments of `critical_behavior` (excluding `phase`).
+    nphase
+        Number of points in total phase Φ ~ [0, 2π] used to interpolate the SQUID
+        behavior as a function of Φ_ext(Φ).
+    **kwargs
+        Keyword arguments of `critical_behavior`.
+
+    Return values all correspond to the given `phase_ext` values.
+
+    Returns
+    -------
+    squid_ic
+        SQUID critical current Ic(Φ_ext).
+    phase
+        Phase 2π(Φ/Φ0) due to total flux.
+    current1
+        Supercurrent I1(Φ_ext) through junction 1 at the SQUID critical current.
+        Only returned if `return_jjs=True`.
+    phase1
+        Phase γ1(Φ_ext) across junction 1 at the SQUID critical current.
+        Only returned if `return_jjs=True`.
+    current2
+        Same as `current1` but for junction 2.  Only returned if `return_jjs=True`.
+    phase2
+        Same as `phase1` but for junction 2.  Only returned if `return_jjs=True`.
+    """
+    # Given *discrete* values of Φ spanning [0, 2π], the interpolation range
+    # Φ_ext(Φ) (mod 2π) will in general not perfectly span [0, 2π],
+    # so we slightly expand the range to Φ ~ [-δ, 2π + δ].
+    delta = 2 * np.pi / (nphase - 1)
+    phase = np.linspace(-delta, 2 * np.pi + delta, nphase + 2)
+    behavior = critical_behavior(phase, *args, **kwargs)
+    p_ext = behavior[1]  # domain Φ_ext(Φ) over which to interpolate
+    behavior[1] = phase
+    if np.any(np.diff(p_ext) < 0):
+        warn("Φ_ext(Φ) is not monotonically increasing.")
+    # The resulting Φ_ext(Φ) spans a range of size 2π + ε.
+    # Map the requested domain (spanning at most 2π) into this interpolation range.
+    interp_min = np.min(p_ext)
+    quotient = interp_min // (2 * np.pi)
+    phase_ext = phase_ext % (2 * np.pi) + 2 * np.pi * quotient
+    phase_ext = np.where(phase_ext < interp_min, phase_ext + 2 * np.pi, phase_ext)
+    return interp1d(p_ext, behavior, axis=-1, kind="cubic", copy=False)(phase_ext)
