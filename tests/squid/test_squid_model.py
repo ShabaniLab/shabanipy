@@ -20,7 +20,7 @@ class TestComputeSquidCriticalBehavior(unittest.TestCase):
     """Unit tests for critical_behavior function."""
 
     def test_scalar_phase(self):
-        ic, p_ext, c1, p1, c2, p2 = critical_behavior(
+        p_ext, ic, p1, c1, p2, c2 = critical_behavior(
             0, jcpr, (0, 1), jcpr, (0, 1), return_jjs=True
         )
         self.assertEqual(p_ext, 0)
@@ -31,7 +31,7 @@ class TestComputeSquidCriticalBehavior(unittest.TestCase):
         self.assertEqual(c2, 1)
 
     def test_vector_phase(self):
-        ic, p_ext, c1, p1, c2, p2 = critical_behavior(
+        p_ext, ic, p1, c1, p2, c2 = critical_behavior(
             [0, 2 * np.pi], jcpr, (0, 1), jcpr, (0, 1), return_jjs=True
         )
         assert_array_equal(p_ext, [0, 2 * np.pi])
@@ -43,15 +43,15 @@ class TestComputeSquidCriticalBehavior(unittest.TestCase):
 
     def test_flux_quantization(self):
         p = np.linspace(0, 2 * np.pi, 101)
-        *_, p1, _, p2 = critical_behavior(
+        *_, p1, _, p2, _ = critical_behavior(
             p, jcpr, (0, 1), jcpr, (0, 1), return_jjs=True
         )
         assert_allclose(p1 - p2, p)  # symmetric squid
-        *_, p1, _, p2 = critical_behavior(
+        *_, p1, _, p2, _ = critical_behavior(
             p, jcpr, (0, 1), jcpr, (0, 100), return_jjs=True
         )
         assert_allclose(p1 - p2, p)  # asymmetric squid
-        *_, p1, _, p2 = critical_behavior(
+        *_, p1, _, p2, _ = critical_behavior(
             p, jcpr, (0, 1), jcpr, (0, 3), inductance=1, return_jjs=True
         )
         assert_allclose(p1 - p2, p)  # nonzero inductance
@@ -59,7 +59,7 @@ class TestComputeSquidCriticalBehavior(unittest.TestCase):
     def test_symmetric_squid(self):
         # remove ill-behaved point at Φ=π phase-slip
         p = np.delete(np.linspace(0, 2 * np.pi, 101), 50)
-        ic, p_ext, c1, p1, c2, p2 = critical_behavior(
+        p_ext, ic, p1, c1, p2, c2 = critical_behavior(
             p, jcpr, (0, 1), jcpr, (0, 1), nbrute=201, return_jjs=True
         )
         assert_array_equal(p_ext, p)
@@ -74,7 +74,7 @@ class TestComputeSquidCriticalBehavior(unittest.TestCase):
 
     def test_asymmetric_squid(self):
         p = np.linspace(0, 2 * np.pi, 101)
-        ic, p_ext, c1, p1, c2, p2 = critical_behavior(
+        p_ext, ic, p1, c1, p2, c2 = critical_behavior(
             p, jcpr, (0, 1), jcpr, (0, 100), return_jjs=True
         )
         assert_array_equal(p_ext, p)
@@ -88,10 +88,10 @@ class TestComputeSquidCriticalBehavior(unittest.TestCase):
         # remove ill-behaved point at Φ=π phase-slip
         p = np.delete(np.linspace(0, 2 * np.pi, 101), 50)
         # symmetric SQUID has c1=c2 critical behavior -> inductance has no effect
-        ic, p_ext, c1, p1, c2, p2 = critical_behavior(
+        p_ext, ic, p1, c1, p2, c2 = critical_behavior(
             p, jcpr, (0, 1), jcpr, (0, 1), inductance=0.1, return_jjs=True, nbrute=201
         )
-        ic0, p_ext0, c10, p10, c20, p20 = critical_behavior(
+        p_ext0, ic0, p10, c10, p20, c20 = critical_behavior(
             p, jcpr, (0, 1), jcpr, (0, 1), inductance=0, return_jjs=True, nbrute=201
         )
         assert_allclose(p_ext, p_ext0)
@@ -104,10 +104,10 @@ class TestComputeSquidCriticalBehavior(unittest.TestCase):
 
     def test_inductance_asymmetric_squid(self):
         p = np.linspace(0, 2 * np.pi, 101)
-        ic0, p_ext0, c10, p10, c20, p20 = critical_behavior(
+        p_ext0, ic0, p10, c10, p20, c20 = critical_behavior(
             p, jcpr, (0, 1), jcpr, (0, 10), inductance=0, return_jjs=True
         )
-        ic, p_ext, c1, p1, c2, p2 = critical_behavior(
+        p_ext, ic, p1, c1, p2, c2 = critical_behavior(
             p, jcpr, (0, 1), jcpr, (0, 10), inductance=0.2, return_jjs=True
         )
         assert_array_equal(p_ext[[0, -1]], np.array([0, 2 * np.pi]) - 0.2 * 9 * np.pi)
@@ -120,7 +120,7 @@ class TestComputeSquidCriticalBehavior(unittest.TestCase):
 
     def test_finite_transparency_symmetric_squid(self):
         p = np.linspace(0, 2 * np.pi, 101)
-        ic, p_ext, c1, p1, c2, p2 = critical_behavior(
+        p_ext, ic, p1, c1, p2, c2 = critical_behavior(
             p, tcpr, (0, 1, 0.9), tcpr, (0, 1, 0.9), inductance=0.1, return_jjs=True
         )
         assert_allclose(p1 - p2, p)
@@ -129,7 +129,7 @@ class TestComputeSquidCriticalBehavior(unittest.TestCase):
 
     def test_finite_transparency_asymmetric_squid(self):
         p = np.linspace(0, 2 * np.pi, 101)
-        ic, p_ext, c1, p1, c2, p2 = critical_behavior(
+        p_ext, ic, p1, c1, p2, c2 = critical_behavior(
             p, tcpr, (0, 1, 0.9), tcpr, (0, 10, 0.9), inductance=0.1, return_jjs=True
         )
         assert_allclose(p1 - p2, p)

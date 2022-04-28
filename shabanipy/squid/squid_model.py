@@ -87,20 +87,20 @@ def critical_behavior(
 
     Returns
     -------
-    squid_ic
-        SQUID critical current Ic(Φ).
     phase_ext
         Phase 2π(Φ_ext/Φ0) due to externally applied flux.
-    current1
-        Supercurrent I1(Φ) through junction 1 at the SQUID critical current.
-        Only returned if `return_jjs=True`.
+    squid_ic
+        SQUID critical current Ic(Φ).
     phase1
         Phase γ1(Φ) across junction 1 at the SQUID critical current.
         Only returned if `return_jjs=True`.
-    current2
-        Same as `current1` but for junction 2.  Only returned if `return_jjs=True`.
+    current1
+        Supercurrent I1(Φ) through junction 1 at the SQUID critical current.
+        Only returned if `return_jjs=True`.
     phase2
         Same as `phase1` but for junction 2.  Only returned if `return_jjs=True`.
+    current2
+        Same as `current1` but for junction 2.  Only returned if `return_jjs=True`.
     """
     phase = np.atleast_1d(phase)
     phase1_offset, *params1 = params1
@@ -124,15 +124,15 @@ def critical_behavior(
 
     if return_jjs:
         output = [
-            squid_ic,
             phase_ext,
-            current1_opt,
+            squid_ic,
             phase1[idxopt],
-            current2_opt,
+            current1_opt,
             phase2[idxopt],
+            current2_opt,
         ]
     else:
-        output = [squid_ic, phase_ext]
+        output = [phase_ext, squid_ic]
     return [a.squeeze() for a in output]
 
 
@@ -167,20 +167,20 @@ def critical_control(
 
     Returns
     -------
-    squid_ic
-        SQUID critical current Ic(Φ_ext).
     phase
         Phase 2π(Φ/Φ0) due to total flux.
-    current1
-        Supercurrent I1(Φ_ext) through junction 1 at the SQUID critical current.
-        Only returned if `return_jjs=True`.
+    squid_ic
+        SQUID critical current Ic(Φ_ext).
     phase1
         Phase γ1(Φ_ext) across junction 1 at the SQUID critical current.
         Only returned if `return_jjs=True`.
-    current2
-        Same as `current1` but for junction 2.  Only returned if `return_jjs=True`.
+    current1
+        Supercurrent I1(Φ_ext) through junction 1 at the SQUID critical current.
+        Only returned if `return_jjs=True`.
     phase2
         Same as `phase1` but for junction 2.  Only returned if `return_jjs=True`.
+    current2
+        Same as `current1` but for junction 2.  Only returned if `return_jjs=True`.
     """
     # Given *discrete* values of Φ spanning [0, 2π], the interpolation range
     # Φ_ext(Φ) (mod 2π) will in general not perfectly span [0, 2π],
@@ -188,8 +188,8 @@ def critical_control(
     delta = 2 * np.pi / (nphase - 1)
     phase = np.linspace(-delta, 2 * np.pi + delta, nphase + 2)
     behavior = critical_behavior(phase, *args, **kwargs)
-    p_ext = behavior[1]  # domain Φ_ext(Φ) over which to interpolate
-    behavior[1] = phase
+    p_ext = behavior[0]  # domain Φ_ext(Φ) over which to interpolate
+    behavior[0] = phase
     if np.any(np.diff(p_ext) < 0):
         warn("Φ_ext(Φ) is not monotonically increasing.")
     # The resulting Φ_ext(Φ) spans a range of size 2π + ε.

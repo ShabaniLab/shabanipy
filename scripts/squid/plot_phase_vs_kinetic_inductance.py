@@ -16,7 +16,7 @@ ic1 = 10 * ic2
 inductance = 500e-12
 flux = np.linspace(0, PHI0, 100)
 
-_, phi_ext_true, _, phi1_true, _, phi2_true = critical_behavior(
+phi_ext_true, _, phi1_true, _, phi2_true, _ = critical_behavior(
     flux * 2 * np.pi / PHI0,
     cpr,
     (0, ic1, t1),

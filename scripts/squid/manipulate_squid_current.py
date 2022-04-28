@@ -167,7 +167,7 @@ def update(_=None):
         (p2_linep, p2_linen),
         (squid_axp, squid_axn),
     ):
-        ic, p_ext, i1, p1, i2, p2 = critical_behavior(
+        p_ext, ic, p1, i1, p2, i2 = critical_behavior(
             phase,
             cpr,
             (phi01.slider.val * np.pi, ic1, tau1.slider.val),

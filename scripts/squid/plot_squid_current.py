@@ -33,10 +33,10 @@ offset = 1.2
 for t in SECOND_JUNCTION_TRANSPARENCIES:
     # plt.figure()
     for i, a in enumerate(SECOND_JUNCTION_AMPLITUDES):
-        squid, *_ = critical_behavior(phase_diff,
+        _, squid, *_ = critical_behavior(phase_diff,
                                       cpr, (0, *FIRST_JUNCTION),
                                       cpr, (offset, a, t))
-        neg_squid, *_ = critical_behavior(phase_diff,
+        _, neg_squid, *_ = critical_behavior(phase_diff,
                                       cpr, (0, *FIRST_JUNCTION),
                                       cpr, (offset, a, t),
                                       False)
