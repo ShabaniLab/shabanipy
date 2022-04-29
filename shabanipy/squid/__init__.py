@@ -8,4 +8,5 @@
 # -----------------------------------------------------------------------------
 """Superconducting quantum interference devices."""
 from .estimate import estimate_boffset, estimate_frequency
+from .lmfitmodels import squid_model
 from .squid import critical_behavior, critical_control

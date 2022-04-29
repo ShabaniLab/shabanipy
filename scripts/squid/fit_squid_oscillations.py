@@ -7,12 +7,13 @@
 # -----------------------------------------------------------------------------
 """Fit SQUID oscillations to a two-junction transparent CPR model."""
 import argparse
-import warnings
+import sys
 from configparser import ConfigParser, ExtendedInterpolation
 from contextlib import redirect_stdout
 from functools import partial
 from importlib import import_module
 from pathlib import Path
+from warnings import warn
 
 import corner
 import numpy as np
@@ -20,16 +21,13 @@ from lmfit import Model
 from lmfit.model import save_modelresult
 from matplotlib import pyplot as plt
 from pandas import DataFrame
-from scipy.constants import eV, physical_constants
-from scipy.signal import butter, sosfilt
+from scipy.constants import physical_constants
 
 from shabanipy.dvdi import extract_switching_current
 from shabanipy.labber import LabberData, get_data_dir
 from shabanipy.plotting import jy_pink, plot, plot2d
-from shabanipy.squid import estimate_boffset, estimate_frequency
+from shabanipy.squid import estimate_boffset, estimate_frequency, squid_model
 from shabanipy.utils import to_dataframe
-
-from squid_model_func import squid_model_func
 
 print = partial(print, flush=True)
 
@@ -46,9 +44,9 @@ parser.add_argument("config_section", help="section of the .ini config file to u
 parser.add_argument(
     "--branch",
     "-b",
-    choices=["p", "n", "b"],
-    default="n",
-    help="fit positive (p), negative (n), or both branches simultaneously (b)",
+    choices=["+", "-", "+-"],
+    default="+",
+    help="fit positive (+), negative (-), or both branches simultaneously (+-)",
 )
 parser.add_argument(
     "--equal-transparencies",
@@ -75,16 +73,6 @@ parser.add_argument(
     help="do preliminary analysis but don't run fit",
 )
 parser.add_argument(
-    "--plot-guess",
-    "-g",
-    default=None,
-    action="store_true",
-    help=(
-        "plot the initial guess along with the best fit; "
-        "if None, defaults to --dry-run"
-    ),
-)
-parser.add_argument(
     "--conf-interval",
     "-c",
     nargs="*",
@@ -107,8 +95,6 @@ parser.add_argument(
     help="print more information to stdout",
 )
 args = parser.parse_args()
-if args.plot_guess is None:
-    args.plot_guess = args.dry_run
 
 # load the config file
 with open(Path(__file__).parent / args.config_path) as f:
@@ -132,9 +118,7 @@ else:
 
 # sanity check conversion factor is correct (relies on my local file hierarchy)
 if config["FRIDGE"] not in str(INPATH):
-    warnings.warn(
-        f"I can't double check that {config['DATAPATH']} is from {config['FRIDGE']}"
-    )
+    warn(f"I can't double check that {config['DATAPATH']} is from {config['FRIDGE']}")
 
 # set up plot styles
 jy_pink.register()
@@ -152,6 +136,10 @@ FILTER_STR = f"_{config.getfloat('FILTER_VALUE')}" if "FILTER_VALUE" in config e
 OUTPATH = Path(OUTDIR) / (
     f"{config['COOLDOWN']}-{config['SCAN']}{FILTER_STR}_{args.branch}"
 )
+
+#######################
+# data pre-processing #
+#######################
 
 # load the data
 with LabberData(INPATH) as f:
@@ -201,7 +189,7 @@ for field_lim, op in zip(("FIELD_MIN", "FIELD_MAX"), (np.greater, np.less)):
         ic_p = ic_p[mask, ...]
         ic_n = ic_n[mask, ...]
 
-# vector10 Bx points opposite vector9 Bx
+# vector9 Bx points out of the daughterboard; vector10 Bx points opposite
 # (vector10 mount orientation has since changed on 2022/01/25)
 if config["FRIDGE"] == "vector10":
     bfield = np.flip(bfield) * -1
@@ -210,71 +198,82 @@ if config["FRIDGE"] == "vector10":
 elif config["FRIDGE"] == "vector9":
     pass
 else:
-    warnings.warn(f"I don't recognize fridge `{config['FRIDGE']}`")
+    warn(f"I don't recognize fridge `{config['FRIDGE']}`")
 
+############################
+# parameter initialization #
+############################
 
-model = Model(
-    squid_model_func,
-    positive=(True,)
-    if args.branch == "p"
-    else (False,)
-    if args.branch == "n"
-    else (True, False),  # args.branch == "b"
-    param_names=[
-        "transparency1",
-        "transparency2",
-        "switching_current1",
-        "switching_current2",
-        "bfield_offset",
-        "radians_per_tesla",
-        "anom_phase1",
-        "anom_phase2",
-        "temperature",
-        "gap",
-        "inductance",
-    ],
-)
+# create the model
+param_specs = {
+    "bfield_offset": None,
+    "radians_per_tesla": {"min": 0},
+    "anomalous_phase1": {"value": 0, "vary": False},
+    "anomalous_phase2": {"value": 0, "vary": False},
+    "critical_current1": {"min": 0},
+    "critical_current2": {"min": 0},
+    "transparency1": {"value": 0, "min": 0, "max": 1},
+    "transparency2": {"value": 0, "min": 0, "max": 1},
+    "inductance": {"value": 0, "min": 0, "vary": False},
+    "temperature": {"vary": False},
+    "gap": {"value": 200e-6, "vary": False},
+    "nbrute": {"value": 101, "vary": False},
+    "ninterp": {"value": 101, "vary": False},
+}
+model = Model(squid_model, branch=args.branch, param_names=list(param_specs.keys()))
 
-# initialize the parameters
-params = model.make_params()
-params["transparency1"].set(value=0, min=0, max=1)
-params["transparency2"].set(value=0, min=0, max=1)
-if args.equal_transparencies:
-    params["transparency2"].set(expr="transparency1")
-ic_amp = [np.abs(np.max(ic) - np.min(ic)) / 2 for ic in [ic_p, ic_n]]
-ic_mean = [np.abs(np.mean(ic)) for ic in [ic_p, ic_n]]
-if args.branch == "p":
-    ic_amp_guess = ic_amp[0]
-    ic_mean_guess = ic_mean[0]
-elif args.branch == "n":
-    ic_amp_guess = ic_amp[-1]
-    ic_mean_guess = ic_mean[-1]
-else:  # args.branch == "b"
-    ic_amp_guess = np.mean(ic_amp)
-    ic_mean_guess = np.mean(ic_mean)
-params["switching_current1"].set(
-    value=config.getfloat("SWITCHING_CURRENT1", ic_amp_guess),
-    min=0,
-    vary=False if config.getfloat("SWITCHING_CURRENT1") else True,
-)
-params["switching_current2"].set(
-    value=config.getfloat("SWITCHING_CURRENT2", ic_mean_guess),
-    min=0,
-    vary=False if config.getfloat("SWITCHING_CURRENT2") else True,
-)
-boffset = config.getfloat("BOFFSET_GUESS")
-if boffset is None:
-    boffset, (peak_idxs, valley_idxs) = estimate_boffset(
+# initial values can be fixed or guessed in config
+for name, spec in param_specs.items():
+    if spec is not None:
+        model.set_param_hint(name, **spec)
+    if name in config:
+        model.set_param_hint(name, value=config.getfloat(name), vary=False)
+    elif name + "_guess" in config:
+        model.set_param_hint(name, value=config.getfloat(name + "_guess"))
+
+# estimate magnetic field offset
+if "bfield_offset" not in model.param_hints:
+    boffset, *_ = estimate_boffset(
         bfield,
-        ic_p if args.branch != "n" else None,
-        ic_n if args.branch != "p" else None,
+        ic_p if args.branch != "-" else None,
+        ic_n if args.branch != "+" else None,
     )
-params["bfield_offset"].set(value=boffset)
+    model.set_param_hint("bfield_offset", value=boffset)
 
-# filter out low-frequency fraunhofer envelope
+# enforce equal transparencies
+if args.equal_transparencies:
+    model.set_param_hint("transparency2", expr="transparency1")
+
+# estimate junction critical currents
+amplitude = [np.abs(np.max(ic) - np.min(ic)) / 2 for ic in [ic_p, ic_n]]
+mean = [np.abs(np.mean(ic)) for ic in [ic_p, ic_n]]
+# SMALLER_JJ should be 1 or 2, to specify which JJ has the smaller critical current.
+# Numbering and sign conventions are documented in `shabanipy.squid.squid` module.
+if "SMALLER_JJ" in config:
+    SMALLER_JJ = config.getint("SMALLER_JJ")
+    BIGGER_JJ = SMALLER_JJ % 2 + 1
+    if args.branch == "+":
+        amplitude_guess = amplitude[0]
+        mean_guess = mean[0]
+    elif args.branch == "-":
+        amplitude_guess = amplitude[-1]
+        mean_guess = mean[-1]
+    else:  # args.branch == "+-"
+        amplitude_guess = np.mean(amplitude)
+        mean_guess = np.mean(mean)
+    model.set_param_hint(f"critical_current{SMALLER_JJ}", value=amplitude_guess)
+    model.set_param_hint(f"critical_current{BIGGER_JJ}", value=mean_guess)
+else:
+    guess = np.mean([amplitude, mean])
+    model.set_param_hint(f"critical_current1", value=guess)
+    model.set_param_hint(f"critical_current2", value=guess)
+
+
+# estimate frequency of oscillations
 cyc_per_T, (freqs, fft) = estimate_frequency(
-    bfield, ic_p if args.branch in {"p", "b"} else ic_n
+    bfield, ic_p if args.branch in {"+", "+-"} else ic_n
 )
+# filter out low-frequency fraunhofer envelope
 if args.filter_fraunhofer:
     # manual highpass step-filter
     fft_filt = np.where(
@@ -282,16 +281,7 @@ if args.filter_fraunhofer:
     )
     ic_filtered = np.fft.irfft(fft_filt, n=len(bfield))
     cyc_per_T, (freqs_filt, fft_filt) = estimate_frequency(bfield, ic_filtered)
-params["radians_per_tesla"].set(value=2 * np.pi * cyc_per_T)
-# anomalous phases; if both fixed, then there is no phase freedom in the model (aside
-# from bfield_offset), as the two gauge-invariant phases are fixed by two constraints:
-#     1. flux quantization:         γ1 - γ2 = 2πΦ/Φ_0 (mod 2π),
-#     2. supercurrent maximization: I_tot = max_γ1 { I_1(γ1) + I_2(γ1 - 2πΦ/Φ_0) }
-params["anom_phase1"].set(value=0, vary=False)
-params["anom_phase2"].set(value=0, vary=False)
-params["temperature"].set(value=round(np.mean(temp_meas), 3), vary=False)
-params["gap"].set(value=200e-6 * eV, vary=False)
-params["inductance"].set(value=1e-9)
+model.set_param_hint("radians_per_tesla", value=2 * np.pi * cyc_per_T)
 
 # plot the radians_per_tesla estimate and fraunhofer filter
 abs_fft = np.abs(fft)
@@ -301,8 +291,6 @@ fig, ax = plot(
     xlabel="frequency (mT$^{-1}$)",
     ylabel="|FFT| (arb.)",
     title="frequency estimate",
-    stamp=config["COOLDOWN"] + "_" + config["SCAN"],
-    label="data",
 )
 ax.set_ylim(0, np.max(abs_fft[1:]) * 1.05)  # ignore dc component
 ax.axvline(cyc_per_T / 1e3, color="k")
@@ -310,7 +298,8 @@ ax.text(
     0.3,
     0.5,
     f"frequency $\sim$ {np.round(cyc_per_T / 1e3)} mT$^{{-1}}$\n"
-    f"period $\sim$ {round(1 / cyc_per_T / 1e-6)} μT",
+    f"period $\sim$ {round(1 / cyc_per_T / 1e-6)} μT\n"
+    f"area $\sim$ {round(PHI0 * cyc_per_T / 1e-12)} μT$^2$",
     transform=ax.transAxes,
 )
 if args.filter_fraunhofer:
@@ -320,173 +309,145 @@ if args.filter_fraunhofer:
     ax.legend()
 fig.savefig(str(OUTPATH) + "_fft.png")
 
-# from now on deal with the filtered data
+# initialize remaining parameters
+model.set_param_hint("temperature", value=round(np.mean(temp_meas), 3), vary=False)
+
+params = model.make_params()
+
+# from now on deal only with the filtered data
 if args.filter_fraunhofer:
-    if args.branch == "p":
+    if args.branch == "+":
         ic_p = ic_filtered
-    elif args.branch == "n":
+    elif args.branch == "-":
         ic_n = ic_filtered
-    else:  # args.branch == "b"
+    else:  # args.branch == "+-"
         raise NotImplementedError(
             "Filtering both positive and negative branches is currently unsupported"
         )
 
-# plot the bfield_offset estimate
-if args.branch == "p":
-    fig, ax_p = plt.subplots()
-    ax_p.set_xlabel("x coil field (mT)")
-    ax_p.set_title("bfield offset estimate")
-elif args.branch == "n":
-    fig, ax_n = plt.subplots()
-    ax_n.set_xlabel("x coil field (mT)")
-    ax_n.set_title("bfield offset estimate")
-else:  # args.branch == "b":
-    fig, (ax_p, ax_n) = plt.subplots(2, 1, sharex=True)
-    ax_n.set_xlabel("x coil field (mT)")
-    ax_p.set_title("bfield offset estimate")
-if args.branch in {"p", "b"}:
-    plot(
-        bfield / 1e-3,
-        ic_p / 1e-6,
-        ylabel="switching current (μA)",
-        stamp=config["COOLDOWN"] + "_" + config["SCAN"],
-        ax=ax_p,
-        marker=".",
-    )
-    ax_p.axvline(boffset / 1e-3, color="k")
-    if "BOFFSET_GUESS" not in config:
-        ax_p.plot(
-            bfield[peak_idxs] / 1e-3, ic_p[peak_idxs] / 1e-6, lw=0, marker="o",
-        )
-if args.branch in {"n", "b"}:
-    plot(
-        bfield / 1e-3,
-        ic_n / 1e-6,
-        ylabel="switching current (μA)",
-        stamp=config["COOLDOWN"] + "_" + config["SCAN"],
-        ax=ax_n,
-        marker=".",
-    )
-    ax_n.axvline(boffset / 1e-3, color="k")
-    if "BOFFSET_GUESS" not in config:
-        ax_n.plot(
-            bfield[valley_idxs] / 1e-3, ic_n[valley_idxs] / 1e-6, lw=0, marker="o",
-        )
-ax = ax_p if args.branch in {"p", "b"} else ax_n
-ax.text(
-    0.5,
-    0.5,
-    f"bfield offset $\\approx$ {np.round(boffset / 1e-3, 3)} mT",
-    va="center",
-    ha="center",
-    transform=ax.transAxes,
-)
-fig.savefig(str(OUTPATH) + "_bfield-offset.png")
+# plot initial guess
+fig, ax = plt.subplots(len(args.branch), 1, sharex=True)
+fig.suptitle("initial guess")
+if args.branch == "+":
+    ax.plot(bfield, ic_p, ".")
+    init_p = model.eval(bfield=bfield, params=params)
+    ax.plot(bfield, init_p)
+elif args.branch == "-":
+    ax.plot(bfield, ic_n, ".")
+    init_n = model.eval(bfield=bfield, params=params)
+    ax.plot(bfield, init_n)
+else:  # args.branch == "+-"
+    ax[0].plot(bfield, ic_p, ".")
+    ax[1].plot(bfield, ic_n, ".")
+    init_p, init_n = model.eval(bfield=bfield, params=params)
+    ax[0].plot(bfield, init_p)
+    ax[1].plot(bfield, init_n)
+fig.savefig(str(OUTPATH) + "_init.png")
+
+#######################
+# fit, plot, and save #
+#######################
+
+if args.dry_run:
+    plt.show()
+    sys.exit()
 
 # scale the residuals to get a somewhat meaningful χ2 value
 ibias_step = np.diff(ibias, axis=-1)
 uncertainty = np.mean(ibias_step)
 if not np.allclose(ibias_step, uncertainty):
-    warnings.warn(
+    warn(
         "Bias current has variable step sizes; "
         "the magnitude of the χ2 statistic may not be meaningful."
     )
 
-# fit the data
-if not args.dry_run:
-    print("Optimizing fit...", end="")
-    if args.branch == "p":
-        data = ic_p
-    elif args.branch == "n":
-        data = ic_n
-    else:  # args.branch == "b"
-        data = np.array([ic_p, ic_n]).flatten()
-    result = model.fit(
+print("Optimizing fit...", end="")
+if args.branch == "+":
+    data = ic_p
+elif args.branch == "-":
+    data = ic_n
+else:  # args.branch == "+-"
+    data = [ic_p, ic_n]
+result = model.fit(
+    data=data,
+    weights=1 / uncertainty,
+    bfield=bfield,
+    params=params,
+    verbose=args.verbose,
+)
+print("...done.")
+print(result.fit_report())
+with open(str(OUTPATH) + "_fit-report.txt", "w") as f:
+    f.write(result.fit_report())
+with open(str(OUTPATH) + "_fit-params.txt", "w") as f, redirect_stdout(f):
+    print(to_dataframe(result.params))
+
+# confidence intervals
+if args.conf_interval is not None:
+    print("Calculating confidence intervals (this takes a while)...", end="")
+    ci_kwargs = dict(verbose=args.verbose)
+    if args.conf_interval:
+        ci_kwargs.update(dict(sigmas=args.conf_interval))
+    result.conf_interval(**ci_kwargs)
+    print("...done.")
+    print(result.ci_report(ndigits=10))
+
+save_modelresult(result, str(OUTPATH) + "_model-result.json")
+
+if args.emcee:
+    print("Calculating posteriors with emcee...")
+    mcmc_result = model.fit(
         data=data,
         weights=1 / uncertainty,
         bfield=bfield,
-        params=params,
-        verbose=args.verbose,
+        params=result.params,
+        # nan_policy="omit",
+        method="emcee",
+        fit_kws=dict(steps=1000, nwalkers=100, burn=200, thin=10, is_weighted=True),
     )
     print("...done.")
-    print(result.fit_report())
-    with open(str(OUTPATH) + "_fit-report.txt", "w") as f:
-        f.write(result.fit_report())
-    with open(str(OUTPATH) + "_fit-params.txt", "w") as f, redirect_stdout(f):
-        print(to_dataframe(result.params))
+    save_modelresult(mcmc_result, str(OUTPATH) + "_mcmc-result.json")
+    print("\nemcee medians and (averaged) +-1σ quantiles")
+    print("------------------------------")
+    print(mcmc_result.fit_report())
+    print("\nemcee max likelihood estimates")
+    print("------------------------------")
+    mle_loc = np.argmax(mcmc_result.lnprob)
+    mle_loc = np.unravel_index(mle_loc, mcmc_result.lnprob.shape)
+    mle = mcmc_result.chain[mle_loc]
+    for i, p in enumerate([p for p in mcmc_result.params.values() if p.vary]):
+        print(f"{p.name}: {mle[i]}")
 
-    if args.conf_interval is not None:
-        print("Calculating confidence intervals (this takes a while)...", end="")
-        ci_kwargs = dict(verbose=args.verbose)
-        if args.conf_interval:
-            ci_kwargs.update(dict(sigmas=args.conf_interval))
-        result.conf_interval(**ci_kwargs)
-        print("...done.")
-        print(result.ci_report(ndigits=10))
-
-    save_modelresult(result, str(OUTPATH) + "_model-result.json")
-
-    if args.emcee:
-        print("Calculating posteriors with emcee...")
-        mcmc_result = model.fit(
-            data=data,
-            weights=1 / uncertainty,
-            bfield=bfield,
-            params=result.params,
-            # nan_policy="omit",
-            method="emcee",
-            fit_kws=dict(steps=1000, nwalkers=100, burn=200, thin=10, is_weighted=True),
+    fig, ax = plt.subplots()
+    ax.plot(mcmc_result.acceptance_fraction)
+    ax.set_xlabel("walker")
+    ax.set_ylabel("acceptance fraction")
+    fig.savefig(str(OUTPATH) + "_emcee-acceptance-fraction.png")
+    with plt.style.context("classic"):
+        fig = corner.corner(
+            mcmc_result.flatchain,
+            labels=mcmc_result.var_names,
+            truths=[p.value for p in mcmc_result.params.values() if p.vary],
+            labelpad=0.1,
         )
-        print("...done.")
-        save_modelresult(mcmc_result, str(OUTPATH) + "_mcmc-result.json")
-        print("\nemcee medians and (averaged) +-1σ quantiles")
-        print("------------------------------")
-        print(mcmc_result.fit_report())
-        print("\nemcee max likelihood estimates")
-        print("------------------------------")
-        mle_loc = np.argmax(mcmc_result.lnprob)
-        mle_loc = np.unravel_index(mle_loc, mcmc_result.lnprob.shape)
-        mle = mcmc_result.chain[mle_loc]
-        for i, p in enumerate([p for p in mcmc_result.params.values() if p.vary]):
-            print(f"{p.name}: {mle[i]}")
+        fig.savefig(str(OUTPATH) + "_emcee-corner.png")
 
-        fig, ax = plt.subplots()
-        ax.plot(mcmc_result.acceptance_fraction)
-        ax.set_xlabel("walker")
-        ax.set_ylabel("acceptance fraction")
-        fig.savefig(str(OUTPATH) + "_emcee-acceptance-fraction.png")
-        with plt.style.context("classic"):
-            fig = corner.corner(
-                mcmc_result.flatchain,
-                labels=mcmc_result.var_names,
-                truths=[p.value for p in mcmc_result.params.values() if p.vary],
-                labelpad=0.1,
-            )
-            fig.savefig(str(OUTPATH) + "_emcee-corner.png")
-
-
-# plot the best fit and initial guess over the data
-popt = result.params.valuesdict() if not args.dry_run else params
+# plot the best fit over the data
+popt = result.params.valuesdict()
 phase = (bfield - popt["bfield_offset"]) * popt["radians_per_tesla"]
-if args.branch == "p":
+if args.branch == "+":
     fig, ax_p = plt.subplots()
-    ax_p.set_xlabel("phase (2π)")
-    init_p = model.eval(bfield=bfield, params=params)
-    if not args.dry_run:
-        best_p = result.best_fit
-elif args.branch == "n":
+    ax_p.set_xlabel("$\Phi_\mathrm{ext}$ ($\Phi_0$)")
+    best_p = result.best_fit
+elif args.branch == "-":
     fig, ax_n = plt.subplots()
-    ax_n.set_xlabel("phase (2π)")
-    init_n = model.eval(bfield=bfield, params=params)
-    if not args.dry_run:
-        best_n = result.best_fit
-else:  # args.branch == "b"
+    ax_n.set_xlabel("$\Phi_\mathrm{ext}$ ($\Phi_0$)")
+    best_n = result.best_fit
+else:  # args.branch == "+-"
     fig, (ax_p, ax_n) = plt.subplots(2, 1, sharex=True)
-    ax_n.set_xlabel("phase (2π)")
-    init_p, init_n = np.split(model.eval(bfield=bfield, params=params), 2)
-    if not args.dry_run:
-        best_p, best_n = np.split(result.best_fit, 2)
-if args.branch in {"p", "b"}:
+    ax_n.set_xlabel("$\Phi_\mathrm{ext}$ ($\Phi_0$)")
+    best_p, best_n = result.best_fit
+if args.branch in {"+", "+-"}:
     plot(
         phase / (2 * np.pi),
         ic_p / 1e-6,
@@ -499,7 +460,7 @@ if args.branch in {"p", "b"}:
     if not args.dry_run:
         plot(phase / (2 * np.pi), best_p / 1e-6, ax=ax_p, label="fit")
     ax_p.legend()
-if args.branch in {"n", "b"}:
+if args.branch in {"-", "+-"}:
     plot(
         phase / (2 * np.pi),
         ic_n / 1e-6,
@@ -513,14 +474,6 @@ if args.branch in {"n", "b"}:
         plot(phase / (2 * np.pi), best_n / 1e-6, ax=ax_n, label="fit")
     ax_n.legend()
 fig.savefig(str(OUTPATH) + "_fit.png")
-if args.plot_guess:
-    if args.branch in {"p", "b"}:
-        plot(phase / (2 * np.pi), init_p / 1e-6, ax=ax_p, label="guess")
-        ax_p.legend()
-    if args.branch in {"n", "b"}:
-        plot(phase / (2 * np.pi), init_n / 1e-6, ax=ax_n, label="guess")
-        ax_n.legend()
-    fig.savefig(str(OUTPATH) + "_guess.png")
 
 # save the fit plot data to csv for later re-plotting
 if not args.dry_run:
@@ -530,12 +483,12 @@ if not args.dry_run:
             "phase": phase,
             **(
                 {"ic_p": ic_p, "fit_p": best_p, "init_p": init_p}
-                if args.branch in {"p", "b"}
+                if args.branch in {"+", "+-"}
                 else {}
             ),
             **(
                 {"ic_n": ic_n, "fit_n": best_n, "init_n": init_n}
-                if args.branch in {"n", "b"}
+                if args.branch in {"-", "+-"}
                 else {}
             ),
         }
