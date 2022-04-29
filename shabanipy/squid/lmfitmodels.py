@@ -1,6 +1,7 @@
 """SQUID model functions to fit against experimental data.
 
 These functions are used to construct an lmfit.Model."""
+from functools import partial
 from typing import Literal
 
 import numpy as np
@@ -9,7 +10,7 @@ from scipy.constants import physical_constants
 
 from shabanipy.jj import transparent_cpr as tcpr
 
-from .squid import critical_control
+from .squid import critical_behavior, critical_control
 
 PHI0 = physical_constants["mag. flux quantum"][0]
 
@@ -66,9 +67,15 @@ def squid_model(
     -------
     The SQUID critical current for the requested `branch`es.
     """
+    # TODO nonzero inductance deserves its own lmfit.Model/model function
+    critical = (
+        critical_behavior
+        if inductance == 0
+        else partial(critical_control, ninterp=ninterp)
+    )
     phase_ext = (bfield - bfield_offset) * radians_per_tesla
     squid_ic = [
-        critical_control(
+        critical(
             phase_ext,
             tcpr,
             (anomalous_phase1, critical_current1, transparency1, temperature, gap * e),
@@ -77,7 +84,6 @@ def squid_model(
             inductance=inductance / PHI0,
             branch=b,
             nbrute=nbrute,
-            ninterp=ninterp,
         )[1]
         for b in branch
     ]
