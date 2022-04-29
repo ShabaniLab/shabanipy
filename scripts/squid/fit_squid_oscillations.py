@@ -56,13 +56,13 @@ parser.add_argument(
     help="constrain junction transparencies to be equal",
 )
 parser.add_argument(
-    "--filter-fraunhofer",
+    "--fraunhofer",
     "-f",
-    default=False,
-    action="store_true",
+    choices=["filter", "fit"],
     help=(
-        "filter out low-frequency fraunhofer envelope; "
-        "only supported for --branch=p currently"
+        "how to handle the low-frequency fraunhofer modulation. "
+        "high-pass `filter` with FREQUENCY_CUTOFF given in config; "
+        "`fit` to a quadratic used as Ic(Φ_ext) of the larger-area junction"
     ),
 )
 parser.add_argument(
@@ -203,6 +203,12 @@ else:
 ############################
 # parameter initialization #
 ############################
+# TODO clean this up; priority order for init value overrides:
+#   0. CLI for testing values
+#   1. param in config (to fix value) for saving/fixing values
+#   2. param_guess in config (to vary in fit) for saving/varying values
+#   3. estimate value as last resort
+# priority 3 can be refactored into guess() method of lmfit.Model subclass
 
 # create the model
 param_specs = {
@@ -240,6 +246,16 @@ if "bfield_offset" not in model.param_hints:
     )
     model.set_param_hint("bfield_offset", value=boffset)
 
+# plot magnetic field offset
+fig, ax = plt.subplots()
+fig.suptitle("magnetic field offset")
+ax.plot(
+    bfield - model.param_hints["bfield_offset"]["value"],
+    ic_p if args.branch in {"+", "+-"} else ic_n,
+)
+ax.axvline(0, color="k")
+fig.savefig(str(OUTPATH) + "_bfield-offset.png")
+
 # enforce equal transparencies
 if args.equal_transparencies:
     model.set_param_hint("transparency2", expr="transparency1")
@@ -247,11 +263,11 @@ if args.equal_transparencies:
 # estimate junction critical currents
 amplitude = [np.abs(np.max(ic) - np.min(ic)) / 2 for ic in [ic_p, ic_n]]
 mean = [np.abs(np.mean(ic)) for ic in [ic_p, ic_n]]
-# SMALLER_JJ should be 1 or 2, to specify which JJ has the smaller critical current.
+# SMALLER_IC_JJ should be 1 or 2, to specify which JJ has the smaller critical current.
 # Numbering and sign conventions are documented in `shabanipy.squid.squid` module.
-if "SMALLER_JJ" in config:
-    SMALLER_JJ = config.getint("SMALLER_JJ")
-    BIGGER_JJ = SMALLER_JJ % 2 + 1
+if "SMALLER_IC_JJ" in config:
+    SMALLER_IC_JJ = config.getint("SMALLER_IC_JJ")
+    BIGGER_IC_JJ = SMALLER_IC_JJ % 2 + 1
     if args.branch == "+":
         amplitude_guess = amplitude[0]
         mean_guess = mean[0]
@@ -261,27 +277,53 @@ if "SMALLER_JJ" in config:
     else:  # args.branch == "+-"
         amplitude_guess = np.mean(amplitude)
         mean_guess = np.mean(mean)
-    model.set_param_hint(f"critical_current{SMALLER_JJ}", value=amplitude_guess)
-    model.set_param_hint(f"critical_current{BIGGER_JJ}", value=mean_guess)
+    if f"CRITICAL_CURRENT{SMALLER_IC_JJ}_GUESS" not in config:
+        model.set_param_hint(f"critical_current{SMALLER_IC_JJ}", value=amplitude_guess)
+    if f"CRITICAL_CURRENT{BIGGER_IC_JJ}_GUESS" not in config:
+        model.set_param_hint(f"critical_current{BIGGER_IC_JJ}", value=mean_guess)
 else:
     guess = np.mean([amplitude, mean])
-    model.set_param_hint(f"critical_current1", value=guess)
-    model.set_param_hint(f"critical_current2", value=guess)
+    for critical_current in ("critical_current1", "critical_current2"):
+        if critical_current + "_guess" not in config:
+            model.set_param_hint(f"critical_current1", value=guess)
 
+if args.fraunhofer == "fit":
+    if args.branch == "+-":
+        raise ValueError("background fitting is not yet supported for option +-")
+    poly = np.polynomial.Polynomial.fit(bfield, ic_p if args.branch == "+" else ic_n, 2)
+
+    # this is bad...make separate lmfit.model subclasses
+    background_ic = f"critical_current{config.getint('LARGER_AREA_JJ')}"
+    # if nonzero inductance, this assumes IcJJ(Φ_ext) = IcJJ(Φ)
+    model.opts[background_ic] = poly(bfield)
+    model.param_names.remove(background_ic)
+    model.param_hints.pop(background_ic)
+
+    fig, ax = plt.subplots()
+    fig.suptitle("background Ic fit")
+    ax.plot(bfield, ic_p if args.branch == "+" else ic_n, ".")
+    ax.plot(bfield, poly(bfield))
+    fig.savefig(str(OUTPATH) + "_ic-background.png")
 
 # estimate frequency of oscillations
+# TODO switch lmfit model to take area instead of radians_per_tesla
+if "LOOP_AREA_GUESS" in config:
+    model.set_param_hint(
+        "radians_per_tesla", value=2 * np.pi * config.getfloat("LOOP_AREA_GUESS") / PHI0
+    )
 cyc_per_T, (freqs, fft) = estimate_frequency(
     bfield, ic_p if args.branch in {"+", "+-"} else ic_n
 )
 # filter out low-frequency fraunhofer envelope
-if args.filter_fraunhofer:
+if args.fraunhofer == "filter":
     # manual highpass step-filter
     fft_filt = np.where(
-        (freqs > 0) & (freqs < config.getfloat("LOOP_AREA") / PHI0), 0, fft
+        (freqs > 0) & (freqs < config.getfloat("FREQUENCY_CUTOFF")), 0, fft
     )
     ic_filtered = np.fft.irfft(fft_filt, n=len(bfield))
     cyc_per_T, (freqs_filt, fft_filt) = estimate_frequency(bfield, ic_filtered)
-model.set_param_hint("radians_per_tesla", value=2 * np.pi * cyc_per_T)
+if "LOOP_AREA_GUESS" not in config:
+    model.set_param_hint("radians_per_tesla", value=2 * np.pi * cyc_per_T)
 
 # plot the radians_per_tesla estimate and fraunhofer filter
 abs_fft = np.abs(fft)
@@ -302,7 +344,7 @@ ax.text(
     f"area $\sim$ {round(PHI0 * cyc_per_T / 1e-12)} μT$^2$",
     transform=ax.transAxes,
 )
-if args.filter_fraunhofer:
+if args.fraunhofer == "filter":
     plot(
         freqs_filt / 1e3, np.abs(fft_filt), ax=ax, label="filtered",
     )
@@ -315,7 +357,7 @@ model.set_param_hint("temperature", value=round(np.mean(temp_meas), 3), vary=Fal
 params = model.make_params()
 
 # from now on deal only with the filtered data
-if args.filter_fraunhofer:
+if args.fraunhofer == "filter":
     if args.branch == "+":
         ic_p = ic_filtered
     elif args.branch == "-":

@@ -136,6 +136,8 @@ class TestComputeSquidCriticalBehavior(unittest.TestCase):
         assert_array_equal(c1 + c2, ic)
         assert_allclose(p, p_ext + 0.1 * (c2 - c1) * np.pi)
 
+    # TODO test critical_control
+
 
 if __name__ == "__main__":
     unittest.main()
