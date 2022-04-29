@@ -5,7 +5,7 @@
 #
 # The full license is in the file LICENCE, distributed with this software.
 # -----------------------------------------------------------------------------
-"""Unit tests for shabanipy.squid.squid_model module."""
+"""Unit tests for shabanipy.squid.squid module."""
 import unittest
 
 import numpy as np
