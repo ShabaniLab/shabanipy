@@ -137,7 +137,7 @@ def critical_behavior(
 
 
 def critical_control(
-    phase_ext: Union[float, np.ndarray], *args, nphase: int = 101, **kwargs,
+    phase_ext: Union[float, np.ndarray], *args, ninterp: int = 101, **kwargs,
 ) -> np.ndarray:
     """Compute the critical behavior of a dc SQUID as a function of applied phase.
 
@@ -157,7 +157,7 @@ def critical_control(
         Phase 2π(Φ_ext/Φ0) due to externally applied flux.
     *args
         Positional arguments of `critical_behavior` (excluding `phase`).
-    nphase
+    ninterp
         Number of points in total phase Φ ~ [0, 2π] used to interpolate the SQUID
         behavior as a function of Φ_ext(Φ).
     **kwargs
@@ -185,8 +185,8 @@ def critical_control(
     # Given *discrete* values of Φ spanning [0, 2π], the interpolation range
     # Φ_ext(Φ) (mod 2π) will in general not perfectly span [0, 2π],
     # so we slightly expand the range to Φ ~ [-δ, 2π + δ].
-    delta = 2 * np.pi / (nphase - 1)
-    phase = np.linspace(-delta, 2 * np.pi + delta, nphase + 2)
+    delta = 2 * np.pi / (ninterp - 1)
+    phase = np.linspace(-delta, 2 * np.pi + delta, ninterp + 2)
     behavior = critical_behavior(phase, *args, **kwargs)
     p_ext = behavior[0]  # domain Φ_ext(Φ) over which to interpolate
     behavior[0] = phase
