@@ -163,7 +163,8 @@ fig, ax = plot2d(
     title="raw data",
     stamp=config["COOLDOWN"] + "_" + config["SCAN"],
 )
-fig.savefig(str(OUTPATH) + "_raw-data.png")
+if not args.dry_run:
+    fig.savefig(str(OUTPATH) + "_raw-data.png")
 
 # extract the switching currents
 ic_n, ic_p = extract_switching_current(
@@ -179,7 +180,8 @@ plot(bfield / 1e-3, ic_n / 1e-6, ax=ax, color="k", lw=1)
 for field_lim in ("FIELD_MIN", "FIELD_MAX"):
     if config.getfloat(field_lim):
         ax.axvline(config.getfloat(field_lim) / 1e-3, color="black", linestyle="--")
-fig.savefig(str(OUTPATH) + "_ic-extraction.png")
+if not args.dry_run:
+    fig.savefig(str(OUTPATH) + "_ic-extraction.png")
 
 # limit field range to fit
 for field_lim, op in zip(("FIELD_MIN", "FIELD_MAX"), (np.greater, np.less)):
@@ -254,7 +256,8 @@ ax.plot(
     ic_p if args.branch in {"+", "+-"} else ic_n,
 )
 ax.axvline(0, color="k")
-fig.savefig(str(OUTPATH) + "_bfield-offset.png")
+if not args.dry_run:
+    fig.savefig(str(OUTPATH) + "_bfield-offset.png")
 
 # enforce equal transparencies
 if args.equal_transparencies:
@@ -295,6 +298,7 @@ if args.fraunhofer == "fit":
     # this is bad...make separate lmfit.model subclasses
     background_ic = f"critical_current{config.getint('LARGER_AREA_JJ')}"
     # if nonzero inductance, this assumes IcJJ(Φ_ext) = IcJJ(Φ)
+    # TODO assumption is true but need to get IcJJ(Φ(Φ_ext)) self-consistently
     model.opts[background_ic] = poly(bfield)
     model.param_names.remove(background_ic)
     model.param_hints.pop(background_ic)
@@ -303,7 +307,8 @@ if args.fraunhofer == "fit":
     fig.suptitle("background Ic fit")
     ax.plot(bfield, ic_p if args.branch == "+" else ic_n, ".")
     ax.plot(bfield, poly(bfield))
-    fig.savefig(str(OUTPATH) + "_ic-background.png")
+    if not args.dry_run:
+        fig.savefig(str(OUTPATH) + "_ic-background.png")
 
 # estimate frequency of oscillations
 # TODO switch lmfit model to take area instead of radians_per_tesla
@@ -349,7 +354,8 @@ if args.fraunhofer == "filter":
         freqs_filt / 1e3, np.abs(fft_filt), ax=ax, label="filtered",
     )
     ax.legend()
-fig.savefig(str(OUTPATH) + "_fft.png")
+if not args.dry_run:
+    fig.savefig(str(OUTPATH) + "_fft.png")
 
 # initialize remaining parameters
 model.set_param_hint("temperature", value=round(np.mean(temp_meas), 3), vary=False)
@@ -384,7 +390,8 @@ else:  # args.branch == "+-"
     init_p, init_n = model.eval(bfield=bfield, params=params)
     ax[0].plot(bfield, init_p)
     ax[1].plot(bfield, init_n)
-fig.savefig(str(OUTPATH) + "_init.png")
+if not args.dry_run:
+    fig.savefig(str(OUTPATH) + "_init.png")
 
 #######################
 # fit, plot, and save #
