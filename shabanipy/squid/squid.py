@@ -45,12 +45,15 @@ def critical_behavior(
                                         --> 
                                        I2(γ2)
 
-    The junction phases γ1, γ2 are fully constrained by "flux quantization" (or more
-    accurately single-valuedness of the order parameter's phase),
+    The junction phases γ1, γ2 are fully constrained by two equations.  The first
+    requires that the phase of the Ginzburg-Landau order parameter is single-valued and
+    is often called the "flux quantization" condition (though the flux threading the
+    loop is not quantized in general):
 
                                 γ1 - γ2 = 2πΦ/Φ0                                (1)
 
-    and supercurrent maximization,
+    The second defines the SQUID critical current which is the maximum supercurrent the
+    SQUID can pass for a given Φ:
 
                        Ic = max_{γ1,γ2} [ I1(γ1) + I2(γ2) ]                     (2)
 
@@ -59,6 +62,9 @@ def critical_behavior(
     L > 0:
 
                       Φ = Φ_ext + (L/2) [ I2(γ2) - I1(γ1) ]                     (3)
+
+    where we assume the inductive contributions from each arm of the SQUID are
+    identical.
 
     See Tinkham ed. 2 §6.4.1 and §6.5 for details.
 
