@@ -5,7 +5,7 @@ All plot formatting/styling should be left to the package consumer (ideally cont
 by an mplstyle sheet).
 """
 from pathlib import Path
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Dict, Optional, Tuple, Union
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -148,6 +148,7 @@ def plot_labberdata(
     ylabel: Optional[str] = None,
     zlabel: Optional[str] = None,
     transform: Optional[Callable] = None,
+    filters: Optional[Dict[str, float]] = None,
     xlim: Optional[Tuple[float]] = None,
     ylim: Optional[Tuple[float]] = None,
     title: Optional[str] = None,
@@ -169,6 +170,9 @@ def plot_labberdata(
         Function with the signature `Tuple[np.ndarray] -> Tuple[np.ndarray]`,
         i.e. (x, y, z) -> (x_transformed, y_transformed, z_transformed) used to
         transform the data.
+    filters
+        Dictionary of {"channel": value} pairs used to select 2d slices of n-dimensional
+        data.  Passed to LabberData.get_data().
     xlim, ylim
         x- and y-axis limits, in the form (min, max), referring to the transformed data
         if `transform` is given.  If either min or max is None, the limit is left
@@ -194,11 +198,11 @@ def plot_labberdata(
     with LabberData(path) as f:
         for name in (x, y, z):
             try:
-                data.append(f.get_data(name))
+                data.append(f.get_data(name, filters=filters))
             except ValueError:
                 # TODO refactor LabberData.get_data to normalize data access
                 for log in (l for l in f.logs if l.x_name == name):
-                    vdata, _ = f.get_data(log.name, get_x=True)
+                    vdata, _ = f.get_data(log.name, get_x=True, filters=filters)
                     data.append(vdata)
                     break
 
