@@ -18,7 +18,7 @@ PHI0 = physical_constants["mag. flux quantum"][0]
 def squid_model(
     bfield: np.ndarray,
     bfield_offset: float,
-    radians_per_tesla: float,
+    loop_area: float,
     anomalous_phase1: float,
     anomalous_phase2: float,
     critical_current1: float,
@@ -40,8 +40,9 @@ def squid_model(
         External magnetic field (T) at which the critical current was measured.
     bfield_offset
         Magnetic field offset (T) due to hysteresis in the vector magnet coils.
-    radians_per_tesla
-        Externally applied phase per unit field, 2πA/Φ0, where A is the loop area.
+    loop_area
+        Effective area A (m^2) of the SQUID loop, used to convert the external field B
+        to phase via 2πAB/Φ0.
     anomalous_phase1, anomalous_phase2
         Anomalous shifts in the junctions' phases (rad).
     critical_current1, critical_current2
@@ -73,7 +74,7 @@ def squid_model(
         if inductance == 0
         else partial(critical_control, ninterp=ninterp)
     )
-    phase_ext = (bfield - bfield_offset) * radians_per_tesla
+    phase_ext = 2 * np.pi * loop_area * (bfield - bfield_offset) / PHI0
     squid_ic = [
         critical(
             phase_ext,

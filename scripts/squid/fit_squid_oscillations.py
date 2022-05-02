@@ -215,7 +215,7 @@ else:
 # create the model
 param_specs = {
     "bfield_offset": None,
-    "radians_per_tesla": {"min": 0},
+    "loop_area": {"min": 0},
     "anomalous_phase1": {"value": 0, "vary": False},
     "anomalous_phase2": {"value": 0, "vary": False},
     "critical_current1": {"min": 0},
@@ -311,11 +311,8 @@ if args.fraunhofer == "fit":
         fig.savefig(str(OUTPATH) + "_ic-background.png")
 
 # estimate frequency of oscillations
-# TODO switch lmfit model to take area instead of radians_per_tesla
 if "LOOP_AREA_GUESS" in config:
-    model.set_param_hint(
-        "radians_per_tesla", value=2 * np.pi * config.getfloat("LOOP_AREA_GUESS") / PHI0
-    )
+    model.set_param_hint("loop_area", value=config.getfloat("LOOP_AREA_GUESS"))
 cyc_per_T, (freqs, fft) = estimate_frequency(
     bfield, ic_p if args.branch in {"+", "+-"} else ic_n
 )
@@ -328,9 +325,9 @@ if args.fraunhofer == "filter":
     ic_filtered = np.fft.irfft(fft_filt, n=len(bfield))
     cyc_per_T, (freqs_filt, fft_filt) = estimate_frequency(bfield, ic_filtered)
 if "LOOP_AREA_GUESS" not in config:
-    model.set_param_hint("radians_per_tesla", value=2 * np.pi * cyc_per_T)
+    model.set_param_hint("loop_area", value=cyc_per_T * PHI0)
 
-# plot the radians_per_tesla estimate and fraunhofer filter
+# plot the frequency estimate and fraunhofer filter
 abs_fft = np.abs(fft)
 fig, ax = plot(
     freqs / 1e3,
@@ -483,7 +480,7 @@ if args.emcee:
 
 # plot the best fit over the data
 popt = result.params.valuesdict()
-phase = (bfield - popt["bfield_offset"]) * popt["radians_per_tesla"]
+phase_ext = 2 * np.pi * popt["loop_area"] * (bfield - popt["bfield_offset"]) / PHI0
 if args.branch == "+":
     fig, ax_p = plt.subplots()
     ax_p.set_xlabel("$\Phi_\mathrm{ext}$ ($\Phi_0$)")
@@ -498,7 +495,7 @@ else:  # args.branch == "+-"
     best_p, best_n = result.best_fit
 if args.branch in {"+", "+-"}:
     plot(
-        phase / (2 * np.pi),
+        phase_ext / (2 * np.pi),
         ic_p / 1e-6,
         ax=ax_p,
         ylabel="switching current (μA)",
@@ -507,11 +504,11 @@ if args.branch in {"+", "+-"}:
         linewidth=0,
     )
     if not args.dry_run:
-        plot(phase / (2 * np.pi), best_p / 1e-6, ax=ax_p, label="fit")
+        plot(phase_ext / (2 * np.pi), best_p / 1e-6, ax=ax_p, label="fit")
     ax_p.legend()
 if args.branch in {"-", "+-"}:
     plot(
-        phase / (2 * np.pi),
+        phase_ext / (2 * np.pi),
         ic_n / 1e-6,
         ax=ax_n,
         ylabel="switching current (μA)",
@@ -520,7 +517,7 @@ if args.branch in {"-", "+-"}:
         linewidth=0,
     )
     if not args.dry_run:
-        plot(phase / (2 * np.pi), best_n / 1e-6, ax=ax_n, label="fit")
+        plot(phase_ext / (2 * np.pi), best_n / 1e-6, ax=ax_n, label="fit")
     ax_n.legend()
 fig.savefig(str(OUTPATH) + "_fit.png")
 
@@ -529,7 +526,7 @@ if not args.dry_run:
     DataFrame(
         {
             "bfield": bfield,
-            "phase": phase,
+            "phase_ext": phase_ext,
             **(
                 {"ic_p": ic_p, "fit_p": best_p, "init_p": init_p}
                 if args.branch in {"+", "+-"}
