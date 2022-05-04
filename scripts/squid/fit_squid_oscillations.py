@@ -306,6 +306,16 @@ if args.equal_transparencies:
 ic = ic_p if args.branch == "+" else ic_n if args.branch == "-" else [ic_p, ic_n]
 params = model.guess(ic, bfield, smaller_ic_jj=config.getint("SMALLER_IC_JJ"))
 
+if (
+    (params["inductance"].vary or params["inductance"].value != 0)
+    and args.fraunhofer
+    and args.fraunhofer.startswith("fit")
+):
+    raise NotImplementedError(
+        "if inductance != 0, need to get fraunhofer IcJJ(Φ) "
+        "from IcJJ(Φ_ext) self-consistently"
+    )
+
 # plot initial guess
 fig, ax = plt.subplots(len(args.branch), 1, sharex=True)
 fig.suptitle("initial guess")
