@@ -11,7 +11,7 @@ import subprocess
 import sys
 from configparser import ConfigParser, ExtendedInterpolation
 from contextlib import redirect_stdout
-from functools import partial
+from functools import partial, reduce
 from importlib import import_module
 from pathlib import Path
 from warnings import warn
@@ -332,6 +332,7 @@ with open(str(OUTPATH) + "_fit-report.txt", "w") as f:
         + subprocess.check_output(["git", "describe", "--always"])
         .strip()
         .decode("utf-8")
+        + f"\n{reduce(lambda a, b: a + ' ' + b, sys.argv)}"
     )
     f.write("\n" + result.fit_report())
 with open(str(OUTPATH) + "_fit-params.txt", "w") as f, redirect_stdout(f):
