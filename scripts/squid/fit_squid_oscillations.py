@@ -410,8 +410,7 @@ if args.branch in {"+", "+-"}:
         marker=".",
         linewidth=0,
     )
-    if not args.dry_run:
-        plot(phase_ext / (2 * np.pi), best_p / 1e-6, ax=ax_p, label="fit")
+    plot(phase_ext / (2 * np.pi), best_p / 1e-6, ax=ax_p, label="fit")
     ax_p.legend()
 if args.branch in {"-", "+-"}:
     plot(
@@ -423,28 +422,26 @@ if args.branch in {"-", "+-"}:
         marker=".",
         linewidth=0,
     )
-    if not args.dry_run:
-        plot(phase_ext / (2 * np.pi), best_n / 1e-6, ax=ax_n, label="fit")
+    plot(phase_ext / (2 * np.pi), best_n / 1e-6, ax=ax_n, label="fit")
     ax_n.legend()
 fig.savefig(str(OUTPATH) + "_fit.png")
 
 # save the fit plot data to csv for later re-plotting
-if not args.dry_run:
-    DataFrame(
-        {
-            "bfield": bfield,
-            "phase_ext": phase_ext,
-            **(
-                {"ic_p": ic_p, "fit_p": best_p, "init_p": init_p}
-                if args.branch in {"+", "+-"}
-                else {}
-            ),
-            **(
-                {"ic_n": ic_n, "fit_n": best_n, "init_n": init_n}
-                if args.branch in {"-", "+-"}
-                else {}
-            ),
-        }
-    ).to_csv(str(OUTPATH) + "_fit.csv", index=False)
+DataFrame(
+    {
+        "bfield": bfield,
+        "phase_ext": phase_ext,
+        **(
+            {"ic_p": ic_p, "fit_p": best_p, "init_p": init_p}
+            if args.branch in {"+", "+-"}
+            else {}
+        ),
+        **(
+            {"ic_n": ic_n, "fit_n": best_n, "init_n": init_n}
+            if args.branch in {"-", "+-"}
+            else {}
+        ),
+    }
+).to_csv(str(OUTPATH) + "_fit.csv", index=False)
 
 plt.show()
