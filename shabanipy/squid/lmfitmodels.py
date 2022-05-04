@@ -106,14 +106,11 @@ class SquidModel(Model):
 
     # default parameter specifications
     param_specs = {
-        "loop_area": {"min": 0},
         "anomalous_phase1": {"value": 0, "vary": False},
         "anomalous_phase2": {"value": 0, "vary": False},
-        "critical_current1": {"min": 0},
-        "critical_current2": {"min": 0},
         "transparency1": {"min": 0, "max": 1},
         "transparency2": {"min": 0, "max": 1},
-        "inductance": {"value": 0, "min": 0, "vary": False},
+        "inductance": {"value": 0, "vary": False},
         "temperature": {"vary": False},
         "gap": {"vary": False},
         "nbrute": {"value": 101, "vary": False},
