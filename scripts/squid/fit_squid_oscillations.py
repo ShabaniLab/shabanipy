@@ -17,7 +17,6 @@ from warnings import warn
 
 import corner
 import numpy as np
-from lmfit import Model
 from lmfit.model import save_modelresult
 from matplotlib import pyplot as plt
 from pandas import DataFrame
@@ -26,7 +25,7 @@ from scipy.constants import physical_constants
 from shabanipy.dvdi import extract_switching_current
 from shabanipy.labber import LabberData, get_data_dir
 from shabanipy.plotting import jy_pink, plot, plot2d
-from shabanipy.squid import estimate_boffset, estimate_frequency, squid_model
+from shabanipy.squid import SquidModel, estimate_frequency
 from shabanipy.utils import to_dataframe
 
 print = partial(print, flush=True)
@@ -202,106 +201,25 @@ elif config["FRIDGE"] == "vector9":
 else:
     warn(f"I don't recognize fridge `{config['FRIDGE']}`")
 
-############################
-# parameter initialization #
-############################
-# TODO clean this up; priority order for init value overrides:
-#   0. CLI for testing values
-#   1. param in config (to fix value) for saving/fixing values
-#   2. param_guess in config (to vary in fit) for saving/varying values
-#   3. estimate value as last resort
-# priority 3 can be refactored into guess() method of lmfit.Model subclass
-
-# create the model
-param_specs = {
-    "bfield_offset": None,
-    "loop_area": {"min": 0},
-    "anomalous_phase1": {"value": 0, "vary": False},
-    "anomalous_phase2": {"value": 0, "vary": False},
-    "critical_current1": {"min": 0},
-    "critical_current2": {"min": 0},
-    "transparency1": {"value": 0, "min": 0, "max": 1},
-    "transparency2": {"value": 0, "min": 0, "max": 1},
-    "inductance": {"value": 0, "min": 0, "vary": False},
-    "temperature": {"vary": False},
-    "gap": {"value": 200e-6, "vary": False},
-    "nbrute": {"value": 101, "vary": False},
-    "ninterp": {"value": 101, "vary": False},
-}
-model = Model(squid_model, branch=args.branch, param_names=list(param_specs.keys()))
-
-# initial values can be fixed or guessed in config
-for name, spec in param_specs.items():
-    if spec is not None:
-        model.set_param_hint(name, **spec)
-    if name in config:
-        model.set_param_hint(name, value=config.getfloat(name), vary=False)
-    elif name + "_guess" in config:
-        model.set_param_hint(name, value=config.getfloat(name + "_guess"))
-
-# estimate magnetic field offset
-if "bfield_offset" not in model.param_hints:
-    boffset, *_ = estimate_boffset(
-        bfield,
-        ic_p if args.branch != "-" else None,
-        ic_n if args.branch != "+" else None,
+# handle low-frequency fraunhofer background
+if args.fraunhofer and args.branch == "+-":
+    raise ValueError("--fraunhofer behavior with --branch +- is not yet defined")
+if args.fraunhofer == "filter":
+    _, (freqs, fft) = estimate_frequency(bfield, ic_p if args.branch == "+" else ic_n)
+    fft_filt = np.where(
+        (freqs > 0) & (freqs < config.getfloat("FREQUENCY_CUTOFF")), 0, fft
     )
-    model.set_param_hint("bfield_offset", value=boffset)
-
-# plot magnetic field offset
-fig, ax = plt.subplots()
-fig.suptitle("magnetic field offset")
-ax.plot(
-    bfield - model.param_hints["bfield_offset"]["value"],
-    ic_p if args.branch in {"+", "+-"} else ic_n,
-)
-ax.axvline(0, color="k")
-if not args.dry_run:
-    fig.savefig(str(OUTPATH) + "_bfield-offset.png")
-
-# enforce equal transparencies
-if args.equal_transparencies:
-    model.set_param_hint("transparency2", expr="transparency1")
-
-# estimate junction critical currents
-amplitude = [np.abs(np.max(ic) - np.min(ic)) / 2 for ic in [ic_p, ic_n]]
-mean = [np.abs(np.mean(ic)) for ic in [ic_p, ic_n]]
-# SMALLER_IC_JJ should be 1 or 2, to specify which JJ has the smaller critical current.
-# Numbering and sign conventions are documented in `shabanipy.squid.squid` module.
-if "SMALLER_IC_JJ" in config:
-    SMALLER_IC_JJ = config.getint("SMALLER_IC_JJ")
-    BIGGER_IC_JJ = SMALLER_IC_JJ % 2 + 1
+    ic_filtered = np.fft.irfft(fft_filt, n=len(bfield))
     if args.branch == "+":
-        amplitude_guess = amplitude[0]
-        mean_guess = mean[0]
-    elif args.branch == "-":
-        amplitude_guess = amplitude[-1]
-        mean_guess = mean[-1]
-    else:  # args.branch == "+-"
-        amplitude_guess = np.mean(amplitude)
-        mean_guess = np.mean(mean)
-    if f"CRITICAL_CURRENT{SMALLER_IC_JJ}_GUESS" not in config:
-        model.set_param_hint(f"critical_current{SMALLER_IC_JJ}", value=amplitude_guess)
-    if f"CRITICAL_CURRENT{BIGGER_IC_JJ}_GUESS" not in config:
-        model.set_param_hint(f"critical_current{BIGGER_IC_JJ}", value=mean_guess)
-else:
-    guess = np.mean([amplitude, mean])
-    for critical_current in ("critical_current1", "critical_current2"):
-        if critical_current + "_guess" not in config:
-            model.set_param_hint(f"critical_current1", value=guess)
-
-if args.fraunhofer == "fit":
-    if args.branch == "+-":
-        raise ValueError("background fitting is not yet supported for option +-")
+        ic_p = ic_filtered
+    else:  # args.branch == "-":
+        ic_n = ic_filtered
+elif args.fraunhofer == "fit":
+    # current assumptions:
+    #  - variable background level due to larger-area JJ only
+    #  - inductance = 0; TODO for nonzero inductance, need to get IcJJ(Φ) from
+    #    IcJJ(Φ_ext) self-consistently
     poly = np.polynomial.Polynomial.fit(bfield, ic_p if args.branch == "+" else ic_n, 2)
-
-    # this is bad...make separate lmfit.model subclasses
-    background_ic = f"critical_current{config.getint('LARGER_AREA_JJ')}"
-    # if nonzero inductance, this assumes IcJJ(Φ_ext) = IcJJ(Φ)
-    # TODO assumption is true but need to get IcJJ(Φ(Φ_ext)) self-consistently
-    model.opts[background_ic] = poly(bfield)
-    model.param_names.remove(background_ic)
-    model.param_hints.pop(background_ic)
 
     fig, ax = plt.subplots()
     fig.suptitle("background Ic fit")
@@ -310,65 +228,35 @@ if args.fraunhofer == "fit":
     if not args.dry_run:
         fig.savefig(str(OUTPATH) + "_ic-background.png")
 
-# estimate frequency of oscillations
-if "LOOP_AREA_GUESS" in config:
-    model.set_param_hint("loop_area", value=config.getfloat("LOOP_AREA_GUESS"))
-cyc_per_T, (freqs, fft) = estimate_frequency(
-    bfield, ic_p if args.branch in {"+", "+-"} else ic_n
-)
-# filter out low-frequency fraunhofer envelope
-if args.fraunhofer == "filter":
-    # manual highpass step-filter
-    fft_filt = np.where(
-        (freqs > 0) & (freqs < config.getfloat("FREQUENCY_CUTOFF")), 0, fft
-    )
-    ic_filtered = np.fft.irfft(fft_filt, n=len(bfield))
-    cyc_per_T, (freqs_filt, fft_filt) = estimate_frequency(bfield, ic_filtered)
-if "LOOP_AREA_GUESS" not in config:
-    model.set_param_hint("loop_area", value=cyc_per_T * PHI0)
+############################
+# parameter initialization #
+############################
 
-# plot the frequency estimate and fraunhofer filter
-abs_fft = np.abs(fft)
-fig, ax = plot(
-    freqs / 1e3,
-    abs_fft,
-    xlabel="frequency (mT$^{-1}$)",
-    ylabel="|FFT| (arb.)",
-    title="frequency estimate",
-)
-ax.set_ylim(0, np.max(abs_fft[1:]) * 1.05)  # ignore dc component
-ax.axvline(cyc_per_T / 1e3, color="k")
-ax.text(
-    0.3,
-    0.5,
-    f"frequency $\sim$ {np.round(cyc_per_T / 1e3)} mT$^{{-1}}$\n"
-    f"period $\sim$ {round(1 / cyc_per_T / 1e-6)} μT\n"
-    f"area $\sim$ {round(PHI0 * cyc_per_T / 1e-12)} μT$^2$",
-    transform=ax.transAxes,
-)
-if args.fraunhofer == "filter":
-    plot(
-        freqs_filt / 1e3, np.abs(fft_filt), ax=ax, label="filtered",
+if args.fraunhofer == "fit":
+    model = SquidModel(
+        branch=args.branch,
+        **{f"critical_current{config.getint('LARGER_AREA_JJ')}": poly(bfield)},
     )
-    ax.legend()
-if not args.dry_run:
-    fig.savefig(str(OUTPATH) + "_fft.png")
+else:
+    model = SquidModel(branch=args.branch)
 
-# initialize remaining parameters
+# initial values can be fixed or guessed in config
+for name in model.param_names:
+    if name in config:
+        model.set_param_hint(name, value=config.getfloat(name), vary=False)
+    elif name + "_guess" in config:
+        model.set_param_hint(name, value=config.getfloat(name + "_guess"))
+
+# set temperature to mixing chamber temp
 model.set_param_hint("temperature", value=round(np.mean(temp_meas), 3), vary=False)
 
-params = model.make_params()
+# enforce equal transparencies
+if args.equal_transparencies:
+    model.set_param_hint("transparency2", expr="transparency1")
 
-# from now on deal only with the filtered data
-if args.fraunhofer == "filter":
-    if args.branch == "+":
-        ic_p = ic_filtered
-    elif args.branch == "-":
-        ic_n = ic_filtered
-    else:  # args.branch == "+-"
-        raise NotImplementedError(
-            "Filtering both positive and negative branches is currently unsupported"
-        )
+# guess remaining initial parameters
+ic = ic_p if args.branch == "+" else ic_n if args.branch == "-" else [ic_p, ic_n]
+params = model.guess(ic, bfield, smaller_ic_jj=config.getint("SMALLER_IC_JJ"))
 
 # plot initial guess
 fig, ax = plt.subplots(len(args.branch), 1, sharex=True)

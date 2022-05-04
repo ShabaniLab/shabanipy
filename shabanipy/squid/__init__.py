@@ -7,6 +7,10 @@
 # The full license is in the file LICENCE, distributed with this software.
 # -----------------------------------------------------------------------------
 """Superconducting quantum interference devices."""
-from .estimate import estimate_boffset, estimate_frequency
-from .lmfitmodels import squid_model
+from .estimate import (
+    estimate_bfield_offset,
+    estimate_critical_current,
+    estimate_frequency,
+)
+from .lmfitmodels import SquidModel
 from .squid import critical_behavior, critical_control
