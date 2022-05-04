@@ -72,6 +72,18 @@ parser.add_argument(
     help="do preliminary analysis but don't run fit",
 )
 parser.add_argument(
+    "--nbrute",
+    default=101,
+    type=int,
+    help="number of points to use in the brute-force optimization of the SQUID current",
+)
+parser.add_argument(
+    "--ninterp",
+    default=101,
+    type=int,
+    help="number of points in Φ ~ [0, 2π] used to interpolate the SQUID behavior",
+)
+parser.add_argument(
     "--conf-interval",
     "-c",
     nargs="*",
@@ -238,7 +250,7 @@ if args.fraunhofer == "fit":
         **{f"critical_current{config.getint('LARGER_AREA_JJ')}": poly(bfield)},
     )
 else:
-    model = SquidModel(branch=args.branch)
+    model = SquidModel(branch=args.branch, nbrute=args.nbrute, ninterp=args.nbrute)
 
 # initial values can be fixed or guessed in config
 for name in model.param_names:
