@@ -236,7 +236,7 @@ if args.fraunhofer == "filter":
         ic_p = ic_filtered
     else:  # args.branch == "-":
         ic_n = ic_filtered
-elif args.fraunhofer.startswith("fit"):
+elif args.fraunhofer and args.fraunhofer.startswith("fit"):
     # current assumptions:
     #  - variable background level due to larger-area JJ only
     #  - inductance = 0; TODO for nonzero inductance, need to get IcJJ(Φ) from
@@ -278,7 +278,7 @@ elif args.fraunhofer.startswith("fit"):
 # parameter initialization #
 ############################
 
-if args.fraunhofer.startswith("fit"):
+if args.fraunhofer and args.fraunhofer.startswith("fit"):
     model = SquidModel(
         branch=args.branch,
         **{f"critical_current{config.getint('LARGER_AREA_JJ')}": poly(bfield)},
