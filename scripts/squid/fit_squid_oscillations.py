@@ -58,12 +58,21 @@ parser.add_argument(
 parser.add_argument(
     "--fraunhofer",
     "-f",
-    choices=["filter", "fit"],
+    choices=["filter", "fit", "fitrolling"],
     help=(
         "how to handle the low-frequency fraunhofer modulation. "
         "high-pass `filter` with FREQUENCY_CUTOFF given in config; "
-        "`fit` to a quadratic used as Ic(Φ_ext) of the larger-area junction"
+        "`fit` to a quadratic used as Ic(Φ_ext) of the larger-area junction; "
+        "`fitrolling` fits the quadratic to a rolling average with window-length "
+        "specified by command-line `--window-length` or config WINDOW_LENGTH"
     ),
+)
+parser.add_argument(
+    "--window-length",
+    "-w",
+    type=int,
+    default=None,
+    help="window length to use if --fraunhofer=fitrolling",
 )
 parser.add_argument(
     "--dry-run",
@@ -227,17 +236,41 @@ if args.fraunhofer == "filter":
         ic_p = ic_filtered
     else:  # args.branch == "-":
         ic_n = ic_filtered
-elif args.fraunhofer == "fit":
+elif args.fraunhofer.startswith("fit"):
     # current assumptions:
     #  - variable background level due to larger-area JJ only
     #  - inductance = 0; TODO for nonzero inductance, need to get IcJJ(Φ) from
     #    IcJJ(Φ_ext) self-consistently
-    poly = np.polynomial.Polynomial.fit(bfield, ic_p if args.branch == "+" else ic_n, 2)
+    if args.fraunhofer == "fitrolling":
+        wlen = args.window_length
+        if wlen is None:
+            wlen = config.getint("WINDOW_LENGTH")
+        if wlen is None:
+            raise ValueError(
+                "window length must be specified on command-line with "
+                "`--window-length` or in config with WINDOW_LENGTH"
+            )
+        ic_to_fit = (
+            np.convolve(
+                ic_p if args.branch == "+" else ic_n, np.ones(wlen), mode="same"
+            )
+            / wlen
+        )
+        # remove boundary effects
+        ic_to_fit = ic_to_fit[wlen // 2 + 1 : -(wlen // 2 + 1)]
+        bfield_to_fit = bfield[wlen // 2 + 1 : -(wlen // 2 + 1)]
+    else:
+        bfield_to_fit, ic_to_fit = bfield, ic_p if args.branch == "+" else ic_n
+
+    poly = np.polynomial.Polynomial.fit(bfield_to_fit, ic_to_fit, 2)
 
     fig, ax = plt.subplots()
     fig.suptitle("background Ic fit")
-    ax.plot(bfield, ic_p if args.branch == "+" else ic_n, ".")
-    ax.plot(bfield, poly(bfield))
+    ax.plot(bfield, ic_p if args.branch == "+" else ic_n, ".", label="data")
+    if args.fraunhofer == "fitrolling":
+        ax.plot(bfield_to_fit, ic_to_fit, label="rolling average")
+    ax.plot(bfield, poly(bfield), label="polyfit")
+    ax.legend()
     if not args.dry_run:
         fig.savefig(str(OUTPATH) + "_ic-background.png")
 
@@ -245,7 +278,7 @@ elif args.fraunhofer == "fit":
 # parameter initialization #
 ############################
 
-if args.fraunhofer == "fit":
+if args.fraunhofer.startswith("fit"):
     model = SquidModel(
         branch=args.branch,
         **{f"critical_current{config.getint('LARGER_AREA_JJ')}": poly(bfield)},
