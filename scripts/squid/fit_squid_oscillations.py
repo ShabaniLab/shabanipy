@@ -7,6 +7,7 @@
 # -----------------------------------------------------------------------------
 """Fit SQUID oscillations to a two-junction transparent CPR model."""
 import argparse
+import subprocess
 import sys
 from configparser import ConfigParser, ExtendedInterpolation
 from contextlib import redirect_stdout
@@ -324,7 +325,13 @@ result = model.fit(
 print("...done.")
 print(result.fit_report())
 with open(str(OUTPATH) + "_fit-report.txt", "w") as f:
-    f.write(result.fit_report())
+    f.write(
+        "shabanipy@"
+        + subprocess.check_output(["git", "describe", "--always"])
+        .strip()
+        .decode("utf-8")
+    )
+    f.write("\n" + result.fit_report())
 with open(str(OUTPATH) + "_fit-params.txt", "w") as f, redirect_stdout(f):
     print(to_dataframe(result.params))
 
