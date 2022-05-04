@@ -249,6 +249,8 @@ if args.fraunhofer == "fit":
     model = SquidModel(
         branch=args.branch,
         **{f"critical_current{config.getint('LARGER_AREA_JJ')}": poly(bfield)},
+        nbrute=args.nbrute,
+        ninterp=args.ninterp,
     )
 else:
     model = SquidModel(branch=args.branch, nbrute=args.nbrute, ninterp=args.nbrute)
