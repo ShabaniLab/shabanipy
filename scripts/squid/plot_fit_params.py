@@ -49,12 +49,15 @@ x = []
 modelresults = []
 for section in json.loads(config["sections"]):
     if "FILTER_VALUE" in ini[section]:
-        value = ini.getfloat(section, "FILTER_VALUE")
-        filter_str = f"_{value}"
+        filter_value = ini.getfloat(section, "FILTER_VALUE")
+        filter_str = f"_{filter_value}"
     else:
-        value = ini.getfloat(section, "SWEEP_VALUE")
         filter_str = ""
-    x.append(value)
+    if "SWEEP_VALUE" in ini[section]:
+        xvalue = ini.getfloat(section, "SWEEP_VALUE")
+    else:
+        xvalue = filter_value
+    x.append(xvalue)
     path = Path(IODIR) / (
         f"{ini.get(section, 'COOLDOWN')}-"
         f"{ini.get(section, 'SCAN')}"
