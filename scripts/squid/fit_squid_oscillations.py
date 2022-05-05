@@ -147,9 +147,7 @@ plt.style.use(["jy_pink", "fullscreen13"])
 
 # set up output directory and filename prefix
 OUTDIR = (
-    f"{__file__.split('.py')[0].replace('_', '-')}-results/"
-    f"{config['WAFER']}-{config['PIECE']}_{config['LAYOUT']}/"
-    f"{config['DEVICE']}"
+    f"{config['WAFER']}-{config['PIECE']}_{config['LAYOUT']}/fits/{config['DEVICE']}"
 )
 print(f"All output will be saved to `{OUTDIR}`")
 Path(OUTDIR).mkdir(parents=True, exist_ok=True)
@@ -391,7 +389,7 @@ if args.conf_interval is not None:
     print("...done.")
     print(result.ci_report(ndigits=10))
 
-save_modelresult(result, str(OUTPATH) + "_model-result.json")
+save_modelresult(result, str(OUTPATH) + "_modelresult.json")
 
 if args.emcee:
     print("Calculating posteriors with emcee...")

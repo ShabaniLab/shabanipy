@@ -82,7 +82,7 @@ def squid_model(
     critical = (
         critical_behavior
         if inductance == 0
-        else partial(critical_control, ninterp=ninterp)
+        else partial(critical_control, ninterp=int(ninterp))
     )
     phase_ext = 2 * np.pi * loop_area * (bfield - bfield_offset) / PHI0
     squid_ic = [
@@ -94,7 +94,7 @@ def squid_model(
             (anomalous_phase2, critical_current2, transparency2, temperature, gap * e),
             inductance=inductance / PHI0,
             branch=b,
-            nbrute=nbrute,
+            nbrute=int(nbrute),
         )[1]
         for b in branch
     ]
