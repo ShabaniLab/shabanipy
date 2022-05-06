@@ -109,6 +109,9 @@ parser.add_argument(
     help="run a Markov Chain Monte Carlo sampler and plot with `corner`",
 )
 parser.add_argument(
+    "--quiet", "-q", default=False, action="store_true", help="do not show plots",
+)
+parser.add_argument(
     "--verbose",
     "-v",
     default=False,
@@ -488,4 +491,5 @@ DataFrame(
     }
 ).to_csv(str(OUTPATH) + "_fit.csv", index=False)
 
-plt.show()
+if not args.quiet:
+    plt.show()
