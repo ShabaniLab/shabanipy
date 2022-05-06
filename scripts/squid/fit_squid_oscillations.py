@@ -125,7 +125,10 @@ with open(Path(__file__).parent / args.config_path) as f:
     print(f"Using config file `{f.name}`")
     ini = ConfigParser(interpolation=ExtendedInterpolation())
     ini.read_file(f)
-    config = ini[args.config_section]
+    try:
+        config = ini[args.config_section]
+    except KeyError as e:
+        raise KeyError(f"Available sections are {[s for s in ini]}") from e
 
 # get the path to the datafile
 INPATH = Path(config.get("LABBERDATA_DIR", get_data_dir())) / config["DATAPATH"]
