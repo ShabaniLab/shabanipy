@@ -155,8 +155,9 @@ plt.style.use(["jy_pink", "fullscreen13"])
 OUTDIR = (
     f"{config['WAFER']}-{config['PIECE']}_{config['LAYOUT']}/fits/{config['DEVICE']}"
 )
-print(f"All output will be saved to `{OUTDIR}`")
-Path(OUTDIR).mkdir(parents=True, exist_ok=True)
+if not args.dry_run:
+    print(f"All output will be saved to `{OUTDIR}`")
+    Path(OUTDIR).mkdir(parents=True, exist_ok=True)
 FILTER_STR = f"_{config.getfloat('FILTER_VALUE')}" if "FILTER_VALUE" in config else ""
 OUTPATH = Path(OUTDIR) / (
     f"{config['COOLDOWN']}-{config['SCAN']}{FILTER_STR}_{args.branch}"
