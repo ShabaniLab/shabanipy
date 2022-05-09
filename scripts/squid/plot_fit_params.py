@@ -75,4 +75,11 @@ for pname in modelresults[0].params.keys():
     ax.errorbar(x, y, yerr=yerr, fmt=".--")
     fig.savefig(str(OUTPATH) + f"_{pname}.png")
 
+redchi = [mr.redchi for mr in modelresults]
+fig, ax = plt.subplots()
+ax.set_xlabel(config.get("XLABEL"))
+ax.set_ylabel("reduced $\chi^2$")
+ax.plot(x, redchi, ".--")
+fig.savefig(str(OUTPATH) + f"_redchi.png")
+
 plt.show()
