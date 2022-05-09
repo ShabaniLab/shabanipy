@@ -65,6 +65,8 @@ for section in json.loads(config["sections"]):
     )
     modelresults.append(load_modelresult(path, funcdefs={"squid_model": squid_model}))
 
+plt.style.use(["fullscreen13"])
+
 for pname in modelresults[0].params.keys():
     y = [mr.params[pname].value for mr in modelresults]
     yerr = [mr.params[pname].stderr for mr in modelresults]
@@ -72,14 +74,14 @@ for pname in modelresults[0].params.keys():
     fig, ax = plt.subplots()
     ax.set_xlabel(config.get("XLABEL"))
     ax.set_ylabel(pname)
-    ax.errorbar(x, y, yerr=yerr, fmt=".--")
+    ax.errorbar(x, y, yerr=yerr, fmt="o--")
     fig.savefig(str(OUTPATH) + f"_{pname}.png")
 
 redchi = [mr.redchi for mr in modelresults]
 fig, ax = plt.subplots()
 ax.set_xlabel(config.get("XLABEL"))
 ax.set_ylabel("reduced $\chi^2$")
-ax.plot(x, redchi, ".--")
+ax.plot(x, redchi, "o--")
 fig.savefig(str(OUTPATH) + f"_redchi.png")
 
 plt.show()
