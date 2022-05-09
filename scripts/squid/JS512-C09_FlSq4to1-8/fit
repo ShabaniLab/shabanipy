@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+cd ..
+
+SECTIONS=("306_-4V" "306_-4.2V" "306_-4.4V" "306_-4.6V" "306_-4.8V" "306_-5V"
+  "306_-5.2V" "306_-5.4V" "306_-5.6V" "306_-5.8V" "306_-6V" "200" "208" "239"
+  "245" "257" "276" "281")
+for SECTION in "${SECTIONS[@]}"
+do
+  python fit_squid_oscillations.py JS512-C09_FlSq4to1-8/configs/FlSq4to7_WFS02.ini -f fitrolling -q $@ $SECTION
+done
