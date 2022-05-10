@@ -297,8 +297,8 @@ else:
 for name in model.param_names:
     if name in config:
         model.set_param_hint(name, value=config.getfloat(name), vary=False)
-    elif name + "_guess" in config:
-        model.set_param_hint(name, value=config.getfloat(name + "_guess"))
+    elif "guess_" + name in config:
+        model.set_param_hint(name, value=config.getfloat("guess_" + name))
 
 # set temperature to mixing chamber temp
 model.set_param_hint("temperature", value=round(np.mean(temp_meas), 3), vary=False)
