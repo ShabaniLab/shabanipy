@@ -1,12 +1,23 @@
 #!/bin/bash
 
+FIT_SCRIPT="fit_squid_oscillations.py"
+HELP_MSG="Usage: $0 (gate|inplane) [$FIT_SCRIPT options]"
+
 set -e
 cd ..
 
-SECTIONS=("306_-4V" "306_-4.2V" "306_-4.4V" "306_-4.6V" "306_-4.8V" "306_-5V"
-  "306_-5.2V" "306_-5.4V" "306_-5.6V" "306_-5.8V" "306_-6V" "200" "208" "239"
-  "245" "257" "276" "281")
+if [ -z $1 ]; then
+  echo $HELP_MSG && exit 1
+elif [ $1 == "gate" ]; then
+  SECTIONS=("306_-4V" "306_-4.2V" "306_-4.4V" "306_-4.6V" "306_-4.8V" "306_-5V"
+    "306_-5.2V" "306_-5.4V" "306_-5.6V" "306_-5.8V" "306_-6V")
+elif [ $1 == "inplane" ]; then
+  SECTIONS=("200" "208" "239" "245" "257" "276" "281")
+else
+  echo $HELP_MSG && exit 2
+fi
+
 for SECTION in "${SECTIONS[@]}"
 do
-  python fit_squid_oscillations.py JS512-C09_FlSq4to1-8/configs/FlSq4to7_WFS02.ini -f fitrolling -q $@ $SECTION
+  python $FIT_SCRIPT JS512-C09_FlSq4to1-8/configs/FlSq4to7_WFS02.ini -q "${@:2}" $SECTION
 done
