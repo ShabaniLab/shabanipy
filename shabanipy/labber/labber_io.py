@@ -691,7 +691,7 @@ class LabberData:
         abs_deviation = np.abs(data - mean)
         if np.any(abs_deviation > max_deviation):
             warnings.warn(
-                f"Channel `{name_or_index}` deviates from mean "
+                f"Channel `{name_or_index}` deviates from mean {mean} "
                 f"by {np.max(abs_deviation)} > {max_deviation}"
             )
 
