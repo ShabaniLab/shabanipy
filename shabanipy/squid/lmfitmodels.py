@@ -183,3 +183,8 @@ class SquidModel(Model):
 
     def _guess_transparency2(self, ic, bfield, **kwargs):
         self.set_param_hint("transparency2", value=0)
+
+    def _guess_temperature(self, ic, bfield, **kwargs):
+        self.set_param_hint(
+            "temperature", value=round(np.mean(kwargs["temp"]), 3), vary=False
+        )

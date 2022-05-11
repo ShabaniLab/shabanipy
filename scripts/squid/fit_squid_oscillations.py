@@ -300,16 +300,15 @@ for name in model.param_names:
     elif "guess_" + name in config:
         model.set_param_hint(name, value=config.getfloat("guess_" + name))
 
-# set temperature to mixing chamber temp
-model.set_param_hint("temperature", value=round(np.mean(temp_meas), 3), vary=False)
-
 # enforce equal transparencies
 if args.equal_transparencies:
     model.set_param_hint("transparency2", expr="transparency1")
 
 # guess remaining initial parameters
 ic = ic_p if args.branch == "+" else ic_n if args.branch == "-" else [ic_p, ic_n]
-params = model.guess(ic, bfield, smaller_ic_jj=config.getint("SMALLER_IC_JJ"))
+params = model.guess(
+    ic, bfield, temp=temp_meas, smaller_ic_jj=config.getint("SMALLER_IC_JJ")
+)
 
 if (
     (params["inductance"].vary or params["inductance"].value != 0)
