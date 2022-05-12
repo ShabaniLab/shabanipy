@@ -107,7 +107,7 @@ for i, g3 in enumerate(gate_3):
     lines[0].set_label(gate_2_4[0])
     lines[-1].set_label(gate_2_4[-1])
     ax.legend(title=r"$V_\mathrm{g2,g4}$ (V)")
-    fig.savefig(f"plots/061_fraunhofer_Vg3={g3}.pdf", format="pdf")
+    fig.savefig(f"plots/060_fraunhofer_Vg3={g3}.pdf", format="pdf")
     plt.close(fig=fig)
 
     fig, ax = plt.subplots(constrained_layout=True)
@@ -120,7 +120,7 @@ for i, g3 in enumerate(gate_3):
     lines[0].set_label(gate_2_4[0])
     lines[-1].set_label(gate_2_4[-1])
     ax.legend(title=r"$V_\mathrm{g2,g4}$ (V)")
-    fig.savefig(f"plots/061_current-density_Vg3={g3}.pdf", format="pdf")
+    fig.savefig(f"plots/060_current-density_Vg3={g3}.pdf", format="pdf")
     plt.close(fig=fig)
 
 for j, g24 in enumerate(gate_2_4):
@@ -134,7 +134,7 @@ for j, g24 in enumerate(gate_2_4):
     lines[0].set_label(gate_3[0])
     lines[-1].set_label(gate_3[-1])
     ax.legend(title=r"$V_\mathrm{g3}$ (V)")
-    fig.savefig(f"plots/061_fraunhofer_Vg24={g24}.pdf", format="pdf")
+    fig.savefig(f"plots/060_fraunhofer_Vg24={g24}.pdf", format="pdf")
     plt.close(fig=fig)
 
     fig, ax = plt.subplots(constrained_layout=True)
@@ -147,5 +147,5 @@ for j, g24 in enumerate(gate_2_4):
     lines[0].set_label(gate_3[0])
     lines[-1].set_label(gate_3[-1])
     ax.legend(title=r"$V_\mathrm{g3}$ (V)")
-    fig.savefig(f"plots/061_current-density_Vg24={g24}.pdf", format="pdf")
+    fig.savefig(f"plots/060_current-density_Vg24={g24}.pdf", format="pdf")
     plt.close(fig=fig)
