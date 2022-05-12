@@ -8,7 +8,6 @@ This scan contains Fraunhofer data for a linear multigate -1-2-3-4-5-
 Gates 1, 3, 5 are grounded; gates 2 and 4 are shorted.
 """
 
-import os
 from pathlib import Path
 
 import numpy as np
@@ -20,9 +19,9 @@ from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
 )
 from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center, symmetrize_fraunhofer
 from shabanipy.jj.utils import extract_switching_current
-from shabanipy.labber import LabberData
+from shabanipy.labber import LabberData, get_data_dir
 
-LABBER_DATA_DIR = os.environ["LABBER_DATA_DIR"]
+LABBER_DATA_DIR = get_data_dir()
 DATA_FILE_PATH = (
     Path(LABBER_DATA_DIR)
     / "2020/12/Data_1202/JS311-BHENL001-2JJ-2HB-5MGJJ-MG2-051.hdf5"
