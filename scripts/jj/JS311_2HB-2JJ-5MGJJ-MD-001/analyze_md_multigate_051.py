@@ -20,6 +20,10 @@ from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
 from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center, symmetrize_fraunhofer
 from shabanipy.jj.utils import extract_switching_current
 from shabanipy.labber import LabberData, get_data_dir
+from shabanipy.plotting import jy_pink
+
+jy_pink.register()
+plt.style.use(["fullscreen13", "jy_pink"])
 
 LABBER_DATA_DIR = get_data_dir()
 DATA_FILE_PATH = (
@@ -71,7 +75,7 @@ ax.set_title(r"$V_\mathrm{g1,g3,g5} = 0$")
 ax.set_xlabel(r"$B_\perp$ (mT)")
 ax.set_ylabel(r"$I_c$ (μA)")
 lines = ax.plot(field * 1e3, np.transpose(ic) * 1e6)
-cmap = plt.get_cmap("inferno")
+cmap = plt.get_cmap("jy_pink")
 for i, line in enumerate(lines):
     line.set_color(cmap(i / len(lines)))
 lines[0].set_label(gate[0])

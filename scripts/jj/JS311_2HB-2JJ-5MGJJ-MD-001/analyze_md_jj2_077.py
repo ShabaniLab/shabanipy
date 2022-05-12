@@ -16,6 +16,10 @@ from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
 )
 from shabanipy.jj.utils import extract_switching_current
 from shabanipy.labber import LabberData, get_data_dir
+from shabanipy.plotting import jy_pink
+
+jy_pink.register()
+plt.style.use(["fullscreen13", "jy_pink"])
 
 LABBER_DATA_DIR = get_data_dir()
 DATA_FILE_PATH = (
@@ -84,10 +88,10 @@ fig, ax = plt.subplots(constrained_layout=True, figsize=(10, 5))
 ax.set_xlabel(r"$B_\perp$ (mT)")
 ax.set_ylabel(r"$I_\mathrm{bias}$ (μA)")
 im = ax.imshow(
-    1e-3 * dV / np.diff(bias[:, np.newaxis], axis=0),
+    dV / np.diff(bias[:, np.newaxis], axis=0) / 100,  # undo amplifier gain
     origin="lower",
     vmin=0,
-    vmax=15,
+    vmax=200,
     extent=[
         (field.min() - dfield) * 1e3,
         (field.max() + dfield) * 1e3,
@@ -97,9 +101,9 @@ im = ax.imshow(
     ],
     aspect=3 / 2,
 )
-cb = fig.colorbar(im, label=r"$\Delta V / \Delta I$ (kΩ)")
+cb = fig.colorbar(im, label=r"dV/dI (Ω)")
 plt.show()
-# fig.savefig('077_wide-fraunhofer-dVdI_corrected.pdf')
+# fig.savefig('077_wide-fraunhofer-dVdI_corrected.svg')
 
 # extract_switching_current needs arrays of the same shape: use tile
 ic = extract_switching_current(
