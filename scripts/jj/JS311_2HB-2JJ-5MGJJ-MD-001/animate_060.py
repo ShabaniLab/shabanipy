@@ -14,7 +14,6 @@ Gates 1 and 5 are grounded; gates 2 and 4 are shorted.
 Both Vg3 and Vg2(=Vg4) are swept independently.
 """
 
-import os
 from pathlib import Path
 
 import numpy as np
@@ -29,9 +28,9 @@ from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
 )
 from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center, symmetrize_fraunhofer
 from shabanipy.jj.utils import extract_switching_current
-from shabanipy.utils.labber_io import LabberData
+from shabanipy.labber import LabberData, get_data_dir
 
-LABBER_DATA_DIR = os.environ["LABBER_DATA_DIR"]
+LABBER_DATA_DIR = get_data_dir()
 DATA_FILE_PATH = (
     Path(LABBER_DATA_DIR)
     / "2020/12/Data_1202/JS311-BHENL001-2JJ-2HB-5MGJJ-MG2-060.hdf5"
@@ -160,7 +159,7 @@ for i in range(5):
     ax2.annotate(f"g{i+1}", (xr + w / 2, yr + h / 2), ha="center", va="center")
 
 # plot the multigate schematic and gate voltage legends for V_g3 sweep
-ax3.imshow(plt.imread("./multigateJJ.png"))
+ax3.imshow(plt.imread("./MG2-060.png"))
 ax3.set_axis_off()
 ax3.set_anchor("S")
 ax_g2 = fig.add_axes([0, 0, 0, 0], label="gate2_cbar")
