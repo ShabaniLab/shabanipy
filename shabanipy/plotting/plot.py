@@ -16,8 +16,7 @@ from .utils import stamp as sp_stamp
 
 
 def plot(
-    x: np.ndarray,
-    y: np.ndarray,
+    *plot_args,
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
     title: Optional[str] = None,
@@ -29,9 +28,9 @@ def plot(
 
     Parameters
     ----------
-    x, y
-        The data y as a function of the variable x.
-        Compatible shapes are determined by matplotlib's plot function.
+    *plot_args
+        Positional arguments to pass to matplotlib's plot function.
+        E.g. the x, y data arrays and format string.
 
     Optional parameters
     -------------------
@@ -61,7 +60,7 @@ def plot(
     if stamp is not None:
         sp_stamp(ax, stamp)
 
-    lines = ax.plot(x, y, **plot_kwargs)
+    lines = ax.plot(*plot_args, **plot_kwargs)
     if "label" in plot_kwargs:
         ax.legend()
     return fig, ax
