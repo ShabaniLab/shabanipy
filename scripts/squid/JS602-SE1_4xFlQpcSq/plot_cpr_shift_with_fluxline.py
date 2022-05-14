@@ -47,7 +47,7 @@ iflux, bfield, ibias, dc_volts = np.broadcast_arrays(
 fig, ax = plot2d(
     bfield[0] / 1e-6,
     ibias[0] / 1e-6,
-    np.diff(dc_volts[0]) / np.diff(ibias[0]),
+    np.gradient(dc_volts[0], axis=-1) / np.gradient(ibias[0], axis=-1),
     xlabel="$B_\perp^\mathrm{ext}$ (μT)",
     ylabel="$I_\\mathrm{bias}$ (μA)",
     zlabel="dV/dI (Ω)",
@@ -70,7 +70,7 @@ text = ax.text(
 
 # define how to update each frame of the animation
 def update(i):
-    qmesh.set_array(np.diff(dc_volts[i]) / np.diff(ibias[i]))
+    qmesh.set_array(np.gradient(dc_volts[i], axis=-1) / np.gradient(ibias[i], axis=-1))
     text.set_text(r"$I_\mathrm{flux} = " + f"{int(round(iflux[i, 0, 0] / 1e-6))}$ μA")
     return qmesh, line, text
 
