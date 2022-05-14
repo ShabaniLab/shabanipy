@@ -38,6 +38,21 @@ fig, ax = plot(
 )
 fig.savefig(OUTDIR / f"{FILENAME}_Ic.png")
 
+# plot the eyeballed position of the central maximum
+maxpos0 = np.array([169.5, 186.5, 200.5, 215.5, 230.25]) * 1e-6
+phase_per_current = 2 * np.pi / np.mean(np.diff(maxpos0))
+maxpos = np.array([200.5, 198, 195, 193.5, 192.8, 191.5]) * 1e-6
+phase = (maxpos - 200.5e-6) * phase_per_current
+iflux1d = np.unique(iflux)
+fig, ax = plot(
+    iflux1d / 1e-6, phase, "o", xlabel="flux-line current (μA)", ylabel="phase bias",
+)
+ax.set_yticks((0, -np.pi / 2, -np.pi))
+ax.set_yticklabels(("0", r"$-\frac{\pi}{2}$", r"$-\pi$"))
+poly = np.polynomial.Polynomial.fit(iflux1d, phase, 1)
+ax.plot(iflux1d / 1e-6, poly(iflux1d), "--", color="tab:blue")
+fig.savefig(OUTDIR / "phasebias_JS602-SE1-WFSBHE01-071.png")
+
 # broadcast scalar data over vectorial data to have same shape
 iflux, bfield, ibias, dc_volts = np.broadcast_arrays(
     iflux[..., np.newaxis], bfield[..., np.newaxis], ibias, dc_volts
