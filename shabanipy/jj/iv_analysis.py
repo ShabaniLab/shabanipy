@@ -111,8 +111,8 @@ def analyse_vi_curve(
         ldidv = np.diff(mv[masked_mv_l])/np.diff(cb[masked_mv_l])
         rdidv = np.diff(mv[masked_mv_r])/np.diff(cb[masked_mv_r])
 
-        lpeak, _ = find_peaks(ldidv, max(ldidv)*0.5 )
-        rpeak, _ = find_peaks(rdidv, max(rdidv)*0.5 )
+        lpeak, _ = find_peaks(ldidv, max(ldidv)*0.5)
+        rpeak, _ = find_peaks(rdidv, max(rdidv)*0.5)
         
         if lpeak.size == 0:
             ic_n = 0.0

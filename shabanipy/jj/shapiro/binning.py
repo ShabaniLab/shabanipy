@@ -13,8 +13,9 @@ from typing import Optional, Tuple, Union, List
 from math import ceil, copysign, floor
 
 import numpy as np
-from scipy.signal import find_peaks, savgol_filter
+from scipy.signal import find_peaks, peak_widths, savgol_filter
 from scipy.ndimage import gaussian_filter
+import scipy.stats as stats
 
 from . import shapiro_step
 
@@ -214,6 +215,9 @@ def extract_shapiro_qfactor(
     power: np.ndarray,
     voltage: np.ndarray,
     counts: np.ndarray,
+    step_fraction: float,
+    margin_error: Optional[bool] = True,
+    confindence_int: Optional[float] = 0.95,
     steps: Optional[List[int]] = [0,1,2],
     steps_combo: Optional[List[int]] = [[1,2]],
     savgol_windowl: Optional[int] = None,
@@ -232,6 +236,8 @@ def extract_shapiro_qfactor(
         2D array of the histogram current counts.
     steps : List[int]
         Indexed of the steps that should be plotted.
+    margin_of_error : bool, optional
+        Option to include margin_of_error or not
     steps_combo : List[int]
         Step numbers to calculate Q-factor for.
     savgol_windowl : int, optional
@@ -259,6 +265,7 @@ def extract_shapiro_qfactor(
     weights = [extract_step_weight(voltage, counts, i) for i in steps]
     weights = savgol_filter(weights,savgol_windowl,savgol_polyorder) if savgol_windowl and savgol_polyorder else weights
     
+    
     if power_offset:
         p_offset = np.float64(power_offset)
     else:
@@ -272,13 +279,25 @@ def extract_shapiro_qfactor(
     
     print("Power Offset = ", p_offset)
     data = dict(zip(steps,weights))
-    q_factor = np.zeros(len(steps_combo))
+    q_factor = np.zeros(len(steps_combo)*2)
 
     for i, q_combo in enumerate(steps_combo):
         if power_limits is not None:
             masked_power = (power_limits[0]<p-p_offset) & (p-p_offset<power_limits[1])
-            q_factor[i] = np.max(gaussian_filter(data[q_combo[0]][masked_power],gaussian_sigma))/np.max(gaussian_filter(data[q_combo[1]][masked_power],gaussian_sigma))
+            w0 = gaussian_filter(data[q_combo[0]][masked_power],gaussian_sigma)
+            w1 = gaussian_filter(data[q_combo[1]][masked_power],gaussian_sigma)
         else:
-            q_factor[i] = np.max(gaussian_filter(data[q_combo[0]],gaussian_sigma))/np.max(gaussian_filter(data[q_combo[1]],gaussian_sigma))
-
+            w0 = gaussian_filter(data[q_combo[0]],gaussian_sigma)
+            w1 = gaussian_filter(data[q_combo[1]],gaussian_sigma)
+        q_factor[i] = np.max(w0)/np.max(w1)
+        if margin_error: 
+            peaks0, _ = find_peaks(w0, height=1.0*np.max(w0))
+            results_half0 = peak_widths(w0, peaks0, rel_height=0.5)
+            peaks1, _ = find_peaks(w1, height=1.0*np.max(w1))
+            results_half1 = peak_widths(w1, peaks1, rel_height=0.5)
+            std0 = w0[int(results_half0[2]):int(results_half0[3])].std()
+            std1 = w1[int(results_half1[2]):int(results_half1[3])].std()
+            std_01 = q_factor[i]*np.sqrt((std0/np.max(w0))**2 + (std1/np.max(w1))**2)
+            z = stats.norm.ppf(confindence_int)
+            q_factor[i+2] = std_01*z/np.sqrt(1/step_fraction)
     return q_factor

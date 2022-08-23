@@ -19,18 +19,6 @@ from matplotlib import pyplot as plt
 from .binning import extract_step_weight
 
 #Set plotting parameters
-plt.rcParams["axes.linewidth"] = 1.5
-plt.rcParams["font.size"] = 40
-plt.rcParams["axes.labelweight"] = "bold"
-plt.rcParams["pdf.fonttype"] = 42
-plt.rcParams["xtick.direction"] = "in"
-plt.rcParams["ytick.direction"] = "in"
-plt.rcParams['xtick.major.size'] = 10
-plt.rcParams['xtick.major.width'] = 4
-plt.rcParams['ytick.major.size'] = 10
-plt.rcParams['ytick.major.width'] = 4
-
-
 def plot_differential_resistance_map(
     power: np.ndarray,
     bias: np.ndarray,
@@ -115,11 +103,11 @@ def plot_differential_resistance_map(
         vmax = cvmax if cvmax else bins[peaks[-1] + 5 * int(round(widths[0][-1]))],
     )
 
-    cbar = f.colorbar(im, ax=m_ax, aspect=50)
-    cbar.ax.set_ylabel(r"$\frac{dV}{dI}$ (Ω)")
+    cb = f.colorbar(im, ax=m_ax, pad = 0.02)
+    cb.ax.set_xlabel(r'$\mathbf{\frac{dV}{dI} (\Omega)}$', labelpad = 20, loc = 'center')
 
-    plabel = "RF Power (dBm)"
-    clabel = "Current Bias (µA)"
+    plabel = "RF Power (dB)"
+    clabel = "Bias (µA)"
 
     if transpose:
         m_ax.set_xlabel(plabel)
@@ -247,12 +235,15 @@ def plot_shapiro_histogram(
         vmax=cmax,
     )
 
-    cbar = f.colorbar(im, ax=m_ax, aspect=50,location="top",shrink=0.8)
-    cbar.ax.set_xlabel('Counts (I${_c}$)',labelpad = 20)
-    cbar.ax.tick_params(labelsize=20)
+    cbar = f.colorbar(im, ax=m_ax,pad = 0.02, ticks=[0,0.005,0.01,0.015,0.02,0.03])
+    cbar.ax.set_xlabel('Counts (I${_\mathbf{c}}$)',labelpad = 20, loc = 'center', fontsize = 35)
+    cbar.ax.tick_params(labelsize=40)
+    # cbar.ax.set_ticks((0,0.01,0.02))
 
-    plabel = "RF Power (dBm)"
-    clabel = r"Voltage ($\dfrac{hf}{2e}$)"
+
+
+    plabel = "RF Power (dB)"
+    clabel = r"Voltage ($\mathbf{\dfrac{hf}{2e}}$)"
     if transpose:
         m_ax.set_xlabel(plabel)
         m_ax.set_ylabel(clabel)
@@ -270,15 +261,16 @@ def plot_shapiro_histogram(
 
     if mark_steps:
         if power_limits:
-            lims = (power_limits[0]+p_offset, p[int(len(p)/5)])
+            lims = [power_limits[0], p[int(len(p)/2)]-p_offset]
         else:
-            lims = [p[0], p[int(len(p)/5)]]
+            lims = [p[0]-p_offset, p[int(len(p)/2)]-p_offset]
         if mark_steps_limit:
-            lims[1] = (power[0]) + mark_steps_limit * ((power[-1]) - (power[0]))
+            lims[0] = mark_steps_limit[0]
+            lims[1] = mark_steps_limit[1]
         if transpose:
-            m_ax.hlines(mark_steps, *lims- p_offset, linestyles="dashed", color = 'white')
+            m_ax.hlines(mark_steps, *lims, linestyles="dashed", color = 'white')
         else:
-            m_ax.vlines(mark_steps, *lims- p_offset, linestyles="dashed", color = 'white')
+            m_ax.vlines(mark_steps, *lims, linestyles="dashed", color = 'white')
 
 
 def plot_step_weights(

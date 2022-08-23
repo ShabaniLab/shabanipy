@@ -24,6 +24,7 @@ from shabanipy.jj.iv_analysis import extract_critical_current, analyse_vi_curve
 from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center, symmetrize_fraunhofer
 from shabanipy.jj.fraunhofer.deterministic_reconstruction import extract_current_distribution
 from shabanipy.plotting import jy_pink
+jy_pink.register()
 
 
 def plot_vi_dr_curve(
@@ -66,11 +67,11 @@ def plot_vi_dr_curve(
 
     m_ax.grid()
     ax2 = ax.twinx()
-    ax.plot(bias*1e6, voltage_drop*1e3, color = 'blue', linewidth = 3)
-    ax2.plot(bias*1e6, np.abs(dr),color = 'red', linewidth = 3)
-    ax2.set_xlabel('Bias(µV)', labelpad = 20)
-    ax.set_ylabel(r'V$_{Drop}$(mV)', labelpad = 20, color = 'blue')
-    ax2.set_ylabel(r'dR(Ω)', labelpad = 20, color = 'red')
+    ax.plot(bias*1e6, voltage_drop*1e3, color = 'blue', linewidth = 5)
+    ax2.plot(bias*1e6, np.abs(dr),color = 'red', linewidth = 5)
+    ax.set_xlabel('Bias(µA)', labelpad = 20)
+    ax.set_ylabel(r'$\mathbf{V_{Drop}}$(mV)', labelpad = 20, color = 'blue')
+    ax2.set_ylabel(r'$\mathbf{\frac{dV}{dI} (\Omega)}$', labelpad = 20, color = 'red')
     if bias_limits:
         ax.set_xlim(bias_limits)
     if text:
@@ -149,8 +150,7 @@ def plot_fraunhofer(
     m_ax.set_ylabel('Bias (µA)')
 
     cb = f.colorbar(pm, ax = m_ax,pad = 0.02)
-    cb.ax.tick_params(direction='in')
-    cb.ax.set_xlabel(r'$\frac{dV}{dI} (\Omega)$', labelpad = 10)
+    cb.ax.set_xlabel(r'$\mathbf{\frac{dV}{dI} (\Omega)}$', labelpad = 10)
 
 
 def plot_extracted_switching_current(
@@ -424,7 +424,7 @@ def plot_current_distribution(
 
     #Extract current distributions with symmertizied field and ic
     x, jx = extract_current_distribution(field, ic, FIELD_TO_WAVENUM, jj_width, len(out_field))
-
+    # jx = jx[::-1]
     pm = m_ax.plot(x*1e6, #x: 1e6 factor converts from m into µm
         jx.real, #  Jx: is in units of µA/µm
         linewidth = 7
@@ -510,8 +510,7 @@ def plot_inplane_vs_bias(
     m_ax.set_ylabel('Bias (µA)')
 
     cb = f.colorbar(pm, ax = m_ax,pad = 0.02,)
-    cb.ax.tick_params(direction='in')
-    cb.ax.set_xlabel(r'$\frac{dV}{dI} (\Omega)$', labelpad = 10)
+    cb.ax.set_xlabel(r'$\mathbf{\frac{dV}{dI} (\Omega)}$', labelpad = 10)
 
 def plot_inplane_vs_outofplane(
     inplane_field: np.ndarray,
@@ -581,7 +580,7 @@ def plot_inplane_vs_outofplane(
 
     cb = f.colorbar(pm, ax = m_ax,pad = 0.02,)
     cb.ax.tick_params(direction='in')
-    cb.ax.set_xlabel(r'$dR(\Omega)$', labelpad = 10)
+    cb.ax.set_xlabel(r'$\mathbf{\frac{dV}{dI} (\Omega)}$', labelpad = 10)
     
 def plot_inplane_vs_Ic_Rn(
     inplane_field: np.ndarray,
@@ -798,7 +797,7 @@ def plot_vg_vs_bias(
     if bias_limits: 
          m_ax.set_ylim(bias_limits)
 
-    m_ax.set_xlabel(r'$V_{g}$(V)', labelpad = 20)
+    m_ax.set_xlabel(r'$\mathbf{V_{g}}$(V)', labelpad = 20)
     m_ax.set_ylabel('Bias (µA)')
     
     if vg_limits:
@@ -808,7 +807,7 @@ def plot_vg_vs_bias(
 
     cb = f.colorbar(pm, ax = m_ax,pad = 0.02, extend = 'max')
     cb.ax.tick_params(direction='in')
-    cb.ax.set_xlabel(r'$\frac{dV}{dI} (\Omega)$', labelpad = 10)
+    cb.ax.set_xlabel(r'$\mathbf{\frac{dV}{dI} (\Omega)}$', labelpad = 10)
     
 
 def plot_vg_vs_Ic_Rn(
