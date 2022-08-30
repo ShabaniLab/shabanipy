@@ -25,6 +25,10 @@ def proc_csv(FILES):
                 results.append(list(map(float,row)))
     return results
 
+def test():
+    x = 1
+    return x
+
 def get_results(results, err_thresh):
     err = [r[14] for i, r in enumerate(results)]        ##### thresholding against r[14] (qi_diacorr_err)
     photon = [r[-1] for i, r in enumerate(results) if err[i]<err_thresh]
