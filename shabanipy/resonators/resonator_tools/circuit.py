@@ -461,7 +461,7 @@ class notch_port(circlefit, save_load, plotting, calibration):
         self.z_data_sim_norm = self._S21_notch(self.f_data,fr=self.fitresults["fr"],Ql=self.fitresults["Ql"],Qc=self.fitresults["absQc"],phi=self.fitresults["phi0"],a=1.0,alpha=0.,delay=0.)
         self._delay = delay
         
-    def GUIfit(self,sl_delay_margin=(-1.,1.),refine_results=False, live_result=""):
+    def GUIfit(self,sl_delay_margin=(-1.,1.),refine_results=False, live_result="", initial_delay=float):
         '''
         automatic fit with possible user interaction to crop the data and 
         modify the electric delay f1,f2,delay are determined in the GUI. Then,
@@ -471,8 +471,10 @@ class notch_port(circlefit, save_load, plotting, calibration):
             sl_delay_margin = sl_delay_margin[::-1]
         #copy data
         fmin, fmax = self.f_data.min(), self.f_data.max()
-        self.autofit(refine_results=refine_results)
-        self.__delay = self._delay
+        self.autofit(refine_results=refine_results,
+                    electric_delay = initial_delay if initial_delay else None
+         )
+        self.__delay = initial_delay if initial_delay else self._delay
         live_result.value = self.fitresults
         #prepare plot and slider
         import matplotlib.pyplot as plt
@@ -542,7 +544,10 @@ class notch_port(circlefit, save_load, plotting, calibration):
         axf2 = plt.axes([0.05, 0.1, 0.625, 0.03], facecolor=axcolor)
         axf1 = plt.axes([0.05, 0.15, 0.625, 0.03], facecolor=axcolor)
         sscale = 10.
-        sl_delay = self.__delay/(sscale*self.__delay)
+        sl_delay = self.__delay
+        # sl_delay = self.__delay/(sscale*self.__delay)
+
+        print(sl_delay)
 #         sdelay = Slider(
 #             axdelay,
 #             'delay',

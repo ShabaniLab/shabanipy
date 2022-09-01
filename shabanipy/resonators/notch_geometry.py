@@ -86,7 +86,7 @@ def fit_complex(frequency,
                 delay=None,
                 gui_fit=False,
                 return_fit_data=False,
-                delay_range=(-.1,.1),
+                delay_range=(-.05,.05),
                 save_gui_fits=False,
                 save_gui_fits_path=None,
                 save_gui_fits_prefix=None,
@@ -171,7 +171,7 @@ def fit_complex(frequency,
                 z_data_raw = centered_complex_data
             )
             if gui_fit:
-                port.GUIfit(refine_results=True,sl_delay_margin=delay_range, live_result=live_result)
+                port.GUIfit(refine_results=True,sl_delay_margin=delay_range, live_result=live_result,initial_delay = delay)
                 f = plt.figure(figsize=(8,8))
                 port.plotall(show = not save_gui_fits)
                 results = port.fitresults
