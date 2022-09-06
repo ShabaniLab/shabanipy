@@ -1,19 +1,6 @@
 import numpy as np
-from matplotlib import pyplot as plt
 import math
-import pandas as pd
-from shabanipy.resonators.notch_geometry import fit_complex, notch_from_results
-from shabanipy.labber import LabberData
-import matplotlib.pyplot as plt
 import csv
-from scipy.optimize import curve_fit
-from shabanipy.jy_mpl_settings.settings import jy_mpl_rc
-from shabanipy.jy_mpl_settings.colors import line_colors
-from shabanipy.jy_mpl_settings.helper import *
-from quasiparticleFunctions import expectedShift
-from matplotlib.pyplot import cm
-import scipy
-from scipy import signal
 
 def proc_csv(FILES):
     results = []
@@ -44,6 +31,9 @@ def get_results(results, err_thresh):
 def f_to_l(freq, capacitance):
     return np.array([((2*math.pi*x)**2*capacitance)**(-1) for x in freq])
 
+def f_to_l_err(freq, freq_err, ls):
+    return [r*freq_err[i]/freq[i] for i, r in enumerate(ls)]
+
 def f_to_lj(freq, capacitance, lest):
     return np.array([((2*math.pi*x)**2*capacitance)**(-1)-lest for x in freq])
 
@@ -54,4 +44,13 @@ def lj_to_ic(lj):
     mfq = 2.068*10**(-15)
     return [mfq/(2*math.pi*lj) for r in lj]
 
+def two_fluid_model(T, alpha_K, Tc):
+    return -alpha_K/(2-2*np.power(np.multiply(T, 1/Tc), 4))+alpha_K/2
+
+def fplus_fit(vg, f1, m, b, g):
+    return 0.5*(f1+m*vg+b) + ((g)**2+0.25*(m*vg+b-5.425*10**9)**2)**0.5
+
+def fminus_fit(vg, f1, m, b, g):
+    return 0.5*(f1+m*vg+b) - ((g)**2+0.25*(-(m*vg+b)+5.425*10**9)**2)**0.5
+    
 
