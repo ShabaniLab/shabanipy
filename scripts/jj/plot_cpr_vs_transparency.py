@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from scipy.constants import eV
 
 from shabanipy.jj import finite_transparency_jj_current as cpr
-from shabanipy.plotting import jy_pink
+from shabanipy.utils.plotting import jy_pink
 
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter,

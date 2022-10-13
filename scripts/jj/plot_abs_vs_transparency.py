@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from shabanipy.jj import andreev_bound_state_energy as abse
-from shabanipy.plotting import jy_pink
+from shabanipy.utils.plotting import jy_pink
 
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter,

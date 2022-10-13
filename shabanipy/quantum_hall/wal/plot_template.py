@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
-from shabanipy.plotting import jy_pink
+from shabanipy.utils.plotting import jy_pink
 
 rcParams['font.family'] = 'serif'
 rcParams['font.size'] = 8

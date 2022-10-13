@@ -29,7 +29,7 @@ from shabanipy.bulk.data_classifying import (
     ValuePattern,
 )
 from shabanipy.labber import get_data_dir
-from shabanipy.logging import configure_logging
+from shabanipy.utils import configure_logging
 
 configure_logging()
 

@@ -26,9 +26,9 @@ from shabanipy.bulk.data_processing import (
     SummarizingStep,
 )
 from shabanipy.constants import VECTOR9_AMPS_PER_TESLA_X, VECTOR10_AMPS_PER_TESLA_X
-from shabanipy.logging import ConsoleFormatter, configure_logging
-from shabanipy.plotting import jy_pink, plot, plot2d
-from shabanipy.plotting.utils import stamp
+from shabanipy.utils import ConsoleFormatter, configure_logging
+from shabanipy.utils.plotting import jy_pink, plot, plot2d
+from shabanipy.utils.plotting.utils import stamp
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()

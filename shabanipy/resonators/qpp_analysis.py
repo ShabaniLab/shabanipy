@@ -13,7 +13,7 @@ import os
 from typing import Optional
 import numpy as np
 import matplotlib.pyplot as plt
-from shabanipy.plotting import jy_pink
+from shabanipy.utils.plotting import jy_pink
 jy_pink.register()
 plt.style.use('bold')
 plt.style.use('presentation')

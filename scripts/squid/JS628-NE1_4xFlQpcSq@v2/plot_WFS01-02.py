@@ -6,7 +6,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.signal import savgol_filter
 
-from shabanipy.plotting import jy_pink, plot_labberdata
+from shabanipy.utils.plotting import jy_pink, plot_labberdata
 
 OUTDIR = Path("plots")
 OUTDIR.mkdir(exist_ok=True)

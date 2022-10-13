@@ -17,8 +17,8 @@ from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
 )
 from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center
 from shabanipy.jj.utils import extract_switching_current
-from shabanipy.plotting import jy_pink, plot, plot2d
-from shabanipy.plotting.utils import stamp
+from shabanipy.utils.plotting import jy_pink, plot, plot2d
+from shabanipy.utils.plotting.utils import stamp
 
 jy_pink.register()
 style.use(["presentation", "jy_pink"])

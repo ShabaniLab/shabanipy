@@ -9,7 +9,7 @@ from matplotlib.collections import QuadMesh
 
 from shabanipy.jj.utils import extract_switching_current
 from shabanipy.labber import LabberData, get_data_dir
-from shabanipy.plotting import jy_pink, plot, plot2d
+from shabanipy.utils.plotting import jy_pink, plot, plot2d
 
 jy_pink.register()
 plt.style.use(["fullscreen13", "jy_pink"])

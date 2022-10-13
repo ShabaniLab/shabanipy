@@ -182,7 +182,7 @@ def plot_labberdata(
         The matplotlib Axes in which to plot.
     **kwargs
         Additional keyword arguments passed to the plotting function
-        (`shabanipy.plotting.plot2d` in the case of 2d color plots).
+        (`shabanipy.utils.plotting.plot2d` in the case of 2d color plots).
 
     Returns
     -------

@@ -14,7 +14,7 @@ import os
 import numpy as np
 from scipy.signal import windows, oaconvolve
 import matplotlib.pyplot as plt
-from shabanipy.plotting import jy_pink
+from shabanipy.utils.plotting import jy_pink
 jy_pink.register()
 
 def plot_histogram_iq(

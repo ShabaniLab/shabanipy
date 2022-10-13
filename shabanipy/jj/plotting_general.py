@@ -23,7 +23,7 @@ from shabanipy.jj.utils import extract_switching_current
 from shabanipy.jj.iv_analysis import extract_critical_current, analyse_vi_curve
 from shabanipy.jj.fraunhofer.utils import find_fraunhofer_center, symmetrize_fraunhofer
 from shabanipy.jj.fraunhofer.deterministic_reconstruction import extract_current_distribution
-from shabanipy.plotting import jy_pink
+from shabanipy.utils.plotting import jy_pink
 jy_pink.register()
 
 

@@ -25,9 +25,9 @@ from scipy.constants import physical_constants
 
 from shabanipy.dvdi import extract_switching_current
 from shabanipy.labber import LabberData, get_data_dir
-from shabanipy.plotting import jy_pink, plot, plot2d
 from shabanipy.squid import SquidModel, estimate_frequency
 from shabanipy.utils import to_dataframe
+from shabanipy.utils.plotting import jy_pink, plot, plot2d
 
 print = partial(print, flush=True)
 

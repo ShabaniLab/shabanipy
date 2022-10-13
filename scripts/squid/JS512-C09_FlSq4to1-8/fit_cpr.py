@@ -23,8 +23,8 @@ from scipy.constants import eV
 
 from shabanipy.dvdi import extract_switching_current, find_rising_edge
 from shabanipy.labber import LabberData
-from shabanipy.plotting import plot, plot2d, jy_pink
 from shabanipy.squid.cpr import finite_transparency_jj_current as cpr
+from shabanipy.utils.plotting import plot, plot2d, jy_pink
 
 # set up the command-line interface
 parser = argparse.ArgumentParser(description=__doc__)
