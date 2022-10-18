@@ -16,8 +16,8 @@ def extract_switching_current(
     dvdi: np.ndarray,
     *,
     side: Literal["positive", "negative", "both"] = "positive",
-    threshold: Optional[float] = False,
-    interp: Optional[bool] = False,
+    threshold: Optional[float] = None,
+    interp: bool = False,
 ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
     """Extract the switching currents from a set of differential resistance curves.
 
