@@ -11,6 +11,7 @@ import warnings
 
 import numpy as np
 from matplotlib import pyplot as plt
+from scipy.constants import physical_constants
 from scipy.signal import find_peaks
 
 from shabanipy.dvdi import extract_switching_current
@@ -27,6 +28,8 @@ parser.add_argument("config_section", help="section of the .ini config file to u
 args = parser.parse_args()
 
 _, config = load_config(args.config_path, args.config_section)
+
+PHI0 = physical_constants["mag. flux quantum"][0]
 
 plt.style.use("fullscreen13")
 
@@ -49,9 +52,9 @@ icrit_n, icrit_p = extract_switching_current(
 for name in ["ibias", "vmeas", "bfield", "gate", "dvdi", "icrit_n", "icrit_p"]:
     vars()[name] = np.moveaxis(vars()[name], gate_axis, 0)
 
-peaks_n, peaks_p = [], []
+peaks_n, peaks_p, gate_idx = [], [], []
 skip_gates = json.loads(config.get("SKIP_GATES"))
-for idx, (x, y, z, g, ic_n, ic_p) in enumerate(
+for g_idx, (x, y, z, g, ic_n, ic_p) in enumerate(
     zip(bfield, ibias, dvdi, gate, icrit_n, icrit_p)
 ):
     if len(set(g)) != 1:
@@ -85,5 +88,23 @@ for idx, (x, y, z, g, ic_n, ic_p) in enumerate(
             c=plt.rcParams["axes.prop_cycle"].by_key()["color"][: len(peaks)],
         )
         p.append(peaks)
+    gate_idx.append(g_idx)
+peaks_n, peaks_p = np.array(peaks_n), np.array(peaks_p)
+
+# estimate the loop area
+b_peaks = np.concatenate([bfield[gate_idx, peaks_n.T].T, bfield[gate_idx, peaks_p.T].T])
+areas = PHI0 / np.diff(b_peaks)
+area = np.mean(areas)
+area_error = np.std(areas)
+
+fig, ax = plt.subplots()
+ax.set_xlabel("loop area (μm$^2$)")
+ax.set_ylabel("counts")
+ax.hist(areas.flatten() / 1e-12)
+ax.axvline(area / 1e-12, color="black")
+ax.set_title(
+    f"loop area = {round(area / 1e-12)} $\pm$ {round(area_error / 1e-12)} μm$^2$"
+)
+
 
 plt.show()
