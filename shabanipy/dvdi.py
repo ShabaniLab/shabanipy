@@ -5,7 +5,7 @@
 #
 # The full license is in the file LICENCE, distributed with this software.
 # -----------------------------------------------------------------------------
-"""Analysis of differential resistance curves of superconducting devices."""
+"""Analysis of differential resistance and IV curves of superconducting devices."""
 from typing import Literal, Optional, Tuple, Union
 
 import numpy as np
@@ -18,8 +18,12 @@ def extract_switching_current(
     side: Literal["positive", "negative", "both"] = "positive",
     threshold: Optional[float] = None,
     interp: bool = False,
+    offset: float = 0,
 ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
     """Extract the switching currents from a set of differential resistance curves.
+
+    This function will also work for V(I) curves if `offset` and an explicit `threshold`
+    are given.
 
     Parameters
     ----------
@@ -39,6 +43,8 @@ def extract_switching_current(
     interp : optional
         If true, linearly interpolate `dvdi` vs `bias` to more accurately detect the
         switching current.
+    offset : optional
+        A constant value to subtract from `dvdi`.
 
     Returns
     -------
@@ -50,6 +56,8 @@ def extract_switching_current(
     if side not in ("positive", "negative", "both"):
         raise ValueError("`side` should be one of: 'positive', 'negative', 'both'")
 
+    dvdi -= offset
+
     if side != "negative":
         ic_p = find_rising_edge(
             bias, np.where(bias >= 0, dvdi, np.nan), threshold=threshold, interp=interp,
@@ -57,7 +65,8 @@ def extract_switching_current(
     if side != "positive":
         ic_n = find_rising_edge(
             bias[..., ::-1],
-            np.where(bias <= 0, dvdi, np.nan)[..., ::-1],
+            # np.abs is used to support V(I) curves as well as dV/dI
+            np.where(bias <= 0, np.abs(dvdi), np.nan)[..., ::-1],
             threshold=threshold,
             interp=interp,
         )
