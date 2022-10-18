@@ -671,6 +671,27 @@ class LabberData:
         else:
             return full_data
 
+    def get_axis(self, step_name: str) -> int:
+        """Get axis of `step_name` as it appears in the array returned by `get_data`.
+
+        Note: `get_data` reverses the order of the steps such that the outer-most loop
+        appears first (axis 0), whereas in Labber's Measurement Editor and hdf5 files
+        the inner-most loop appears first.
+
+        Parameters
+        ----------
+        step_name
+            Name of the step channel.
+
+        Returns
+        -------
+        The axis of the requested step channel, ordered consistently with the data array
+        returned by `get_data` (i.e. outer-most loop first).
+        """
+        n_steps = len([s for s in self.steps if s.is_ramped])
+        index = self._name_or_index_to_index(step_name)
+        return n_steps - index - 1
+
     def warn_not_constant(
         self, name_or_index: Union[str, int], max_deviation: Optional[float] = None
     ):
