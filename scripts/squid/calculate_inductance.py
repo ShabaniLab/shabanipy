@@ -91,8 +91,10 @@ for g_idx, (x, y, z, g, ic_n, ic_p) in enumerate(
     gate_idx.append(g_idx)
 peaks_n, peaks_p = np.array(peaks_n), np.array(peaks_p)
 
-# estimate the loop area
-b_peaks = np.concatenate([bfield[gate_idx, peaks_n.T].T, bfield[gate_idx, peaks_p.T].T])
+# calculate the loop area
+b_peaks_n = bfield[gate_idx, peaks_n.T].T
+b_peaks_p = bfield[gate_idx, peaks_p.T].T
+b_peaks = np.concatenate([b_peaks_n, b_peaks_p])
 areas = PHI0 / np.diff(b_peaks)
 area = np.mean(areas)
 area_error = np.std(areas)
@@ -106,5 +108,17 @@ ax.set_title(
     f"loop area = {round(area / 1e-12)} $\pm$ {round(area_error / 1e-12)} μm$^2$"
 )
 
+# calculate the inductance
+ic_peaks_n = np.abs(icrit_n[gate_idx, peaks_n.T].T)
+ic_peaks_p = np.abs(icrit_p[gate_idx, peaks_p.T].T)
+ic_peaks = (ic_peaks_n + ic_peaks_p) / 2
+flux_diff = (b_peaks_p - b_peaks_n) * area
 
-plt.show()
+fig, ax = plt.subplots()
+ax.set_xlabel("$(I_{c+} + I_{c-}) / 2$ (μA)")
+ax.set_ylabel("$\Delta\Phi (\Phi_0)$")
+for n, (ic, f) in enumerate(zip(ic_peaks.T, flux_diff.T)):
+    ax.scatter(ic / 1e-6, f / PHI0, label=f"peak {n+1}")
+ax.legend()
+
+#plt.show()
