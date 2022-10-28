@@ -11,6 +11,7 @@ import warnings
 
 import numpy as np
 from matplotlib import pyplot as plt
+from numpy.polynomial.polynomial import polyfit
 from scipy.constants import physical_constants
 from scipy.signal import find_peaks
 
@@ -112,13 +113,30 @@ ax.set_title(
 ic_peaks_n = np.abs(icrit_n[gate_idx, peaks_n.T].T)
 ic_peaks_p = np.abs(icrit_p[gate_idx, peaks_p.T].T)
 ic_peaks = (ic_peaks_n + ic_peaks_p) / 2
-flux_diff = (b_peaks_p - b_peaks_n) * area
+flux_diffs = (b_peaks_p - b_peaks_n) * area
 
 fig, ax = plt.subplots()
 ax.set_xlabel("$(I_{c+} + I_{c-}) / 2$ (μA)")
 ax.set_ylabel("$\Delta\Phi (\Phi_0)$")
-for n, (ic, f) in enumerate(zip(ic_peaks.T, flux_diff.T)):
+inductances = []
+for n, (ic, f) in enumerate(zip(ic_peaks.T, flux_diffs.T)):
     ax.scatter(ic / 1e-6, f / PHI0, label=f"peak {n+1}")
-ax.legend()
+    (slope, intercept), cov = np.polyfit(ic, f, deg=1, cov=True)
+    inductance = slope / 2  # both branches shift in opposite directions
+    ax.plot(
+        ic / 1e-6,
+        (intercept + slope * ic) / PHI0,
+        label=f"{round(np.abs(inductance / 1e-9), 3)}"
+        f"$\pm$ {round(np.sqrt(cov[0, 0]) / 2 / 1e-9, 3)} nH",
+    )
+    inductances.append(inductance)
+inductances = np.array(inductances)
+handles, labels = ax.get_legend_handles_labels()
+ax.legend(handles[0::2] + handles[1::2], labels[0::2] + labels[1::2])
+ax.set_title(
+    f"average inductance = {np.round(np.mean(np.abs(inductances) / 1e-9), 3)}"
+    f"$\pm$ {np.round(np.std(inductances / 1e-9), 3)} nH"
+)
+
 
 #plt.show()
