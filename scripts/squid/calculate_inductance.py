@@ -118,25 +118,45 @@ flux_diffs = (b_peaks_p - b_peaks_n) * area
 fig, ax = plt.subplots()
 ax.set_xlabel("$(I_{c+} + I_{c-}) / 2$ (μA)")
 ax.set_ylabel("$\Delta\Phi (\Phi_0)$")
+
 inductances = []
 for n, (ic, f) in enumerate(zip(ic_peaks.T, flux_diffs.T)):
-    ax.scatter(ic / 1e-6, f / PHI0, label=f"peak {n+1}")
     (slope, intercept), cov = np.polyfit(ic, f, deg=1, cov=True)
-    inductance = slope / 2  # both branches shift in opposite directions
+    # both branches shift in opposite directions
+    inductance = abs(slope) / 2
+    error = np.sqrt(cov[0, 0]) / 2
+
+    ax.scatter(ic / 1e-6, f / PHI0, label=f"peak {n+1}")
     ax.plot(
         ic / 1e-6,
         (intercept + slope * ic) / PHI0,
-        label=f"{round(np.abs(inductance / 1e-9), 3)}"
-        f"$\pm$ {round(np.sqrt(cov[0, 0]) / 2 / 1e-9, 3)} nH",
+        label=f"{round(inductance / 1e-9, 3)} $\pm$ {round(error / 1e-9, 3)} nH",
     )
     inductances.append(inductance)
-inductances = np.array(inductances)
+arm_inductance, arm_std = np.mean(inductances), np.std(inductances)
+loop_inductance, loop_std = (
+    np.array([arm_inductance, arm_std])
+    / config.getfloat("ARM_LENGTH")
+    * config.getfloat("LOOP_CIRCUMFERENCE")
+)
+
 handles, labels = ax.get_legend_handles_labels()
 ax.legend(handles[0::2] + handles[1::2], labels[0::2] + labels[1::2])
-ax.set_title(
-    f"average inductance = {np.round(np.mean(np.abs(inductances) / 1e-9), 3)}"
-    f"$\pm$ {np.round(np.std(inductances / 1e-9), 3)} nH"
+ax.text(
+    0.5,
+    0.99,
+    f"arm inductance $\\approx$ {np.round(arm_inductance / 1e-9, 3)} "
+    f"$\pm$ {np.round(arm_std / 1e-9, 3)} nH",
+    transform=ax.transAxes,
+    ha="center",
+    va="top",
 )
+result_text = (
+    f"loop inductance $\\approx$ {np.round(loop_inductance / 1e-9, 3)} "
+    f"$\pm$ {np.round(loop_std / 1e-9, 3)} nH"
+)
+ax.set_title(result_text)
+print(result_text.replace("$\pm$", "+/-").replace("$\\approx$", "~"))
 
 
 #plt.show()
