@@ -26,6 +26,9 @@ parser.add_argument(
     "config_path", help="path to .ini config file, relative to this script"
 )
 parser.add_argument("config_section", help="section of the .ini config file to use")
+parser.add_argument(
+    "--no_show", "-n", default=False, action="store_true", help="do not show plots"
+)
 args = parser.parse_args()
 
 _, config = load_config(args.config_path, args.config_section)
@@ -158,5 +161,6 @@ result_text = (
 ax.set_title(result_text)
 print(result_text.replace("$\pm$", "+/-").replace("$\\approx$", "~"))
 
+if not args.no_show:
+    plt.show()
 
-#plt.show()
