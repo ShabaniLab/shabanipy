@@ -8,6 +8,7 @@ See arXiv:2207.06933 Supplementary Info Section 2.
 import argparse
 import json
 import warnings
+from pathlib import Path
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -33,9 +34,11 @@ args = parser.parse_args()
 
 _, config = load_config(args.config_path, args.config_section)
 
-PHI0 = physical_constants["mag. flux quantum"][0]
-
 plt.style.use("fullscreen13")
+OUTPATH = Path("output")
+OUTPATH.mkdir(exist_ok=True)
+
+PHI0 = physical_constants["mag. flux quantum"][0]
 
 datafile = LabberData(get_data_dir() / config.get("DATAPATH"))
 with datafile as f:
@@ -67,14 +70,14 @@ for g_idx, (x, y, z, g, ic_n, ic_p) in enumerate(
     if g in skip_gates:
         print(f"Skipping {g} V")
         continue
-    _, ax = plot2d(
+    fig, ax = plot2d(
         x / 1e-6,
         y.T / 1e-6,
         z.T / 1e3,
         xlabel="out-of-plane field (μT)",
         ylabel="current bias (μA)",
         zlabel="differential resistance (kΩ)",
-        title=f"{config.get('CH_GATE')} = {round(g, 3)} V",
+        title=f"{config.get('CH_GATE')} = {round(g, 5)} V",
         stamp=f"{config.get('COOLDOWN')} {config.get('SCAN')}",
         vmin=config.getfloat("VMIN_OHMS", None) / 1e3,
         vmax=config.getfloat("VMAX_OHMS", None) / 1e3,
@@ -93,6 +96,7 @@ for g_idx, (x, y, z, g, ic_n, ic_p) in enumerate(
         )
         p.append(peaks)
     gate_idx.append(g_idx)
+    fig.savefig(OUTPATH / f"peaks_{round(g, 5)}V.png")
 peaks_n, peaks_p = np.array(peaks_n), np.array(peaks_p)
 
 # calculate the loop area
@@ -111,6 +115,7 @@ ax.axvline(area / 1e-12, color="black")
 ax.set_title(
     f"loop area = {round(area / 1e-12)} $\pm$ {round(area_error / 1e-12)} μm$^2$"
 )
+fig.savefig(OUTPATH / f"loop_area.png")
 
 # calculate the inductance
 ic_peaks_n = np.abs(icrit_n[gate_idx, peaks_n.T].T)
@@ -148,18 +153,19 @@ ax.legend(handles[0::2] + handles[1::2], labels[0::2] + labels[1::2])
 ax.text(
     0.5,
     0.99,
-    f"arm inductance $\\approx$ {np.round(arm_inductance / 1e-9, 3)} "
-    f"$\pm$ {np.round(arm_std / 1e-9, 3)} nH",
+    f"arm inductance $\\approx$ {round(arm_inductance / 1e-9, 3)} "
+    f"$\pm$ {round(arm_std / 1e-9, 3)} nH",
     transform=ax.transAxes,
     ha="center",
     va="top",
 )
 result_text = (
-    f"loop inductance $\\approx$ {np.round(loop_inductance / 1e-9, 3)} "
-    f"$\pm$ {np.round(loop_std / 1e-9, 3)} nH"
+    f"loop inductance $\\approx$ {round(loop_inductance / 1e-9, 3)} "
+    f"$\pm$ {round(loop_std / 1e-9, 3)} nH"
 )
 ax.set_title(result_text)
 print(result_text.replace("$\pm$", "+/-").replace("$\\approx$", "~"))
+fig.savefig(OUTPATH / "inductance.png")
 
 if not args.no_show:
     plt.show()
