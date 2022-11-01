@@ -173,6 +173,11 @@ class InstrumentConfig:
         This checks the {Quantity: Value} pairs as seen in the "Show config" side panel
         of the Log Browser/Viewer.
         """
+        if quantity not in self.group.attrs:
+            raise ValueError(
+                f"'{quantity}' does not exist in '{self.name}'; "
+                f"available quantities are {self.group.attrs.keys()}"
+            )
         return self.group.attrs.get(quantity)
 
 
