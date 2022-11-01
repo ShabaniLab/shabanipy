@@ -150,16 +150,10 @@ class InstrumentConfig:
         return self.group.name[19:].split(" - ", 1)[0]
 
     @cached_property
-    def ip_address(self) -> Optional[str]:
+    def ip_address(self) -> str:
         """The IP address of the instrument driver. Possibly empty."""
         ip_address = self.group.name.split(" - ", 1)[1].split(", ", 1)[0]
-        if ip_address:
-            assert ip_address.startswith(
-                "IP: "
-            ), "Unknown IP address format in file {self.group.file.filename}: {ip_address} doesn't start with 'IP: '"
-            return ip_address[4:]
-        else:
-            return None
+        return ip_address
 
     @cached_property
     def name(self) -> str:
