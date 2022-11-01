@@ -112,9 +112,7 @@ ax.set_xlabel("loop area (μm$^2$)")
 ax.set_ylabel("counts")
 ax.hist(areas.flatten() / 1e-12)
 ax.axvline(area / 1e-12, color="black")
-ax.set_title(
-    f"loop area = {round(area / 1e-12)} $\pm$ {round(area_error / 1e-12)} μm$^2$"
-)
+ax.set_title(f"loop area = {area / 1e-12:.0f} $\pm$ {area_error / 1e-12:.0f} μm$^2$")
 fig.savefig(OUTPATH / f"loop_area.png")
 
 # calculate the inductance
@@ -138,7 +136,7 @@ for n, (ic, f) in enumerate(zip(ic_peaks.T, flux_diffs.T)):
     ax.plot(
         ic / 1e-6,
         (intercept + slope * ic) / PHI0,
-        label=f"{round(inductance / 1e-9, 3)} $\pm$ {round(error / 1e-9, 3)} nH",
+        label=f"{inductance / 1e-9:.3f} $\pm$ {error / 1e-9:.3f} nH",
     )
     inductances.append(inductance)
 arm_inductance, arm_std = np.mean(inductances), np.std(inductances)
@@ -153,15 +151,15 @@ ax.legend(handles[0::2] + handles[1::2], labels[0::2] + labels[1::2])
 ax.text(
     0.5,
     0.99,
-    f"arm inductance $\\approx$ {round(arm_inductance / 1e-9, 3)} "
-    f"$\pm$ {round(arm_std / 1e-9, 3)} nH",
+    f"arm inductance $\\approx$ {arm_inductance / 1e-9:.3f} "
+    f"$\pm$ {arm_std / 1e-9:.3f} nH",
     transform=ax.transAxes,
     ha="center",
     va="top",
 )
 result_text = (
-    f"loop inductance $\\approx$ {round(loop_inductance / 1e-9, 3)} "
-    f"$\pm$ {round(loop_std / 1e-9, 3)} nH"
+    f"loop inductance $\\approx$ {loop_inductance / 1e-9, 3:.3f} "
+    f"$\pm$ {loop_std / 1e-9:.3f} nH"
 )
 ax.set_title(result_text)
 print(result_text.replace("$\pm$", "+/-").replace("$\\approx$", "~"))
