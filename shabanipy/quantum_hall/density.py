@@ -11,11 +11,10 @@
 """
 import numpy as np
 import scipy.constants as cs
-import matplotlib.pyplot as plt
 from lmfit.models import LinearModel
 
 
-def extract_density(field, rxy, field_cutoffs, plot_fit=False):
+def extract_density(field, rxy, field_cutoffs):
     """Extract the carriers density from the low field resistance dependence.
 
     The extraction relies on a simple linear fit performed on a specified field
@@ -46,6 +45,9 @@ def extract_density(field, rxy, field_cutoffs, plot_fit=False):
         Incertitude on the density expressed as the standard deviation.
         Will be a float if a single value was extracted from the provided data.
 
+    fits : lmfit.model.ModelResult | np.ndarray
+        Object containing the result of the fit.
+
     """
     # Identify the shape of the data and make them suitable for the following
     # treatment.
@@ -69,6 +71,7 @@ def extract_density(field, rxy, field_cutoffs, plot_fit=False):
         field_cutoffs = np.array((field_cutoffs,))
 
     results = np.empty((2, trace_number))
+    fits = []
     model = LinearModel()
 
     # Perform a linear fit in the specified field range and extract the slope
@@ -87,17 +90,12 @@ def extract_density(field, rxy, field_cutoffs, plot_fit=False):
         results[1, i] = results[0, i] * (
             res.params["slope"].stderr / res.best_values["slope"]
         )
-
-        # If requested plot the result in a dedicated window.
-        if plot_fit:
-            plt.figure()
-            plt.plot(f, r, "+")
-            plt.plot(f, res.best_fit)
-            plt.xlabel("Field")
-            plt.ylabel("Rxy")
-            plt.tight_layout()
+        fits.append(res)
 
     if input_is_1d:
-        return results[:, 0]
+        return (*results[:, 0], fits[0])
     else:
-        return results.reshape((2,) + original_shape)
+        return (
+            *results.reshape((2,) + original_shape),
+            np.reshape(fits, original_shape),
+        )

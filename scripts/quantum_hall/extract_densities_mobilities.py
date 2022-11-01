@@ -42,9 +42,6 @@ GEOMETRY = "Standard Hall bar"
 #: Magnetic field bounds to use when extracting the density.
 FIELD_BOUNDS = (500e-3, 2)
 
-#: Should we plot the fit used to extract the density at each gate.
-PLOT_DENSITY_FIT = False
-
 #: Effective mass of the carriers in unit of the electron mass.
 EFFECTIVE_MASS = 0.03
 
@@ -110,12 +107,8 @@ if GATE_COLUMN is not None:
     gate = gate[:, 0]
 
 if "xy" in res:
-    density, std_density = extract_density(
-        field, res["xy"], FIELD_BOUNDS, PLOT_DENSITY_FIT
-    )
+    density, std_density, *_ = extract_density(field, res["xy"], FIELD_BOUNDS)
     print(f"{density / 1e4:g}")
-if PLOT_DENSITY_FIT:
-    plt.show()
 
 if "xx" in res and "yy" in res:
     mobility = extract_mobility(

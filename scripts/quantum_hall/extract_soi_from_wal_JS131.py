@@ -49,9 +49,6 @@ GEOMETRY = 'Standard Hall bar'
 #: Magnetic field bounds to use when extracting the density.
 FIELD_BOUNDS = (-2, -40e-3)
 
-#: Should we plot the fit used to extract the density at each gate.
-PLOT_DENSITY_FIT = False
-
 #: Parameters to use to filter the xx and yy data. The first number if the
 #: number of points to consider IT MUST BE ODD, the second the order of the
 #: polynomial used to smooth the data
@@ -205,13 +202,10 @@ if PLOT_SMOOTHED:
     plt.show()
 
 # Extract the density and mobility and compute useful quantities.
-density = extract_density(field, res['xy'], FIELD_BOUNDS, PLOT_DENSITY_FIT)
-if PLOT_DENSITY_FIT:
-    plt.show()
+density, std_density, *_ = extract_density(field, res['xy'], FIELD_BOUNDS)
 
 mobility, std_mob = extract_mobility(field, res['xx'], res['yy'], density,
                                      GEOMETRIC_FACTORS[GEOMETRY])
-density, std_density = density
 
 mass = EFFECTIVE_MASS*cs.electron_mass
 htr = htr_from_mobility_density(mobility, density, mass)
