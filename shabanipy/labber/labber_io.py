@@ -691,6 +691,18 @@ class LabberData:
         index = self._name_or_index_to_index(step_name)
         return n_steps - index - 1
 
+    def get_config_value(self, instrument: str, quantity: str) -> Union[float, str]:
+        """Get the value of the given quantity from the instrument config."""
+        instrument_names = [instr.name for instr in self.instrument_configs]
+        try:
+            index = instrument_names.index(instrument)
+        except ValueError as e:
+            raise ValueError(
+                f"'{instrument}' does not exist in {self.filename}; "
+                f"available instruments are {instrument_names}"
+            ) from e
+        return self.instrument_configs[index].get(quantity)
+
     def warn_not_constant(
         self, name_or_index: Union[str, int], max_deviation: Optional[float] = None
     ):
