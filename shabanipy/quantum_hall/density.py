@@ -82,7 +82,7 @@ def extract_density(field, rxy, field_cutoffs):
         f = field[i][mask]
         start_ind = np.argmin(np.abs(f - start_field))
         stop_ind = np.argmin(np.abs(f - stop_field))
-        start_ind, stop_ind = min(start_ind, stop_ind), max(start_ind, stop_ind)
+        start_ind, stop_ind = min(start_ind, stop_ind), max(start_ind, stop_ind) + 1
         f = f[start_ind:stop_ind]
         r = rxy[i][mask][start_ind:stop_ind]
         res = model.fit(r, x=f)
