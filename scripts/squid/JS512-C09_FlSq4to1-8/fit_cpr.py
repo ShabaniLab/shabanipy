@@ -214,9 +214,9 @@ phase = (bfield - popt["bfield_offset"]) * popt["radians_per_tesla"]
 fig, ax = plot(
     phase / (2 * np.pi),
     ic_p / 1e-6,
-    marker=".",
-    xlabel="phase [2π]",
-    ylabel="switching current [μA]",
+    ".",
+    xlabel="flux ($\Phi_0$)",
+    ylabel="switching current (μA)",
     label="data",
     stamp=f"{config['COOLDOWN']}-{config['SCAN']}",
 )
