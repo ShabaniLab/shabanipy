@@ -1,58 +1,80 @@
-# -----------------------------------------------------------------------------
-# Copyright 2019 by ShabaniPy Authors, see AUTHORS for more details.
-#
-# Distributed under the terms of the MIT license.
-#
-# The full license is in the file LICENCE, distributed with this software.
-# -----------------------------------------------------------------------------
-"""Plot the squid current for different set of parameters.
+"""Plot the SQUID critical current for the given parameters."""
+import argparse
 
-"""
-
-#: Parameters of the first junction: amplitude, transparency
-FIRST_JUNCTION = (1, .5)
-
-#: Transparencies of the second junction
-SECOND_JUNCTION_TRANSPARENCIES = [0, 0.2, 0.4, 0.6, 0.8, 0.99999]
-
-#: Amplitudes of the second junction
-SECOND_JUNCTION_AMPLITUDES = [1]
-
-# =============================================================================
-# --- Execution ---------------------------------------------------------------
-# =============================================================================
 import numpy as np
-import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt
+from scipy.constants import e, physical_constants
 
+from shabanipy.jj import transparent_cpr
 from shabanipy.squid import critical_behavior
-from shabanipy.jj import transparent_cpr as cpr
 
-phase_diff = np.linspace(-2*np.pi, 2*np.pi, 1001)
-offset = 1.2
+PHI0 = physical_constants["mag. flux quantum"][0]
+plt.style.use("fullscreen13")
 
-for t in SECOND_JUNCTION_TRANSPARENCIES:
-    # plt.figure()
-    for i, a in enumerate(SECOND_JUNCTION_AMPLITUDES):
-        _, squid, *_ = critical_behavior(phase_diff,
-                                      cpr, (0, *FIRST_JUNCTION),
-                                      cpr, (offset, a, t))
-        _, neg_squid, *_ = critical_behavior(phase_diff,
-                                      cpr, (0, *FIRST_JUNCTION),
-                                      cpr, (offset, a, t),
-                                      False)
-        amplitude = (np.amax(squid) - np.min(squid))
-        baseline = (np.amax(squid) + np.min(squid))/2
-        plt.plot(phase_diff,
-                 2*(squid - baseline)/amplitude + 1,
-                 label=f't={t}, a={a}')#, color=f'C{i}')
-        amplitude = (np.amax(neg_squid) - np.min(neg_squid))
-        baseline = (np.amax(neg_squid) + np.min(neg_squid))/2
-        plt.plot(phase_diff,
-                 2*(neg_squid - baseline)/amplitude - 1,
-                 color=f'C{i}')
-    plt.legend()
-    # plt.figure()
-    # plt.plot(phase_diff, cpr(phase_diff, *FIRST_JUNCTION))
-    # plt.plot(phase_diff, cpr(offset + phase_diff, 1, t))
-    # plt.legend()
+# set up the command-line interface
+parser = argparse.ArgumentParser(
+    description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
+parser.add_argument(
+    "--ic1", type=float, default=1e-6, help="Critical current (A) of junction 1"
+)
+parser.add_argument(
+    "--ic2", type=float, default=1e-6, help="Critical current (A) of junction 2"
+)
+parser.add_argument(
+    "--t1", type=float, default=0, help="Transparency [0, 1) of junction 1"
+)
+parser.add_argument(
+    "--t2", type=float, default=0, help="Transparency [0, 1) of junction 2"
+)
+parser.add_argument(
+    "--phi1", type=float, default=0, help="Anomalous phase of junction 1"
+)
+parser.add_argument(
+    "--phi2", type=float, default=0, help="Anomalous phase of junction 2"
+)
+parser.add_argument("--T", type=float, default=0, help="Temperature (K)")
+parser.add_argument(
+    "--gap", type=float, default=200e-6, help="Superconducting gap Δ (eV)"
+)
+parser.add_argument("--L", type=float, default=0, help="Loop inductance (H)")
+parser.add_argument("--xres", type=int, default=501, help="Resolution in x")
+parser.add_argument("--yres", type=int, default=501, help="Resolution in y")
+parser.add_argument(
+    "--flux",
+    action="store_true",
+    default=False,
+    help="Plot vs. total flux instead of applied flux",
+)
+parser.add_argument(
+    "--points", action="store_true", default=False, help="Plot points, not lines"
+)
+args = parser.parse_args()
+print(args)
+
+phase = np.linspace(-2 * np.pi, 2 * np.pi, args.xres)
+
+fig, axs = plt.subplots(3, sharex=True)
+xlabel = "total flux" if args.flux else "external flux"
+axs[-1].set_xlabel(xlabel + " ($\Phi_0$)")
+axs[0].set_ylabel("SQUID $I_c$ (μA)")
+axs[1].set_ylabel("JJ1 $I$ (μA)")
+axs[2].set_ylabel("JJ2 $I$ (μA)")
+
+phase_ext, squid_ic, phase1, current1, phase2, current2 = critical_behavior(
+    phase,
+    transparent_cpr,
+    (args.phi1, args.ic1, args.t1, args.T, args.gap * e),
+    transparent_cpr,
+    (args.phi2, args.ic2, args.t2, args.T, args.gap * e),
+    inductance=args.L / PHI0,
+    nbrute=args.yres,
+    return_jjs=True,
+)
+x = phase if args.flux else phase_ext
+kwargs = {"marker": ".", "markersize": 1, "lw": 0} if args.points else {}
+axs[0].plot(x / (2 * np.pi), squid_ic / 1e-6, **kwargs)
+axs[1].plot(x / (2 * np.pi), current1 / 1e-6, **kwargs)
+axs[2].plot(x / (2 * np.pi), current2 / 1e-6, **kwargs)
+
 plt.show()
