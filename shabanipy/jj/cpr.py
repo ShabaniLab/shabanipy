@@ -13,10 +13,8 @@ All functions in this module should take the the phase as first argument.
 """
 import numpy as np
 import scipy.constants as cs
-from numba import njit
 
 
-@njit
 def josephson_cpr(phase, critical_current):
     """Compute the current flowing through a junction of zero transparency.
 
@@ -34,7 +32,6 @@ def josephson_cpr(phase, critical_current):
     return critical_current*np.sin(phase)
 
 
-@njit
 def _finite_helper(phase, transparency, temperature, gap):
     """Helper function to compute current in a finite transparency jj.
 
@@ -46,7 +43,6 @@ def _finite_helper(phase, transparency, temperature, gap):
     return  cpr
 
 
-@njit
 def transparent_cpr(phase, critical_current, transparency, temperature=0, gap=1):
     """Compute the current flowing through a junction of finite transparency.
 
@@ -70,7 +66,6 @@ def transparent_cpr(phase, critical_current, transparency, temperature=0, gap=1)
                                                     temperature, gap)
 
 
-@njit
 def fraunhofer_envelope(phase):
     """Fraunhofer envelope.
 
