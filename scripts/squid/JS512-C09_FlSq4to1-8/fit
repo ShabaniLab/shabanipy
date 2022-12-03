@@ -19,5 +19,5 @@ fi
 
 for SECTION in "${SECTIONS[@]}"
 do
-  python $FIT_SCRIPT JS512-C09_FlSq4to1-8/configs/FlSq4to7_WFS02.ini -q "${@:2}" $SECTION
+  python $FIT_SCRIPT JS512-C09_FlSq4to1-8/configs/FlSq4to7.ini -q "${@:2}" $SECTION
 done

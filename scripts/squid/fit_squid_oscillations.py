@@ -9,7 +9,6 @@
 import argparse
 import subprocess
 import sys
-from configparser import ConfigParser, ExtendedInterpolation
 from contextlib import redirect_stdout
 from functools import partial, reduce
 from importlib import import_module
@@ -26,7 +25,7 @@ from scipy.constants import physical_constants
 from shabanipy.dvdi import extract_switching_current
 from shabanipy.labber import LabberData, get_data_dir
 from shabanipy.squid import SquidModel, estimate_frequency
-from shabanipy.utils import to_dataframe
+from shabanipy.utils import load_config, to_dataframe
 from shabanipy.utils.plotting import jy_pink, plot, plot2d
 
 print = partial(print, flush=True)
@@ -120,15 +119,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-# load the config file
-with open(Path(__file__).parent / args.config_path) as f:
-    print(f"Using config file `{f.name}`")
-    ini = ConfigParser(interpolation=ExtendedInterpolation())
-    ini.read_file(f)
-    try:
-        config = ini[args.config_section]
-    except KeyError as e:
-        raise KeyError(f"Available sections are {[s for s in ini]}") from e
+_, config = load_config(Path(__file__).parent / args.config_path, args.config_section)
 
 # get the path to the datafile
 INPATH = Path(config.get("LABBERDATA_DIR", get_data_dir())) / config["DATAPATH"]
