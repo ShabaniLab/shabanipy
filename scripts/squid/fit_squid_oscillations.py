@@ -289,7 +289,7 @@ for name in model.param_names:
     if name in config:
         model.set_param_hint(name, value=config.getfloat(name), vary=False)
     elif "guess_" + name in config:
-        model.set_param_hint(name, value=config.getfloat("guess_" + name))
+        model.set_param_hint(name, value=config.getfloat("guess_" + name), vary=True)
 
 # enforce equal transparencies
 if args.equal_transparencies:
