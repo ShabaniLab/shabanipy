@@ -1,3 +1,3 @@
 """Interactions with Labber's HDF5 data files."""
 from .labber_io import LabberData
-from .utils import get_data_dir
+from .shablabber import ShaBlabberFile, get_data_dir
