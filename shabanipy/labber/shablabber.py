@@ -106,6 +106,14 @@ class ShaBlabberFile(File):
         return [name.decode("utf-8") for name, _ in self["Data/Channel names"]]
 
     @cached_property
+    def data_channel_infos(self) -> List[Tuple[str, str]]:
+        """Names of data channels with their associated info."""
+        return [
+            (name.decode("utf-8"), info.decode("utf-8"))
+            for name, info in self["Data/Channel names"]
+        ]
+
+    @cached_property
     def instruments(self) -> List[Instrument]:
         """All instruments in the hdf5 file."""
         return [Instrument(self, *i) for i in self["Instruments"]]
@@ -157,11 +165,26 @@ class Channel:
     def instrument(self) -> Instrument:
         return self._file.get_instrument_by_id(self.instrument_id)
 
+    @property
+    def is_complex(self) -> bool:
+        return isinstance(self.instrument.config[self.quantity], complex)
+
     def get_data(self) -> np.ndarray:
+        if self.is_complex:
+            return self._get_complex_data()
+        else:
+            f = self._file
+            return f["Data/Data"][
+                :, f.data_channel_names.index(self.name), ...
+            ].reshape(f.shape, order="F")
+
+    def _get_complex_data(self) -> np.ndarray:
         f = self._file
-        return f["Data/Data"][:, f.data_channel_names.index(self.name), ...].reshape(
-            f.shape, order="F"
-        )
+        real = f["Data/Data"][:, f.data_channel_infos.index((self.name, "Real")), ...]
+        imag = f["Data/Data"][
+            :, f.data_channel_infos.index((self.name, "Imaginary")), ...
+        ]
+        return (real + 1j * imag).reshape(f.shape, order="F")
 
 
 @dataclass
@@ -203,6 +226,10 @@ class Instrument:
     def __post_init__(self):
         _bytes_to_str(self)
         self.version = parse_version(self.version)
+
+    @property
+    def config(self) -> dict:
+        return dict(self._file[f"Instrument config/{self.id}"].attrs)
 
 
 def get_data_dir():
