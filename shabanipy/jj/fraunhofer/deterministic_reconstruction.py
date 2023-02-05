@@ -156,7 +156,7 @@ def extract_current_distribution(
         Fraunhofer periodicity.
     jj_width : float
         Size of the junction. The current distribution will be reconstructed on
-        a larger region (2 * jj_width)
+        a larger region (4 * jj_width)
     jj_points : int
         Number of points used to describe the junction inside jj_width.
     theta : np.ndarray, optional
@@ -185,7 +185,7 @@ def extract_current_distribution(
     fine_fields = f2k * fine_fields
     step = abs(fine_fields[0] - fine_fields[1])
 
-    xs = np.linspace(-jj_width, jj_width, int(2 * jj_points))
+    xs = np.linspace(-2 * jj_width, 2 * jj_width, int(4 * jj_points))
     j = np.empty(xs.shape, dtype=complex)
     for i, x in enumerate(xs):
         j[i] = (
