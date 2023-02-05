@@ -71,6 +71,22 @@ class ShaBlabberFile(File):
         return parse_version(self.attrs["version"])
 
     @cached_property
+    def projects(self) -> List[str]:
+        """Projects the file belongs to."""
+        return self._check_empty_list(list(self["Tags"].attrs["Project"]))
+
+    @cached_property
+    def tags(self) -> List[str]:
+        """Tags assigned to the file."""
+        return self._check_empty_list(list(self["Tags"].attrs["Tags"]))
+
+    def _check_empty_list(self, listt) -> List[str]:
+        if len(listt) == 1 and listt[0] == "":
+            return []
+        else:
+            return listt
+
+    @cached_property
     def _channels(self) -> List[Channel]:
         """All channels in the hdf5 file."""
         return [Channel(self, *c) for c in self["Channels"]]
