@@ -26,7 +26,7 @@ class ShaBlabberFile(File):
     def __init__(self, path: Union[str, Path]):
         """
         The `path` to the datafile should be absolute, or relative to the path returned
-        by `get_data_dir()`.
+        by `shablabber.get_data_dir()`.
         """
         path = Path(path)
         if not path.is_absolute():
@@ -40,19 +40,19 @@ class ShaBlabberFile(File):
         return self.attrs["log_name"]
 
     @cached_property
-    def creation_time(self) -> datetime:
+    def _creation_time(self) -> datetime:
         """The date and time the hdf5 file was created."""
         return datetime.fromtimestamp(self.attrs["creation_time"])
 
     @property
-    def step_dims(self) -> np.ndarray:
+    def _step_dims(self) -> np.ndarray:
         """Step dimensions, i.e. the shape of the data."""
         return self.attrs["Step dimensions"]
 
     @cached_property
-    def shape(self) -> tuple:
+    def _shape(self) -> tuple:
         """The shape of the data, with trivial dimensions removed."""
-        return tuple(d for d in self.step_dims if d != 1)
+        return tuple(d for d in self._step_dims if d != 1)
 
     @property
     def comment(self) -> str:
@@ -65,48 +65,48 @@ class ShaBlabberFile(File):
         return self.attrs["star"]
 
     @cached_property
-    def version(self) -> Version:
+    def _version(self) -> Version:
         """A version number presumably related to the Labber version or file spec."""
         return parse_version(self.attrs["version"])
 
     @cached_property
-    def channels(self) -> List[Channel]:
+    def _channels(self) -> List[Channel]:
         """All channels in the hdf5 file."""
         return [Channel(self, *c) for c in self["Channels"]]
 
     @cached_property
-    def channel_names(self) -> List[str]:
+    def _channel_names(self) -> List[str]:
         """Names of all channels in the hdf5 file."""
-        return [c.name for c in self.channels]
+        return [c.name for c in self._channels]
 
     def get_channel(self, channel_name: str) -> Channel:
         """Get the channel with name `channel_name`."""
-        if channel_name not in self.channel_names:
+        if channel_name not in self._channel_names:
             raise ValueError(
-                f"'{channel_name}' does not exist.  Available channels are:\n{pformat(self.channel_names)}"
+                f"'{channel_name}' does not exist.  Available channels are:\n{pformat(self._channel_names)}"
             )
-        return self.channels[self.channel_names.index(channel_name)]
+        return self._channels[self._channel_names.index(channel_name)]
 
-    def get_channel_data(self, channel_name: str) -> np.ndarray:
+    def _get_channel_data(self, channel_name: str) -> np.ndarray:
         """Get the data for `channel_name`."""
-        if channel_name not in self.data_channel_names:
+        if channel_name not in self._data_channel_names:
             raise ValueError(
-                f"'{channel_name}' is not a data channel.  Available data channels are:\n{pformat(list(dict.fromkeys(self.data_channel_names)))}"
+                f"'{channel_name}' is not a data channel.  Available data channels are:\n{pformat(list(dict.fromkeys(self._data_channel_names)))}"
             )
         return self.get_channel(channel_name).get_data()
 
     @cached_property
-    def data_channels(self) -> List[Channel]:
+    def _data_channels(self) -> List[Channel]:
         """Channels that are stepped/swept or logged/measured."""
-        return [self.get_channel(name) for name in self.data_channel_names]
+        return [self.get_channel(name) for name in self._data_channel_names]
 
     @cached_property
-    def data_channel_names(self) -> List[str]:
+    def _data_channel_names(self) -> List[str]:
         """Names of channels that are stepped/swept or logged/measured."""
         return [name.decode("utf-8") for name, _ in self["Data/Channel names"]]
 
     @cached_property
-    def data_channel_infos(self) -> List[Tuple[str, str]]:
+    def _data_channel_infos(self) -> List[Tuple[str, str]]:
         """Names of data channels with their associated info."""
         return [
             (name.decode("utf-8"), info.decode("utf-8"))
@@ -114,22 +114,22 @@ class ShaBlabberFile(File):
         ]
 
     @cached_property
-    def instruments(self) -> List[Instrument]:
+    def _instruments(self) -> List[Instrument]:
         """All instruments in the hdf5 file."""
         return [Instrument(self, *i) for i in self["Instruments"]]
 
     @cached_property
-    def instrument_ids(self) -> List[str]:
+    def _instrument_ids(self) -> List[str]:
         """IDs of all instruments in the hdf5 file."""
-        return [i.id for i in self.instruments]
+        return [i.id for i in self._instruments]
 
-    def get_instrument_by_id(self, instrument_id: str) -> Instrument:
+    def _get_instrument_by_id(self, instrument_id: str) -> Instrument:
         """Get the instrument with ID `instrument_id`."""
-        if instrument_id not in self.instrument_ids:
+        if instrument_id not in self._instrument_ids:
             raise ValueError(
-                f"'{instrument_id}' does not exist.  Available instrument IDs are:\n{pformat(self.instrument_ids)}"
+                f"'{instrument_id}' does not exist.  Available instrument IDs are:\n{pformat(self._instrument_ids)}"
             )
-        return self.instruments[self.instrument_ids.index(instrument_id)]
+        return self._instruments[self._instrument_ids.index(instrument_id)]
 
 
 @dataclass
@@ -163,28 +163,28 @@ class Channel:
 
     @cached_property
     def instrument(self) -> Instrument:
-        return self._file.get_instrument_by_id(self.instrument_id)
+        return self._file._get_instrument_by_id(self.instrument_id)
 
     @property
-    def is_complex(self) -> bool:
+    def _is_complex(self) -> bool:
         return isinstance(self.instrument.config[self.quantity], complex)
 
     def get_data(self) -> np.ndarray:
-        if self.is_complex:
+        if self._is_complex:
             return self._get_complex_data()
         else:
             f = self._file
             return f["Data/Data"][
-                :, f.data_channel_names.index(self.name), ...
-            ].reshape(f.shape, order="F")
+                :, f._data_channel_names.index(self.name), ...
+            ].reshape(f._shape, order="F")
 
     def _get_complex_data(self) -> np.ndarray:
         f = self._file
-        real = f["Data/Data"][:, f.data_channel_infos.index((self.name, "Real")), ...]
+        real = f["Data/Data"][:, f._data_channel_infos.index((self.name, "Real")), ...]
         imag = f["Data/Data"][
-            :, f.data_channel_infos.index((self.name, "Imaginary")), ...
+            :, f._data_channel_infos.index((self.name, "Imaginary")), ...
         ]
-        return (real + 1j * imag).reshape(f.shape, order="F")
+        return (real + 1j * imag).reshape(f._shape, order="F")
 
 
 @dataclass
