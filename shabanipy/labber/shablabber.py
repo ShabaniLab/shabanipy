@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, fields
 from datetime import datetime
+from enum import Enum
 from functools import cached_property
 from os import environ
 from pathlib import Path
@@ -114,6 +115,29 @@ class ShaBlabberFile(File):
         ]
 
     @cached_property
+    def _step_channels(self) -> List[Channel]:
+        """Channels that are stepped/swept."""
+        return [self.get_channel(name) for name in self._step_channel_names]
+
+    @cached_property
+    def _step_channel_names(self) -> List[str]:
+        """Names of channels that are stepped/swept."""
+        return [sc.channel_name for sc in self._step_configs]
+
+    @cached_property
+    def _step_configs(self) -> List[StepConfig]:
+        """Step configurations for channels that are stepped/swept."""
+        return [StepConfig(self, *sc) for sc in self["Step list"]]
+
+    def _get_step_config(self, channel_name) -> StepConfig:
+        """Get the step config for `channel_name`."""
+        if channel_name not in self._step_channel_names:
+            raise ValueError(
+                f"'{channel_name}' is not a stepped channel.  Available stepped channels are:\n{pformat(self._step_channel_names)}"
+            )
+        return self._step_configs[self._step_channel_names.index(channel_name)]
+
+    @cached_property
     def _instruments(self) -> List[Instrument]:
         """All instruments in the hdf5 file."""
         return [Instrument(self, *i) for i in self["Instruments"]]
@@ -164,6 +188,10 @@ class Channel:
     @cached_property
     def instrument(self) -> Instrument:
         return self._file._get_instrument_by_id(self.instrument_id)
+
+    @cached_property
+    def _step_config(self) -> StepConfig:
+        return self._file._get_step_config(self.name)
 
     @property
     def _is_complex(self) -> bool:
@@ -230,6 +258,93 @@ class Instrument:
     @property
     def config(self) -> dict:
         return dict(self._file[f"Instrument config/{self.id}"].attrs)
+
+
+@dataclass
+class StepConfig:
+    """A specification of how a channel is stepped/swept."""
+
+    # hdf5 file this step config belongs to
+    _file: ShaBlabberFile
+
+    # step config specification defined by Labber in the "Step list" hdf5 dataset
+    channel_name: str
+    step_unit: int
+    wait_after: float
+    after_last: AfterLast
+    final_value: float
+    use_relations: bool
+    equation: str
+    show_advanced: bool
+    sweep_mode: SweepMode
+    use_outside_sweep_rate: bool
+    sweep_rate_outside: float
+    alternate_direction: bool
+
+    def __post_init__(self):
+        # here and elsewhere it would be nice to use Converters from the `attrs` package
+        _bytes_to_str(self)
+        self.after_last = AfterLast(self.after_last)
+        self.sweep_mode = SweepMode(self.sweep_mode)
+
+    @cached_property
+    def step_items(self) -> List[StepItem]:
+        return [
+            StepItem(*si)
+            for si in self._file[f"Step config/{self.channel_name}/Step items"]
+        ]
+
+
+class AfterLast(Enum):
+    GO_TO_FIRST = 0
+    STAY_AT_FINAL = 1
+    GO_TO_VALUE = 2
+
+
+class SweepMode(Enum):
+    OFF = 0
+    BETWEEN_POINTS = 1
+    CONTINUOUS = 2
+
+
+@dataclass
+class StepItem:
+    """A specification of a range of values to step through."""
+
+    range_type: RangeType
+    step_type: StepType
+    single: float
+    start: float
+    stop: float
+    center: float
+    span: float
+    step_size: float
+    n_points: int
+    interp_type: InterpType
+    sweep_rate: float
+
+    def __post_init__(self):
+        self.range_type = RangeType(self.range_type)
+        self.step_type = StepType(self.step_type)
+        self.interp_type = InterpType(self.interp_type)
+
+
+class RangeType(Enum):
+    SINGLE = 0
+    START_STOP = 1
+    CENTER_SPAN = 2
+
+
+class StepType(Enum):
+    STEP_SIZE = 0
+    N_POINTS = 1
+
+
+class InterpType(Enum):
+    LINEAR = 0
+    LOG = 1
+    LOG_NUM_PER_DECADE = 2
+    LORENTZIAN = 3
 
 
 def get_data_dir():
