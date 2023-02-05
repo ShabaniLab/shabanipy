@@ -29,7 +29,7 @@ class ShaBlabberFile(File):
         The `path` to the datafile should be absolute, or relative to the path returned
         by `shablabber.get_data_dir()`.
         """
-        path = Path(path)
+        path = Path(path).expanduser()
         if not path.is_absolute():
             path = get_data_dir() / path
         self.path = path
