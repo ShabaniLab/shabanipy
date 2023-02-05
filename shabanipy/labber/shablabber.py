@@ -138,6 +138,16 @@ class ShaBlabberFile(File):
         return self._step_configs[self._step_channel_names.index(channel_name)]
 
     @cached_property
+    def _log_channels(self) -> List[Channel]:
+        """Channels that are logged/measured."""
+        return [self.get_channel(name) for name in self._log_channel_names]
+
+    @cached_property
+    def _log_channel_names(self) -> List[str]:
+        """Names of channels that are logged/measured."""
+        return [name.decode("utf-8") for name, in self["Log list"]]
+
+    @cached_property
     def _instruments(self) -> List[Instrument]:
         """All instruments in the hdf5 file."""
         return [Instrument(self, *i) for i in self["Instruments"]]
