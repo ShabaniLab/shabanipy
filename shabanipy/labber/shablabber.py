@@ -181,6 +181,16 @@ class ShaBlabberFile(File):
             )
         return self._instruments[self._instrument_ids.index(instrument_id)]
 
+    def get_data(self, *channel_names: str) -> Tuple[np.ndarray]:
+        """Get the data from `channel_names`.
+
+        Parameters
+        ----------
+        *channel_names
+            Names of channels to get data from.
+        """
+        return tuple(self._get_channel_data(name) for name in channel_names)
+
 
 @dataclass
 class Channel:
