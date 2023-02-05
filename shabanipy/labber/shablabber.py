@@ -7,7 +7,7 @@ datafile created by Labber.  It is a replacement for `labber_io.LabberData`.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from datetime import datetime
 from functools import cached_property
 from os import environ
@@ -250,8 +250,9 @@ def get_data_dir():
     return path
 
 
-def _bytes_to_str(obj):
-    """Convert all fields in `obj` of type `bytes` to type `str`."""
-    for k, v in vars(obj).items():
-        if type(v) is bytes:
-            setattr(obj, k, v.decode("utf-8"))
+def _bytes_to_str(dataclass):
+    """Convert all fields in `dataclass` of type `bytes` to type `str`."""
+    for field in fields(dataclass):
+        value = getattr(dataclass, field.name)
+        if type(value) is bytes:
+            setattr(dataclass, field.name, value.decode("utf-8"))
