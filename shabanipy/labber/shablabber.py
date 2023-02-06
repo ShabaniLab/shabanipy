@@ -14,8 +14,9 @@ from functools import cached_property
 from os import environ
 from pathlib import Path
 from pprint import pformat
-from typing import List, Union
+from typing import Iterable, List, Optional, Union
 
+import numpy as np
 from h5py import File
 from packaging.version import Version
 from packaging.version import parse as parse_version
@@ -181,15 +182,30 @@ class ShaBlabberFile(File):
             )
         return self._instruments[self._instrument_ids.index(instrument_id)]
 
-    def get_data(self, *channel_names: str) -> Tuple[np.ndarray]:
+    def get_data(
+        self, *channel_names: str, order: Optional[Iterable[str]] = None
+    ) -> Tuple[np.ndarray]:
         """Get the data from `channel_names`.
 
         Parameters
         ----------
         *channel_names
             Names of channels to get data from.
+        order
+            List of stepped channel names defining how the data axes should be ordered.
+            If None, axes are ordered according to Labber (i.e. inner loop first).
         """
-        return tuple(self._get_channel_data(name) for name in channel_names)
+        data = tuple(self._get_channel_data(name) for name in channel_names)
+        if order:
+            data = tuple(
+                np.moveaxis(
+                    d,
+                    [self.get_channel(c)._step_config.axis for c in order],
+                    np.arange(len(order)),
+                )
+                for d in data
+            )
+        return data
 
 
 @dataclass
@@ -329,6 +345,11 @@ class StepConfig:
             StepItem(*si)
             for si in self._file[f"Step config/{self.channel_name}/Step items"]
         ]
+
+    @cached_property
+    def axis(self) -> int:
+        """Axis along which `channel_name` is stepped/swept."""
+        return self._file._step_channel_names.index(self.channel_name)
 
 
 class AfterLast(Enum):
