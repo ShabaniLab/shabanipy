@@ -133,26 +133,52 @@ class ShaBlabberFile(File):
 
     @cached_property
     def _step_channels(self) -> List[Channel]:
-        """Channels that are stepped/swept."""
+        """Channels that are added to the 'Step sequence'."""
         return [self.get_channel(name) for name in self._step_channel_names]
 
     @cached_property
     def _step_channel_names(self) -> List[str]:
-        """Names of channels that are stepped/swept."""
+        """Names of channels that are added to the 'Step sequence'."""
         return [sc.channel_name for sc in self._step_configs]
 
     @cached_property
     def _step_configs(self) -> List[StepConfig]:
-        """Step configurations for channels that are stepped/swept."""
+        """Step configurations for channels that are added to the 'Step sequence'."""
         return [StepConfig(self, *sc) for sc in self["Step list"]]
 
     def _get_step_config(self, channel_name) -> StepConfig:
         """Get the step config for `channel_name`."""
         if channel_name not in self._step_channel_names:
             raise ValueError(
-                f"'{channel_name}' is not a stepped channel.  Available stepped channels are:\n{pformat(self._step_channel_names)}"
+                f"'{channel_name}' is not in the step sequence.  Available channels in the step sequence are:\n{pformat(self._step_channel_names)}"
             )
         return self._step_configs[self._step_channel_names.index(channel_name)]
+
+    @cached_property
+    def _stepped_step_channels(self) -> List[Channel]:
+        """Channels in the 'Step sequence' that are actually stepped/swept."""
+        return [
+            self.get_channel(name)
+            for name in np.array(self._step_channel_names)[self._step_idxs]
+        ]
+
+    @cached_property
+    def _fixed_step_channels(self) -> List[Channel]:
+        """Channels in the 'Step sequence' that are fixed at a single value."""
+        return [
+            self.get_channel(name)
+            for name in np.array(self._step_channel_names)[self._fixed_idxs]
+        ]
+
+    @property
+    def _step_idxs(self) -> List[int]:
+        """Indexes of channels in the 'Step sequence' that are actually stepped/swept."""
+        return self["Data"].attrs["Step index"]
+
+    @property
+    def _fixed_idxs(self) -> List[int]:
+        """Indexes of channels in the 'Step sequence' that are fixed at a single value."""
+        return self["Data"].attrs["Fixed step index"]
 
     @cached_property
     def _log_channels(self) -> List[Channel]:
@@ -183,7 +209,10 @@ class ShaBlabberFile(File):
         return self._instruments[self._instrument_ids.index(instrument_id)]
 
     def get_data(
-        self, *channel_names: str, order: Optional[Iterable[str]] = None
+        self,
+        *channel_names: str,
+        sort: bool = True,
+        order: Optional[Iterable[str]] = None,
     ) -> Tuple[np.ndarray]:
         """Get the data from `channel_names`.
 
@@ -191,11 +220,22 @@ class ShaBlabberFile(File):
         ----------
         *channel_names
             Names of channels to get data from.
+        sort
+            Sort the data so all stepped channels are monotonically increasing
+            (default).  Otherwise, data remain in the order they were recorded.
         order
             List of stepped channel names defining how the data axes should be ordered.
             If None, axes are ordered according to Labber (i.e. inner loop first).
         """
         data = tuple(self._get_channel_data(name) for name in channel_names)
+        if sort:
+            step_data = tuple(c.get_data() for c in self._stepped_step_channels)
+            step_axes = tuple(c._step_config.axis for c in self._stepped_step_channels)
+            sort_idxs = tuple(
+                np.argsort(sd, axis=ax) for sd, ax in zip(step_data, step_axes)
+            )
+            for i, sort_idx in enumerate(sort_idxs):
+                data = tuple(np.take_along_axis(d, sort_idx, i) for d in data)
         if order:
             data = tuple(
                 np.moveaxis(
