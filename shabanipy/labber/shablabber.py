@@ -163,6 +163,11 @@ class ShaBlabberFile(File):
         ]
 
     @cached_property
+    def _stepped_step_channel_names(self) -> List[str]:
+        """Names of channels in the 'Step sequence' that are actually stepped/swept."""
+        return [c.name for c in self._stepped_step_channels]
+
+    @cached_property
     def _fixed_step_channels(self) -> List[Channel]:
         """Channels in the 'Step sequence' that are fixed at a single value."""
         return [
@@ -220,6 +225,7 @@ class ShaBlabberFile(File):
         ----------
         *channel_names
             Names of channels to get data from.
+            If empty, data from all step and log channels are returned.
         sort
             Sort the data so all stepped channels are monotonically increasing
             (default).  Otherwise, data remain in the order they were recorded.
@@ -227,6 +233,8 @@ class ShaBlabberFile(File):
             List of stepped channel names defining how the data axes should be ordered.
             If None, axes are ordered according to Labber (i.e. inner loop first).
         """
+        if len(channel_names) == 0:
+            channel_names = self._stepped_step_channel_names + self._log_channel_names
         data = tuple(self._get_channel_data(name) for name in channel_names)
         if sort:
             step_data = tuple(c.get_data() for c in self._stepped_step_channels)
