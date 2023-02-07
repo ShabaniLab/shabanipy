@@ -217,6 +217,7 @@ class ShaBlabberFile(File):
         self,
         *channel_names: str,
         sort: bool = True,
+        slices: Optional[Iterable(Union[int, slice, Ellipsis])] = None,
         order: Optional[Iterable[str]] = None,
     ) -> Tuple[np.ndarray]:
         """Get the data from `channel_names`.
@@ -232,6 +233,9 @@ class ShaBlabberFile(File):
         order
             List of stepped channel names defining how the data axes should be ordered.
             If None, axes are ordered according to Labber (i.e. inner loop first).
+        slices
+            List of slices to take along each axis of the data.
+            Axes are ordered according to `order`.  Ellipsis (...) is supported.
         """
         if len(channel_names) == 0:
             channel_names = self._stepped_step_channel_names + self._log_channel_names
@@ -253,6 +257,9 @@ class ShaBlabberFile(File):
                 )
                 for d in data
             )
+        if slices:
+            data = tuple(d[_expand_ellipsis(slices, d.ndim)] for d in data)
+
         return data
 
 
@@ -476,3 +483,13 @@ def _bytes_to_str(dataclass):
         value = getattr(dataclass, field.name)
         if type(value) is bytes:
             setattr(dataclass, field.name, value.decode("utf-8"))
+
+
+def _expand_ellipsis(tup: Tuple, n: int) -> Tuple:
+    """Expand ...  into :'s so that `tup` has length `n`."""
+    if ... not in tup:
+        return tup
+    i = tup.index(...)
+    listt = list(tup)
+    listt[i : i + 1] = (slice(None),) * (n - len(tup) + 1)
+    return tuple(listt)
