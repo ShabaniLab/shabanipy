@@ -1,0 +1,2 @@
+# save pngs with transparent background
+savefig.transparent : True

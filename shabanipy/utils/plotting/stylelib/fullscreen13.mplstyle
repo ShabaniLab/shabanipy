@@ -1,7 +1,6 @@
 # reasonable parameters for large plots on a 13" screen
 figure.constrained_layout.use : True
 figure.figsize      : 10, 6
-savefig.transparent : True
 font.size           : 16
 pdf.fonttype        : 42
 axes.labelsize      : 20
