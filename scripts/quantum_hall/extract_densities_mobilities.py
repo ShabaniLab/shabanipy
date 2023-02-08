@@ -111,21 +111,42 @@ print(
 
 # plot density/mobility vs. gate
 ax.clear()
-ax.set_title(f"{config.get('FILENAME_PREFIX')}")
-ax.set_xlabel("gate voltage (V)")
-ax.set_ylabel("density ($10^{12}$ cm$^{-2}$)")
-lines_xy = ax.plot(gate_xy[:, 0], density / 1e4 / 1e12, "ko-", label="$n$")
+fig, _ = plot(
+    gate_xy[:, 0],
+    density / 1e16,
+    "ko-",
+    label="$n$",
+    xlabel="gate voltage (V)",
+    ylabel="density ($10^{12}$ cm$^{-2}$)",
+    title=f"{config.get('FILENAME_PREFIX')}",
+    ax=ax,
+)
 ax2 = ax.twinx()
-ax2.set_ylabel("mobility ($10^3$ cm$^2$ / V.s)")
-lines_xx = ax2.plot(
-    gate_xx[:, 0], mobility_xx / 1e-4 / 1e3, "o-", label="$\mu_\mathrm{xx}$"
+plot(
+    gate_xx[:, 0],
+    np.array([mobility_xx, mobility_yy]).T / 1e-1,
+    "o-",
+    label=("$\mu_\mathrm{xx}$", "$\mu_\mathrm{yy}$"),
+    ylabel="mobility ($10^3$ cm$^2$ / V.s)",
+    ax=ax2,
 )
-lines_yy = ax2.plot(
-    gate_yy[:, 0], mobility_yy / 1e-4 / 1e3, "o-", label="$\mu_\mathrm{yy}$"
-)
-lines = lines_xy + lines_xx + lines_yy
+lines = ax.get_lines() + ax2.get_lines()
+ax.get_legend().remove()
 ax2.legend(lines, [l.get_label() for l in lines])
-fig.savefig(OUTDIR / f"{CHIP_ID}_density-mobility.png")
+fig.savefig(OUTDIR / f"{CHIP_ID}_density-mobility-vs-gate.png")
+
+# plot mobility vs. density
+fig, ax = plot(
+    density / 1e16,
+    np.array([mobility_xx, mobility_yy]).T / 1e-1,
+    "o-",
+    xlabel="density ($10^{12}$ cm$^{-2}$)",
+    ylabel="mobility ($10^3$ cm$^2$ / V.s)",
+    title=f"{config.get('FILENAME_PREFIX')}",
+)
+ax.legend(["$\mu_\mathrm{xx}$", "$\mu_\mathrm{yy}$"])
+fig.savefig(OUTDIR / f"{CHIP_ID}_mobility-vs-density")
+
 
 # compute and save transport parameters vs. gate
 mass = 0.03
