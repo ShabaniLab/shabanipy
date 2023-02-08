@@ -1,159 +1,160 @@
-# -*- coding: utf-8 -*-
-"""Extract the density and mobility from a quantum hall measurement.
-
-"""
-
-# =============================================================================
-# --- Parameters --------------------------------------------------------------
-# =============================================================================
-
-#: Path towards the hdf5 file holding the data
-PATH = r"/Users/mdartiailh/Labber/Data/2018/08/Data_0827/JS129A_129VP_JY001_002.hdf5"
-
-#: Index or name of the column containing the gate voltage values.
-GATE_COLUMN = None
-
-#: Index or name of the column containing the applied magnetic field.
-FIELD_COLUMN = 0
-
-#: Index or name of the column contaning the longitudinal voltage drop
-#: measurement along x.
-XX_VOLTAGE_COLUMN = 1
-
-#: Index or name of the column contaning the longitudinal voltage drop
-#: measurement along y.
-YY_VOLTAGE_COLUMN = 3
-
-#: Index or name of the column contaning the transverse voltage drop
-#: measurement.
-XY_VOLTAGE_COLUMN = 5
-
-#: Component of the measured voltage to use for analysis.
-#: Recognized values are 'real', 'imag', 'magnitude'
-LOCK_IN_QUANTITY = "real"
-
-#: Value of the excitation current used by the lock-in amplifier in A.
-PROBE_CURRENT = 50e-9
-
-#: Sample geometry used to compute the mobility.
-#: Accepted values are 'Van der Pauw', 'Standard Hall bar'
-GEOMETRY = "Standard Hall bar"
-
-#: Magnetic field bounds to use when extracting the density.
-FIELD_BOUNDS = (500e-3, 2)
-
-#: Effective mass of the carriers in unit of the electron mass.
-EFFECTIVE_MASS = 0.03
-
-#: File in which to store the results of the analysis as a function of gate
-#: voltage.
-RESULT_PATH = (
-    "/Users/mdartiailh/Documents/PostDocNYU/DataAnalysis/Shapiro/2019-11-JS129"
-    "JS129A_129VP_JY001_002_density_mobility.csv"
-)
-
-# =============================================================================
-# --- Execution ---------------------------------------------------------------
-# =============================================================================
-
-import os
+"""Extract the density and mobility vs. gate voltage from a quantum Hall measurement."""
+import argparse
+import json
+import warnings
+from functools import partial
+from pathlib import Path
 
 import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
-import scipy.constants as cs
+from matplotlib import pyplot as plt
+from pandas import DataFrame
+from scipy.constants import e, hbar, m_e
 
-from shabanipy.quantum_hall.conversion import (
-    convert_lock_in_meas_to_diff_res,
-    GEOMETRIC_FACTORS,
-    fermi_velocity_from_density,
-    mean_free_time_from_mobility,
-    diffusion_constant_from_mobility_density,
+from shabanipy.labber import ShaBlabberFile
+from shabanipy.quantum_hall import extract_density, extract_mobility
+from shabanipy.utils import load_config, plot
+
+print = partial(print, flush=True)
+
+parser = argparse.ArgumentParser(
+    description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
-from shabanipy.quantum_hall.density import extract_density
-from shabanipy.quantum_hall.mobility import extract_mobility
-from shabanipy.labber import LabberData
+parser.add_argument(
+    "config_path", help="path to .ini config file, relative to this script"
+)
+parser.add_argument("config_section", help="section of the .ini config file to use")
+args = parser.parse_args()
+_, config = load_config(args.config_path, args.config_section)
+plt.style.use("fullscreen13")
+OUTDIR = Path("./output/")
+OUTDIR.mkdir(exist_ok=True)
+print(f"Output directory: {OUTDIR}")
+CHIP_ID = f"{config['WAFER']}-{config['PIECE']}"
 
 
-with LabberData(PATH) as data:
-
-    names = data.channel_names
-    if GATE_COLUMN is not None:
-        gate = data.get_data(GATE_COLUMN)
-        field = data.get_data(FIELD_COLUMN)
-    else:
-        field = data.get_data(FIELD_COLUMN)
-        gate = np.zeros(1)
-    res = {}
-    for col, label in zip(
-        (XX_VOLTAGE_COLUMN, YY_VOLTAGE_COLUMN, XY_VOLTAGE_COLUMN), ("xx", "yy", "xy")
-    ):
-        if col is not None:
-            res[label] = None
-    for k in res:
-        name = globals()[f"{k.upper()}_VOLTAGE_COLUMN"]
-        if LOCK_IN_QUANTITY == "real":
-            val = data.get_data(name).real
-        elif LOCK_IN_QUANTITY == "imag":
-            val = data.get_data(name).imag
-        else:
-            val = np.abs(data.get_data(name))
-
-        val = val
-
-        res[k] = convert_lock_in_meas_to_diff_res(val, PROBE_CURRENT)
-
-if GATE_COLUMN is not None:
-    gate = gate[:, 0]
-
-if "xy" in res:
-    density, std_density, *_ = extract_density(field, res["xy"], FIELD_BOUNDS)
-    print(f"{density / 1e4:g}")
-
-if "xx" in res and "yy" in res:
-    mobility = extract_mobility(
-        field, res["xx"], res["yy"], density, GEOMETRIC_FACTORS[GEOMETRY]
-    )
-
-if len(res) == 3:
-    mass = EFFECTIVE_MASS * cs.electron_mass
-    vf = fermi_velocity_from_density(density, mass)
-    mft = mean_free_time_from_mobility(mobility, mass)
-    diff = diffusion_constant_from_mobility_density(mobility, density, mass)
-
-
-if RESULT_PATH:
-    df = pd.DataFrame(
-        {
-            "Gate voltage (V)": gate,
-            "Density (m^-2)": density,
-            "Stderr density (m^-2)": std_density,
-            "Mobility xx (m^2V^-1s^-1)": mobility[0],
-            "Mobility yy (m^2V^-1s^-1)": mobility[1],
-            "Mean free time xx (s)": mft[0],
-            "Mean free time yy (s)": mft[1],
-            "Diffusion xx (m^2/s)": diff[0],
-            "Diffusion yy (m^2/s)": diff[1],
-        }
-    )
-    with open(RESULT_PATH, "w") as f:
-        f.write(
-            f"# Probe-current: {PROBE_CURRENT}\n"
-            f"# Effective mass: {EFFECTIVE_MASS}\n"
-            f"# Geometry: {GEOMETRY}\n"
-            f"# Lock-in quantity: {LOCK_IN_QUANTITY}\n"
+def get_hall_data(datapath, ch_lockin_meas, ch_lockin_source):
+    with ShaBlabberFile(datapath) as f:
+        gate, bfield, dvdi = f.get_data(
+            config["CH_GATE"],
+            config["CH_FIELD_PERP"],
+            ch_lockin_meas,
+            order=(config["CH_GATE"], config["CH_FIELD_PERP"]),
         )
-        df.to_csv(f, index=False)
+        ibias_ac = f.get_channel(ch_lockin_source).instrument.config[
+            "Output amplitude"
+        ] / config.getfloat("R_OUTPUT")
+        print(f"AC bias current = {ibias_ac / 1e-6} μA")
+        dvdi /= ibias_ac
+    return gate, bfield, dvdi.real
 
-if len(res) == 3:
-    fig, axes = plt.subplots(1, 2)
-    axes[0].errorbar(gate, density / 1e4, std_density / 1e4, fmt="*")
-    axes[0].set_xlabel("Gate voltage (V)")
-    axes[0].set_ylabel("Density (cm$^2$)")
-    axes[1].plot(density / 1e4, mobility[0] * 1e4, "+", label="xx")
-    axes[1].plot(density / 1e4, mobility[1] * 1e4, "x", label="yy")
-    axes[1].set_xlabel("Density (cm$^2$)")
-    axes[1].set_ylabel("Mobility (cm$^2$V$^-1$s$^-1$)")
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+
+gate_xx, bfield_xx, rxx = get_hall_data(
+    config["DATAPATH_RXX"], config["CH_LOCKIN_XX_MEAS"], config["CH_LOCKIN_XX_SOURCE"],
+)
+gate_yy, bfield_yy, ryy = get_hall_data(
+    config["DATAPATH_RYY"], config["CH_LOCKIN_YY_MEAS"], config["CH_LOCKIN_YY_SOURCE"],
+)
+gate_xy, bfield_xy, rxy = get_hall_data(
+    config["DATAPATH_RXY"], config["CH_LOCKIN_XY_MEAS"], config["CH_LOCKIN_XY_SOURCE"],
+)
+
+# calculate density
+if "FIELD_CUTOFFS" in config:
+    field_cutoffs = json.loads(config.get("FIELD_CUTOFFS"))
+else:
+    field_cutoffs = (bfield_xy.min(), bfield_xy.max())
+density, density_std, fits = extract_density(bfield_xy, rxy, field_cutoffs)
+print(f"Density @ 0V: {density[gate_xy[:, 0] == 0] / 1e16} e12/cm2")
+
+# plot density fits
+FITS_DIR = OUTDIR / f"{CHIP_ID}_fits"
+FITS_DIR.mkdir(exist_ok=True)
+fig, ax = plt.subplots()
+for g, b, r, n, n_std, fit in zip(gate_xy, bfield_xy, rxy, density, density_std, fits):
+    if len(set(g)) != 1:
+        warnings.warn(
+            f"Gate voltage is assumed constant for each field sweep, but {min(g)=}, {max(g)=}"
+        )
+    g = g[0]
+    plot(
+        b,
+        r,
+        "o",
+        ax=ax,
+        xlabel="out-of-plane field (T)",
+        ylabel=r"$R_{xy}$ (Ω)",
+        title=f"gate voltage = {round(g, 5)} V",
+        stamp=f"{config['COOLDOWN']}_{config['SCAN_RXY']}",
+        label="data",
+    )
+    ax.text(
+        0.5,
+        0.9,
+        f"density $\\approx$ {n / 1e4:.1e} cm$^{-2}$",
+        transform=ax.transAxes,
+        ha="center",
+        va="top",
+    )
+    ax.plot(b, fit.best_fit, label="fit")
+    ax.legend()
+    fig.savefig(FITS_DIR / f"rxy_{round(g, 5)}V.png")
+    plt.cla()
+
+# calculate mobility
+print("Assuming bfield sweeps for rxx and ryy are the same")
+mobility_xx, mobility_yy = extract_mobility(
+    bfield_xx, rxx, ryy, density, config.getfloat("GEOMETRIC_FACTOR")
+)
+print(
+    f"Peak mobility (xx, yy): {mobility_xx.max() / 1e-1, mobility_yy.max() / 1e-1} e3 cm2/Vs"
+)
+
+# plot density/mobility vs. gate
+ax.clear()
+ax.set_title(f"{config.get('FILENAME_PREFIX')}")
+ax.set_xlabel("gate voltage (V)")
+ax.set_ylabel("density ($10^{12}$ cm$^{-2}$)")
+lines_xy = ax.plot(gate_xy[:, 0], density / 1e4 / 1e12, "ko-", label="$n$")
+ax2 = ax.twinx()
+ax2.set_ylabel("mobility ($10^3$ cm$^2$ / V.s)")
+lines_xx = ax2.plot(
+    gate_xx[:, 0], mobility_xx / 1e-4 / 1e3, "o-", label="$\mu_\mathrm{xx}$"
+)
+lines_yy = ax2.plot(
+    gate_yy[:, 0], mobility_yy / 1e-4 / 1e3, "o-", label="$\mu_\mathrm{yy}$"
+)
+lines = lines_xy + lines_xx + lines_yy
+ax2.legend(lines, [l.get_label() for l in lines])
+fig.savefig(OUTDIR / f"{CHIP_ID}_density-mobility.png")
+
+# compute and save transport parameters vs. gate
+mass = 0.03
+print(f"Assuming effective mass: {mass} m_e")
+print(f"Assuming gate voltage sweeps are the same for Rxx, Ryy, and Rxy")
+mass *= m_e
+kf = np.sqrt(2 * np.pi * density)
+vf = hbar * kf / mass
+txx = mobility_xx * mass / e
+tyy = mobility_yy * mass / e
+df = DataFrame(
+    {
+        "gate (V)": gate_xx[:, 0],
+        "density (e12 cm^-2)": density / 1e4 / 1e12,
+        "Fermi wavenumber (nm^-1)": kf / 1e9,
+        "Fermi wavelength (nm)": 2 * np.pi / kf / 1e-9,
+        "Fermi velocity (e6 m/s)": vf / 1e6,
+        "Fermi energy (meV)": hbar ** 2 * kf ** 2 / (2 * mass) / 1e-3 / e,
+        "mobility xx (e3 cm^2/V.s)": mobility_xx / 1e-4 / 1e3,
+        "mobility yy (e3 cm^2/V.s)": mobility_yy / 1e-4 / 1e3,
+        "mean free time xx (fs)": txx / 1e-15,
+        "mean free time yy (fs)": tyy / 1e-15,
+        "mean free path xx (nm)": vf * txx / 1e-9,
+        "mean free path yy (nm)": vf * tyy / 1e-9,
+        "diffusion coefficient xx (m^2/s)": vf ** 2 * txx / 2,
+        "diffusion coefficient yy (m^2/s)": vf ** 2 * tyy / 2,
+    }
+)
+with open(OUTDIR / f"{CHIP_ID}_transport-params.csv", "w") as f:
+    df.to_csv(f, index=False)
+
+plt.show()
