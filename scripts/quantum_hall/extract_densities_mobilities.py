@@ -32,7 +32,7 @@ print(f"Output directory: {OUTDIR}")
 CHIP_ID = f"{config['WAFER']}-{config['PIECE']}"
 
 
-def get_hall_data(datapath, ch_lockin_meas, ch_lockin_source):
+def get_hall_data(datapath, ch_lockin_meas):
     with ShaBlabberFile(datapath) as f:
         gate, bfield, dvdi = f.get_data(
             config["CH_GATE"],
@@ -40,22 +40,18 @@ def get_hall_data(datapath, ch_lockin_meas, ch_lockin_source):
             ch_lockin_meas,
             order=(config["CH_GATE"], config["CH_FIELD_PERP"]),
         )
-        ibias_ac = f.get_channel(ch_lockin_source).instrument.config[
-            "Output amplitude"
-        ] / config.getfloat("R_OUTPUT")
-        print(f"AC bias current = {ibias_ac / 1e-6} μA")
-        dvdi /= ibias_ac
+        dvdi /= config.getfloat("IBIAS_AC")
     return gate, bfield, dvdi.real
 
 
 gate_xx, bfield_xx, rxx = get_hall_data(
-    config["DATAPATH_RXX"], config["CH_LOCKIN_XX_MEAS"], config["CH_LOCKIN_XX_SOURCE"],
+    config["DATAPATH_RXX"], config["CH_LOCKIN_XX_MEAS"]
 )
 gate_yy, bfield_yy, ryy = get_hall_data(
-    config["DATAPATH_RYY"], config["CH_LOCKIN_YY_MEAS"], config["CH_LOCKIN_YY_SOURCE"],
+    config["DATAPATH_RYY"], config["CH_LOCKIN_YY_MEAS"]
 )
 gate_xy, bfield_xy, rxy = get_hall_data(
-    config["DATAPATH_RXY"], config["CH_LOCKIN_XY_MEAS"], config["CH_LOCKIN_XY_SOURCE"],
+    config["DATAPATH_RXY"], config["CH_LOCKIN_XY_MEAS"]
 )
 
 # calculate density
