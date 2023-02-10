@@ -209,8 +209,8 @@ class ShaBlabberFile(File):
         self,
         *channel_names: str,
         sort: bool = True,
-        slices: Optional[Iterable(Union[int, slice, Ellipsis])] = None,
         order: Optional[Iterable[str]] = None,
+        slices: Optional[Iterable[Union[int, slice, Ellipsis]]] = None,
     ) -> Tuple[np.ndarray]:
         """Get the data from `channel_names`.
 
