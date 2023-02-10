@@ -105,14 +105,6 @@ class ShaBlabberFile(File):
             )
         return self._channels[self._channel_names.index(channel_name)]
 
-    def _get_channel_data(self, channel_name: str) -> np.ndarray:
-        """Get the data for `channel_name`."""
-        if channel_name not in self._data_channel_names:
-            raise ValueError(
-                f"'{channel_name}' is not a data channel.  Available data channels are:\n{pformat(list(dict.fromkeys(self._data_channel_names)))}"
-            )
-        return self.get_channel(channel_name).get_data()
-
     @cached_property
     def _data_channels(self) -> List[Channel]:
         """Channels that are stepped/swept or logged/measured."""
@@ -239,7 +231,7 @@ class ShaBlabberFile(File):
         """
         if len(channel_names) == 0:
             channel_names = self._stepped_step_channel_names + self._log_channel_names
-        data = tuple(self._get_channel_data(name) for name in channel_names)
+        data = tuple(self.get_channel(name).get_data() for name in channel_names)
         if sort:
             step_data = tuple(c.get_data() for c in self._stepped_step_channels)
             step_axes = tuple(c._step_config.axis for c in self._stepped_step_channels)
@@ -305,6 +297,11 @@ class Channel:
         return isinstance(self.instrument.config[self.quantity], complex)
 
     def get_data(self) -> np.ndarray:
+        if self.name not in self._file._data_channel_names:
+            raise ValueError(
+                f"'{self.name}' is not a data channel.  Available data channels are:\n"
+                f"{pformat(list(dict.fromkeys(self._file._data_channel_names)))}"
+            )
         if self._is_complex:
             return self._get_complex_data()
         else:
