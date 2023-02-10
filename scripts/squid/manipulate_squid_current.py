@@ -85,7 +85,7 @@ L = SimpleNamespace(
         valmin=0,
         valmax=1,
         valinit=0,
-        valfmt=r"%0.3f $\frac{\Phi_0}{\mathrm{max}I_\mathrm{loop}}$",
+        valfmt=r"%0.3f $\frac{\Phi_0}{I_{c1} + I_{c2}}$",
     )
 )
 params = [logratio, tau1, tau2, phi01, phi02, L]
