@@ -61,7 +61,9 @@ if "FIELD_CUTOFFS" in config:
 else:
     field_cutoffs = (bfield_xy.min(), bfield_xy.max())
 density, density_std, fits = extract_density(bfield_xy, rxy, field_cutoffs)
-print(f"Density @ 0V: {density[gate_xy[:, 0] == 0] / 1e16} e12/cm2")
+print(
+    f"Density @ 0V: {density[np.isclose(gate_xy[:, 0], 0)].squeeze() / 1e16:.2f} e12/cm2"
+)
 
 # plot density fits
 FITS_DIR = OUTDIR / f"{CHIP_ID}_fits"
@@ -94,7 +96,7 @@ for g, b, r, n, n_std, fit in zip(gate_xy, bfield_xy, rxy, density, density_std,
     )
     ax.plot(b, fit.best_fit, label="fit")
     ax.legend()
-    fig.savefig(FITS_DIR / f"rxy_{round(g, 5)}V.png")
+    fig.savefig(FITS_DIR / f"rxy_{g:+.3f}V.png")
     plt.cla()
 
 # calculate mobility
@@ -103,7 +105,7 @@ mobility_xx, mobility_yy = extract_mobility(
     bfield_xx, rxx, ryy, density, config.getfloat("GEOMETRIC_FACTOR")
 )
 print(
-    f"Peak mobility (xx, yy): {mobility_xx.max() / 1e-1, mobility_yy.max() / 1e-1} e3 cm2/Vs"
+    f"Peak mobility (xx, yy): {mobility_xx.max() / 1e-1:.1f}, {mobility_yy.max() / 1e-1:.1f} e3 cm2/Vs"
 )
 
 # plot density/mobility vs. gate
