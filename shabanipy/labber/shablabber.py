@@ -246,11 +246,12 @@ class ShaBlabberFile(File):
             for index, axis in zip(sort_idxs, step_axes):
                 data = tuple(np.take_along_axis(d, index, axis) for d in data)
         if filters:
+            sort = np.sort if sort else lambda a, *_: a
             masks, shapes = [], []
             for filt in filters:
                 channel = self.get_channel(filt[0])
                 axis = channel._step_config.axis
-                mask = filt[1](np.sort(channel.get_data(), axis), filt[2])
+                mask = filt[1](sort(channel.get_data(), axis), filt[2])
                 shape = list(data[0].shape)
                 shape[axis] = -1
                 for m, s in zip(masks, shapes):
