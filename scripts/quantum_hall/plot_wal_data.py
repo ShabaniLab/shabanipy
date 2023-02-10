@@ -68,6 +68,7 @@ def plot(bfield, gate, res, xx):
     fig, ax = plt.subplots()
     ax.set_xlabel("out-of-plane field (mT)")
     ax.set_ylabel(f"$\Delta\\rho_{{{xx}}}$ (Ω)")
+    ax.set_title(f"{config.get('FILENAME_PREFIX')}")
     for i, (b, r) in enumerate(zip(bfield, res)):
         ax.plot(b / 1e-3, r - r[0], color=cmap(i / len(gate)))
     lines = ax.get_lines()
