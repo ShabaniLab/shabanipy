@@ -161,15 +161,15 @@ df = DataFrame(
         "Fermi wavenumber (nm^-1)": kf / 1e9,
         "Fermi wavelength (nm)": 2 * np.pi / kf / 1e-9,
         "Fermi velocity (e6 m/s)": vf / 1e6,
-        "Fermi energy (meV)": hbar ** 2 * kf ** 2 / (2 * mass) / 1e-3 / e,
+        "Fermi energy (meV)": hbar**2 * kf**2 / (2 * mass) / 1e-3 / e,
         "mobility xx (e3 cm^2/V.s)": mobility_xx / 1e-4 / 1e3,
         "mobility yy (e3 cm^2/V.s)": mobility_yy / 1e-4 / 1e3,
         "mean free time xx (fs)": txx / 1e-15,
         "mean free time yy (fs)": tyy / 1e-15,
         "mean free path xx (nm)": vf * txx / 1e-9,
         "mean free path yy (nm)": vf * tyy / 1e-9,
-        "diffusion coefficient xx (m^2/s)": vf ** 2 * txx / 2,
-        "diffusion coefficient yy (m^2/s)": vf ** 2 * tyy / 2,
+        "diffusion coefficient xx (m^2/s)": vf**2 * txx / 2,
+        "diffusion coefficient yy (m^2/s)": vf**2 * tyy / 2,
     }
 )
 with open(OUTDIR / f"{CHIP_ID}_transport-params.csv", "w") as f:
