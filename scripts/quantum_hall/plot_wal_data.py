@@ -39,14 +39,16 @@ while config.get(f"FILTER{n}_CH"):
     )
     n += 1
 
+CH_GATE = config.get("CH_GATE", "gate - Source voltage")
+
 
 def get_hall_data(datapath, ch_lockin_meas):
     with ShaBlabberFile(datapath) as f:
         gate, bfield, dvdi = f.get_data(
-            config["CH_GATE"],
+            CH_GATE,
             config["CH_FIELD_PERP"],
             ch_lockin_meas,
-            order=(config["CH_GATE"], config["CH_FIELD_PERP"]),
+            order=(CH_GATE, config["CH_FIELD_PERP"]),
             filters=filters,
         )
         dvdi /= config.getfloat("IBIAS_AC")
@@ -55,10 +57,10 @@ def get_hall_data(datapath, ch_lockin_meas):
 
 
 gate_xx, bfield_xx, rxx = get_hall_data(
-    config["DATAPATH_RXX"], config["CH_LOCKIN_XX_MEAS"]
+    config["DATAPATH_RXX"], config.get("CH_LOCKIN_XX", "Rxx - Value")
 )
 gate_yy, bfield_yy, ryy = get_hall_data(
-    config["DATAPATH_RYY"], config["CH_LOCKIN_YY_MEAS"]
+    config["DATAPATH_RYY"], config.get("CH_LOCKIN_YY", "Ryy - Value")
 )
 
 

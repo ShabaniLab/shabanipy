@@ -30,28 +30,29 @@ OUTDIR = Path("./output/")
 OUTDIR.mkdir(exist_ok=True)
 print(f"Output directory: {OUTDIR}")
 CHIP_ID = f"{config['WAFER']}-{config['PIECE']}"
+CH_GATE = config.get("CH_GATE", "gate - Source voltage")
 
 
 def get_hall_data(datapath, ch_lockin_meas):
     with ShaBlabberFile(datapath) as f:
         gate, bfield, dvdi = f.get_data(
-            config["CH_GATE"],
+            CH_GATE,
             config["CH_FIELD_PERP"],
             ch_lockin_meas,
-            order=(config["CH_GATE"], config["CH_FIELD_PERP"]),
+            order=(CH_GATE, config["CH_FIELD_PERP"]),
         )
         dvdi /= config.getfloat("IBIAS_AC")
     return gate, bfield, dvdi.real
 
 
 gate_xx, bfield_xx, rxx = get_hall_data(
-    config["DATAPATH_RXX"], config["CH_LOCKIN_XX_MEAS"]
+    config["DATAPATH_RXX"], config.get("CH_LOCKIN_XX", "Rxx - Value")
 )
 gate_yy, bfield_yy, ryy = get_hall_data(
-    config["DATAPATH_RYY"], config["CH_LOCKIN_YY_MEAS"]
+    config["DATAPATH_RYY"], config.get("CH_LOCKIN_YY", "Ryy - Value")
 )
 gate_xy, bfield_xy, rxy = get_hall_data(
-    config["DATAPATH_RXY"], config["CH_LOCKIN_XY_MEAS"]
+    config["DATAPATH_RXY"], config.get("CH_LOCKIN_XY", "Rxy - Value")
 )
 
 # calculate density
