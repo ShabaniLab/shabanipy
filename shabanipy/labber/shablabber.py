@@ -243,8 +243,8 @@ class ShaBlabberFile(File):
             sort_idxs = tuple(
                 np.argsort(sd, axis=ax) for sd, ax in zip(step_data, step_axes)
             )
-            for i, sort_idx in enumerate(sort_idxs):
-                data = tuple(np.take_along_axis(d, sort_idx, i) for d in data)
+            for index, axis in zip(sort_idxs, step_axes):
+                data = tuple(np.take_along_axis(d, index, axis) for d in data)
         if filters:
             masks, shapes = [], []
             for filt in filters:
