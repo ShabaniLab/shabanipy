@@ -61,8 +61,9 @@ if "FIELD_CUTOFFS" in config:
 else:
     field_cutoffs = (bfield_xy.min(), bfield_xy.max())
 density, density_std, fits = extract_density(bfield_xy, rxy, field_cutoffs)
+gate0mask = np.isclose(gate_xy[:, 0], 0)
 print(
-    f"Density @ 0V: {density[np.isclose(gate_xy[:, 0], 0)].squeeze() / 1e16:.2f} e12/cm2"
+    f"Density @ 0V: {density[gate0mask].squeeze() / 1e16:.2f} (+/- {density_std[gate0mask].squeeze() / 1e16:.2f}) e12/cm2 "
 )
 
 # plot density fits
@@ -89,7 +90,7 @@ for g, b, r, n, n_std, fit in zip(gate_xy, bfield_xy, rxy, density, density_std,
     ax.text(
         0.5,
         0.9,
-        f"density $\\approx$ {n / 1e4:.1e} cm$^{-2}$",
+        f"density $\\approx$ {n / 1e16:.2f} ($\\pm$ {n_std / 1e16:.2f}) e12/cm$^2$",
         transform=ax.transAxes,
         ha="center",
         va="top",
@@ -105,7 +106,7 @@ mobility_xx, mobility_yy = extract_mobility(
     bfield_xx, rxx, ryy, density, config.getfloat("GEOMETRIC_FACTOR")
 )
 print(
-    f"Peak mobility (xx, yy): {mobility_xx.max() / 1e-1:.1f}, {mobility_yy.max() / 1e-1:.1f} e3 cm2/Vs"
+    f"Peak mobility (xx, yy): ({mobility_xx.max() / 1e-1:.1f}, {mobility_yy.max() / 1e-1:.1f}) e3 cm2/Vs"
 )
 
 # plot density/mobility vs. gate
@@ -119,6 +120,13 @@ fig, _ = plot(
     ylabel="density ($10^{12}$ cm$^{-2}$)",
     title=f"{config.get('FILENAME_PREFIX')}",
     ax=ax,
+)
+ax.errorbar(
+    gate_xy[:, 0],
+    density / 1e16,
+    yerr=density_std / 1e16,
+    fmt="none",
+    ecolor="k",
 )
 ax2 = ax.twinx()
 plot(
