@@ -14,7 +14,7 @@ from functools import cached_property
 from os import environ
 from pathlib import Path
 from pprint import pformat
-from typing import Iterable, List, Optional, Union
+from typing import Callable, Iterable, List, Optional, Union
 
 import numpy as np
 from h5py import File
@@ -209,6 +209,7 @@ class ShaBlabberFile(File):
         self,
         *channel_names: str,
         sort: bool = True,
+        filters: Optional[Iterable[Tuple[str, Callable, float]]] = None,
         order: Optional[Iterable[str]] = None,
         slices: Optional[Iterable[Union[int, slice, Ellipsis]]] = None,
     ) -> Tuple[np.ndarray]:
@@ -222,6 +223,10 @@ class ShaBlabberFile(File):
         sort
             Sort the data so all stepped channels are monotonically increasing
             (default).  Otherwise, data remain in the order they were recorded.
+        filters
+            List of (channel_name, callable, value) used to filter the data.
+            E.g. ("magnet", np.less, 5) will return data for which B < 5.  This will
+            change the shape of the data and affect subsequent `slices`.
         order
             List of stepped channel names defining how the data axes should be ordered.
             If None, axes are ordered according to Labber (i.e. inner loop first).
@@ -240,6 +245,19 @@ class ShaBlabberFile(File):
             )
             for i, sort_idx in enumerate(sort_idxs):
                 data = tuple(np.take_along_axis(d, sort_idx, i) for d in data)
+        if filters:
+            masks, shapes = [], []
+            for filt in filters:
+                channel = self.get_channel(filt[0])
+                axis = channel._step_config.axis
+                mask = filt[1](np.sort(channel.get_data(), axis), filt[2])
+                shape = list(data[0].shape)
+                shape[axis] = -1
+                for m, s in zip(masks, shapes):
+                    mask = mask[m].reshape(s)
+                masks.append(mask)
+                shapes.append(shape)
+                data = tuple(d[mask].reshape(shape) for d in data)
         if order:
             data = tuple(
                 np.moveaxis(
