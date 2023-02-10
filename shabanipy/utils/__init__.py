@@ -11,4 +11,4 @@
 from .configparser import load_config
 from .lmfit_utils import to_dataframe
 from .logging import ConsoleFormatter, InformativeFormatter, configure_logging
-from .plotting import plot, plot2d, plot_labberdata, stamp
+from .plotting import jy_pink, plot, plot2d, plot_labberdata, stamp
