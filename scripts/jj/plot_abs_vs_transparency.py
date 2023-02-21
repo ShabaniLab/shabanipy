@@ -2,6 +2,7 @@
 
 import argparse
 from itertools import product
+from pathlib import Path
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -42,4 +43,10 @@ ax.set_xticks([0, np.pi, 2 * np.pi])
 ax.set_xticklabels(["0", "π", "2π"])
 
 ax.legend(title="transparency")
+
+Path("output").mkdir(exist_ok=True)
+fig.savefig(
+    f"output/abs-vs-transparency_{round(transparency[0], 4)}-{round(transparency[-1], 4)}.png"
+)
+
 plt.show()
