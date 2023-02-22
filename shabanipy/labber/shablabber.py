@@ -7,7 +7,6 @@ datafile created by Labber.  It is a replacement for `labber_io.LabberData`.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, fields
 from datetime import datetime
 from enum import Enum
 from functools import cached_property
@@ -99,7 +98,7 @@ class ShaBlabberFile(File):
     @cached_property
     def _channels(self) -> List[Channel]:
         """All channels in the hdf5 file."""
-        return [Channel(self, *c) for c in self["Channels"]]
+        return [Channel(self, self["Channels"].dtype, c) for c in self["Channels"]]
 
     @cached_property
     def _channel_names(self) -> List[str]:
@@ -145,7 +144,7 @@ class ShaBlabberFile(File):
     @cached_property
     def _step_configs(self) -> List[StepConfig]:
         """Step configurations for channels that are added to the 'Step sequence'."""
-        return [StepConfig(self, *sc) for sc in self["Step list"]]
+        return [StepConfig(self, self["Step list"].dtype, s) for s in self["Step list"]]
 
     def _get_step_config(self, channel_name) -> StepConfig:
         """Get the step config for `channel_name`."""
@@ -199,7 +198,8 @@ class ShaBlabberFile(File):
     @cached_property
     def _instruments(self) -> List[Instrument]:
         """All instruments in the hdf5 file."""
-        return [Instrument(self, *i) for i in self["Instruments"]]
+        instruments = self["Instruments"]
+        return [Instrument(self, instruments.dtype, i) for i in instruments]
 
     @cached_property
     def _instrument_ids(self) -> List[str]:
@@ -283,38 +283,33 @@ class ShaBlabberFile(File):
         return data
 
 
-@dataclass
-class Channel:
+class _DatasetRow:
+    """A row in an hdf5 Dataset with named columns."""
+
+    def __init__(self, file_, dtype, values):
+        self._file = file_
+        for name, value in zip(dtype.names, values):
+            setattr(self, *_parse_field(name, value))
+
+    def __repr__(self):
+        v = vars(self)
+        return (
+            f"{type(self).__name__}("
+            + ", ".join(
+                f"{name}={value}"
+                for name, value in vars(self).items()
+                if name != "_file"
+            )
+            + ")"
+        )
+
+
+class Channel(_DatasetRow):
     """A quantity controlled or measured by an instrument."""
-
-    # hdf5 file this channel belongs to
-    _file: ShaBlabberFile
-
-    # channel properties defined by Labber in the "Channels" hdf5 dataset
-    name: str
-    instrument_id: str
-    quantity: str
-    unitPhys: str
-    unitInstr: str
-    gain: float
-    offset: float
-    amp: float
-    highLim: float
-    lowLim: float
-    outputChannel: str
-    limit_action: str
-    limit_run_script: bool
-    limit_script: str
-    use_log_interval: bool
-    log_interval: float
-    limit_run_always: bool
-
-    def __post_init__(self):
-        _bytes_to_str(self)
 
     @cached_property
     def instrument(self) -> Instrument:
-        return self._file._get_instrument_by_id(self.instrument_id)
+        return self._file._get_instrument_by_id(self._instrument)
 
     @cached_property
     def _step_config(self) -> StepConfig:
@@ -347,84 +342,21 @@ class Channel:
         return (real + 1j * imag).reshape(f._shape, order="F")
 
 
-@dataclass
-class Instrument:
+class Instrument(_DatasetRow):
     """A driver controlling one or more pieces of hardware."""
-
-    # hdf5 file this instrument belongs to
-    _file: ShaBlabberFile
-
-    # instrument properties defined by Labber in the "Instruments" hdf5 dataset
-    hardware: str  # really the driver
-    version: Version
-    id: str
-    model: str
-    name: str
-    interface: int
-    address: str
-    server: str
-    startup: int
-    lock: bool
-    show_advanced: bool
-    timeout: float
-    term_char: str
-    send_end_on_write: bool
-    lock_visa_resource: bool
-    suppress_end_bit_termination_on_read: bool
-    use_specific_tcp_port: bool
-    tcp_port: str
-    use_vicp_protocol: bool
-    baud_rate: float
-    data_bits: float
-    stop_bits: float
-    parity: str
-    gpib_board_number: float
-    send_gpib_go_to_local_at_close: bool
-    pxi_chassis: float
-    run_in_32_bit_mode: bool
-
-    def __post_init__(self):
-        _bytes_to_str(self)
-        self.version = parse_version(self.version)
 
     @property
     def config(self) -> dict:
         return dict(self._file[f"Instrument config/{self.id}"].attrs)
 
 
-@dataclass
-class StepConfig:
+class StepConfig(_DatasetRow):
     """A specification of how a channel is stepped/swept."""
-
-    # hdf5 file this step config belongs to
-    _file: ShaBlabberFile
-
-    # step config specification defined by Labber in the "Step list" hdf5 dataset
-    channel_name: str
-    step_unit: int
-    wait_after: float
-    after_last: AfterLast
-    final_value: float
-    use_relations: bool
-    equation: str
-    show_advanced: bool
-    sweep_mode: SweepMode
-    use_outside_sweep_rate: bool
-    sweep_rate_outside: float
-    alternate_direction: bool
-
-    def __post_init__(self):
-        # here and elsewhere it would be nice to use Converters from the `attrs` package
-        _bytes_to_str(self)
-        self.after_last = AfterLast(self.after_last)
-        self.sweep_mode = SweepMode(self.sweep_mode)
 
     @cached_property
     def step_items(self) -> List[StepItem]:
-        return [
-            StepItem(*si)
-            for si in self._file[f"Step config/{self.channel_name}/Step items"]
-        ]
+        step_items = self._file[f"Step config/{self.channel_name}/Step items"]
+        return [StepItem(self._file, step_items.dtype, s) for s in step_items]
 
     @cached_property
     def axis(self) -> int:
@@ -444,26 +376,8 @@ class SweepMode(Enum):
     CONTINUOUS = 2
 
 
-@dataclass
-class StepItem:
+class StepItem(_DatasetRow):
     """A specification of a range of values to step through."""
-
-    range_type: RangeType
-    step_type: StepType
-    single: float
-    start: float
-    stop: float
-    center: float
-    span: float
-    step_size: float
-    n_points: int
-    interp_type: InterpType
-    sweep_rate: float
-
-    def __post_init__(self):
-        self.range_type = RangeType(self.range_type)
-        self.step_type = StepType(self.step_type)
-        self.interp_type = InterpType(self.interp_type)
 
 
 class RangeType(Enum):
@@ -502,12 +416,26 @@ def get_data_dir():
     return path
 
 
-def _bytes_to_str(dataclass):
-    """Convert all fields in `dataclass` of type `bytes` to type `str`."""
-    for field in fields(dataclass):
-        value = getattr(dataclass, field.name)
-        if type(value) is bytes:
-            setattr(dataclass, field.name, value.decode("utf-8"))
+def _parse_field(name, value):
+    """Parse `name` and `value` into a more useful format and type."""
+    name = name.lower().replace(" ", "_")
+    # `instrument` is reserved for the Instrument object
+    if name == "instrument":
+        name = "_instrument"
+    if type(value) is bytes:
+        value = value.decode("utf-8")
+    value = _parsers.get(name, lambda _: _)(value)
+    return name, value
+
+
+_parsers = {
+    "version": parse_version,
+    "after_last": AfterLast,
+    "sweep_mode": SweepMode,
+    "range_type": RangeType,
+    "step_type": StepType,
+    "interp": InterpType,
+}
 
 
 def _expand_ellipsis(tup: Tuple, n: int) -> Tuple:
