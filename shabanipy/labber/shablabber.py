@@ -108,11 +108,6 @@ class ShaBlabberFile(File):
         return self._channels[self._channel_names.index(channel_name)]
 
     @cached_property
-    def _data_channels(self) -> List[Channel]:
-        """Channels that are stepped/swept or logged/measured."""
-        return [self.get_channel(name) for name in self._data_channel_names]
-
-    @cached_property
     def _data_channel_names(self) -> List[str]:
         """Names of channels that are stepped/swept or logged/measured."""
         return [name.decode("utf-8") for name, _ in self["Data/Channel names"]]
@@ -124,11 +119,6 @@ class ShaBlabberFile(File):
             (name.decode("utf-8"), info.decode("utf-8"))
             for name, info in self["Data/Channel names"]
         ]
-
-    @cached_property
-    def _step_channels(self) -> List[Channel]:
-        """Channels that are added to the 'Step sequence'."""
-        return [self.get_channel(name) for name in self._step_channel_names]
 
     @cached_property
     def _step_channel_names(self) -> List[str]:
@@ -178,11 +168,6 @@ class ShaBlabberFile(File):
     def _fixed_idxs(self) -> List[int]:
         """Indexes of channels in the 'Step sequence' that are fixed at a single value."""
         return self["Data"].attrs["Fixed step index"]
-
-    @cached_property
-    def _log_channels(self) -> List[Channel]:
-        """Channels that are logged/measured."""
-        return [self.get_channel(name) for name in self._log_channel_names]
 
     @cached_property
     def _log_channel_names(self) -> List[str]:
