@@ -28,13 +28,22 @@ class ShaBlabberFile(File):
     def __init__(self, path: Union[str, Path]):
         """
         The `path` to the datafile should be absolute, or relative to the path returned
-        by `shablabber.get_data_dir()`.
+        by `shablabber.get_data_dir()`.  If the datafile still can't be found, the
+        entire directory tree below `shablabber.get_data_dir()` will be searched for
+        `path`.
         """
-        path = Path(path).expanduser()
-        if not path.is_absolute():
-            path = get_data_dir() / path
-        self.path = path
-        super().__init__(str(path), "r")
+        p = Path(path).expanduser()
+        root = get_data_dir()
+        if not p.is_absolute():
+            p = root / path
+        if not p.exists():
+            print(f"Searching for {path} in {root}...")
+            try:
+                p = next(root.rglob(path))
+            except StopIteration as e:
+                raise ValueError(f"Can't find {path} in {root}") from e
+        self.path = p
+        super().__init__(str(p), "r")
 
     @property
     def log_name(self) -> str:
