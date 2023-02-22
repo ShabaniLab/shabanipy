@@ -82,18 +82,12 @@ class ShaBlabberFile(File):
     @cached_property
     def projects(self) -> List[str]:
         """Projects the file belongs to."""
-        return self._check_empty_list(list(self["Tags"].attrs["Project"]))
+        return _check_empty_list(list(self["Tags"].attrs["Project"]))
 
     @cached_property
     def tags(self) -> List[str]:
         """Tags assigned to the file."""
-        return self._check_empty_list(list(self["Tags"].attrs["Tags"]))
-
-    def _check_empty_list(self, list_) -> List[str]:
-        if len(list_) == 1 and list_[0] == "":
-            return []
-        else:
-            return list_
+        return _check_empty_list(list(self["Tags"].attrs["Tags"]))
 
     @cached_property
     def _channels(self) -> List[Channel]:
@@ -446,3 +440,10 @@ def _expand_ellipsis(tup: Tuple, n: int) -> Tuple:
     list_ = list(tup)
     list_[i : i + 1] = (slice(None),) * (n - len(tup) + 1)
     return tuple(list_)
+
+
+def _check_empty_list(self, list_) -> List[str]:
+    if len(list_) == 1 and list_[0] == "":
+        return []
+    else:
+        return list_
