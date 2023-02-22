@@ -110,7 +110,7 @@ class ShaBlabberFile(File):
     @cached_property
     def _data_channel_names(self) -> List[str]:
         """Names of channels that are stepped/swept or logged/measured."""
-        return [name.decode("utf-8") for name, _ in self["Data/Channel names"]]
+        return [name for name, _ in self._data_channel_infos]
 
     @cached_property
     def _data_channel_infos(self) -> List[Tuple[str, str]]:
@@ -305,20 +305,14 @@ class Channel(_DatasetRow):
                 f"{pformat(list(dict.fromkeys(self._file._data_channel_names)))}"
             )
         if self._is_complex:
-            return self._get_complex_data()
+            data = self._get_data("Real") + 1j * self._get_data("Imaginary")
         else:
-            f = self._file
-            return f["Data/Data"][
-                :, f._data_channel_names.index(self.name), ...
-            ].reshape(f._shape, order="F")
+            data = self._get_data("")
+        return data.reshape(self._file._shape, order="F")
 
-    def _get_complex_data(self) -> np.ndarray:
+    def _get_data(self, info) -> np.ndarray:
         f = self._file
-        real = f["Data/Data"][:, f._data_channel_infos.index((self.name, "Real")), ...]
-        imag = f["Data/Data"][
-            :, f._data_channel_infos.index((self.name, "Imaginary")), ...
-        ]
-        return (real + 1j * imag).reshape(f._shape, order="F")
+        return f["Data/Data"][:, f._data_channel_infos.index((self.name, info)), ...]
 
 
 class Instrument(_DatasetRow):
