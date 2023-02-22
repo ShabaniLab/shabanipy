@@ -110,7 +110,7 @@ class ShaBlabberFile(File):
     @cached_property
     def _data_channel_names(self) -> List[str]:
         """Names of channels that are stepped/swept or logged/measured."""
-        return [name for name, _ in self._data_channel_infos]
+        return list({name for name, _ in self._data_channel_infos})
 
     @cached_property
     def _data_channel_infos(self) -> List[Tuple[str, str]]:
@@ -302,7 +302,7 @@ class Channel(_DatasetRow):
         if self.name not in self._file._data_channel_names:
             raise ValueError(
                 f"'{self.name}' is not a data channel.  Available data channels are:\n"
-                f"{pformat(list(dict.fromkeys(self._file._data_channel_names)))}"
+                f"{pformat(self._file._data_channel_names)}"
             )
         if self._is_complex:
             data = self._get_data("Real") + 1j * self._get_data("Imaginary")
