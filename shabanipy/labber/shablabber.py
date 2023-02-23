@@ -59,9 +59,9 @@ class ShaBlabberFile(File):
         return datetime.fromtimestamp(self.attrs["creation_time"])
 
     @property
-    def _step_dims(self) -> np.ndarray:
+    def _step_dims(self) -> Tuple[int]:
         """Step dimensions, i.e. the shape of the data."""
-        return self.attrs["Step dimensions"]
+        return tuple(self.attrs["Step dimensions"])
 
     @cached_property
     def _shape(self) -> Tuple[int]:
