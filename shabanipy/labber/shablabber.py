@@ -65,7 +65,7 @@ class ShaBlabberFile(File):
 
     @cached_property
     def _shape(self) -> Tuple[int]:
-        """The shape of the data, with trivial dimensions removed and trace dimensions added."""
+        """The shape of the data."""
         return self._trace_dims + tuple(d for d in self._step_dims if d != 1)
 
     @property
@@ -181,7 +181,7 @@ class ShaBlabberFile(File):
 
     @cached_property
     def _log_channel_names(self) -> List[str]:
-        """Names of channels that are logged/measured."""
+        """Names of channels that are added to the 'Log list'."""
         return [name.decode("utf-8") for name, in self["Log list"]]
 
     @cached_property
@@ -210,7 +210,7 @@ class ShaBlabberFile(File):
 
     @cached_property
     def _x_channels(self) -> List[XChannel]:
-        """Virtual channels containing the independent variables of trace channels."""
+        """Virtual channels containing the trace channels' step data."""
         # assume all trace channels share the same x channel
         deduped = [self._trace_channels[0]] if self._trace_channels else []
         return [c._x_channel for c in deduped]
@@ -406,7 +406,7 @@ class Channel(_DatasetRow):
 
 @dataclass
 class XChannel:
-    """A "virtual" channel containing a trace channel's step data (i.e. x data)."""
+    """A "virtual" channel containing a trace channel's step data."""
 
     _channel: Channel
 
@@ -449,7 +449,7 @@ class StepConfig(_DatasetRow):
 
     @cached_property
     def axis(self) -> int:
-        """Axis along which `channel_name` is stepped/swept."""
+        """Axis along which the channel is stepped/swept."""
         return self._file._step_channel_names.index(self.channel_name)
 
 
