@@ -4,16 +4,20 @@ This is a rewrite of `labber_io.py` with an emphasis on simplicity and maintaina
 
 The central class in this module is `ShaBlabberFile`, which encapsulates an hdf5
 datafile created by Labber.  It is a replacement for `labber_io.LabberData`.
+
+Implementation details are most easily understood by looking at a Labber datafile in an
+hdf reader like HDFView.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from functools import cached_property
 from os import environ
 from pathlib import Path
 from pprint import pformat
-from typing import Callable, Iterable, List, Optional, Union
+from typing import Callable, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 from h5py import File
@@ -60,9 +64,9 @@ class ShaBlabberFile(File):
         return self.attrs["Step dimensions"]
 
     @cached_property
-    def _shape(self) -> tuple:
-        """The shape of the data, with trivial dimensions removed."""
-        return tuple(d for d in self._step_dims if d != 1)
+    def _shape(self) -> Tuple[int]:
+        """The shape of the data, with trivial dimensions removed and trace dimensions added."""
+        return self._trace_dims + tuple(d for d in self._step_dims if d != 1)
 
     @property
     def comment(self) -> str:
@@ -99,18 +103,24 @@ class ShaBlabberFile(File):
         """Names of all channels in the hdf5 file."""
         return [c.name for c in self._channels]
 
-    def get_channel(self, channel_name: str) -> Channel:
-        """Get the channel with name `channel_name`."""
-        if channel_name not in self._channel_names:
-            raise ValueError(
-                f"'{channel_name}' does not exist.  Available channels are:\n{pformat(self._channel_names)}"
-            )
-        return self._channels[self._channel_names.index(channel_name)]
+    def get_channel(self, name: str) -> Union[Channel, XChannel]:
+        """Get the channel with `name`."""
+        if name in self._channel_names:
+            return self._channels[self._channel_names.index(name)]
+        elif name in self._x_channel_names:
+            return self._x_channels[self._x_channel_names.index(name)]
+        raise ValueError(
+            f"'{name}' does not exist.  Gettable channels are:\n{pformat(self._channel_names + self._x_channel_names)}"
+        )
 
     @cached_property
     def _data_channel_names(self) -> List[str]:
-        """Names of channels that are stepped/swept or logged/measured."""
-        return list({name for name, _ in self._data_channel_infos})
+        """Names of channels that recorded data."""
+        return (
+            list({name for name, _ in self._data_channel_infos})
+            + self._x_channel_names
+            + self._trace_channel_names
+        )
 
     @cached_property
     def _data_channel_infos(self) -> List[Tuple[str, str]]:
@@ -140,8 +150,8 @@ class ShaBlabberFile(File):
 
     @cached_property
     def _stepped_step_channels(self) -> List[Channel]:
-        """Channels in the 'Step sequence' that are actually stepped/swept."""
-        return [
+        """Channels in the 'Step sequence' that are actually stepped/swept, and x channels."""
+        return self._x_channels + [
             self.get_channel(name)
             for name in np.array(self._step_channel_names)[self._step_idxs]
         ]
@@ -173,6 +183,41 @@ class ShaBlabberFile(File):
     def _log_channel_names(self) -> List[str]:
         """Names of channels that are logged/measured."""
         return [name.decode("utf-8") for name, in self["Log list"]]
+
+    @cached_property
+    def _trace_channels(self) -> List[Channel]:
+        """Channels that recorded traces (arrays) as a single data point."""
+        return [self.get_channel(name) for name in self._trace_channel_names]
+
+    @cached_property
+    def _trace_channel_names(self) -> List[str]:
+        """Names of channels that recorded traces (arrays) as a single data point."""
+        try:
+            return list(
+                {
+                    name.removesuffix("_N").removesuffix("_t0dt")
+                    for name in self["Traces"]
+                    if name != "Time stamp"
+                }
+            )
+        except KeyError:
+            return []
+
+    @cached_property
+    def _trace_dims(self) -> Tuple[int]:
+        """The dimensions of the trace data."""
+        # assume all trace channels share the same x channel
+        return tuple({c.npoints for c in self._x_channels})
+
+    @cached_property
+    def _x_channels(self) -> List[XChannel]:
+        """Virtual channels containing the independent variables of trace channels."""
+        return [c._x_channel for c in self._trace_channels]
+
+    @cached_property
+    def _x_channel_names(self) -> List[str]:
+        """Names of the trace channels' independent/swept variables."""
+        return list({t._x_channel.name for t in self._trace_channels})
 
     @cached_property
     def _instruments(self) -> List[Instrument]:
@@ -207,7 +252,8 @@ class ShaBlabberFile(File):
         ----------
         *channel_names
             Names of channels to get data from.
-            If empty, data from all step and log channels are returned.
+            If empty, data from all step and log channels are returned, followed by the
+            independent variables of any trace channels.
         sort
             Sort the data so all stepped channels are monotonically increasing
             (default).  Otherwise, data remain in the order they were recorded.
@@ -223,11 +269,15 @@ class ShaBlabberFile(File):
             Axes are ordered according to `order`.  Ellipsis (...) is supported.
         """
         if len(channel_names) == 0:
-            channel_names = self._stepped_step_channel_names + self._log_channel_names
+            channel_names = (
+                self._stepped_step_channel_names
+                + self._log_channel_names
+                + self._x_channel_names
+            )
         data = tuple(self.get_channel(name).get_data() for name in channel_names)
         if sort:
             step_data = tuple(c.get_data() for c in self._stepped_step_channels)
-            step_axes = tuple(c._step_config.axis for c in self._stepped_step_channels)
+            step_axes = tuple(c.axis for c in self._stepped_step_channels)
             sort_idxs = tuple(
                 np.argsort(sd, axis=ax) for sd, ax in zip(step_data, step_axes)
             )
@@ -294,9 +344,29 @@ class Channel(_DatasetRow):
     def _step_config(self) -> StepConfig:
         return self._file._get_step_config(self.name)
 
-    @property
+    @cached_property
     def _is_complex(self) -> bool:
-        return isinstance(self.instrument.config[self.quantity], complex)
+        if self._is_trace_channel:
+            return self._file[f"Traces/{self.name}"].attrs["complex"]
+        else:
+            return isinstance(self.instrument.config[self.quantity], complex)
+
+    @property
+    def _is_trace_channel(self) -> bool:
+        return self.name in self._file._trace_channel_names
+
+    @cached_property
+    def _x_channel(self) -> XChannel:
+        return XChannel(self)
+
+    @cached_property
+    def axis(self) -> int:
+        """Axis along which the channel is stepped/swept."""
+        # assume all trace channels share a single x channel
+        if self._is_trace_channel:
+            return 0
+        else:
+            return 1 + self._file._step_channel_names.index(self.name)
 
     def get_data(self) -> np.ndarray:
         if self.name not in self._file._data_channel_names:
@@ -304,15 +374,59 @@ class Channel(_DatasetRow):
                 f"'{self.name}' is not a data channel.  Available data channels are:\n"
                 f"{pformat(self._file._data_channel_names)}"
             )
-        if self._is_complex:
-            data = self._get_data("Real") + 1j * self._get_data("Imaginary")
+        if self._is_trace_channel:
+            data = self._get_trace_data()
         else:
-            data = self._get_data("")
+            data = self._get_data()
+        data = data.squeeze()
+        if self._file._x_channels and not self._is_trace_channel:
+            expand = (np.newaxis,) * len(self._file._trace_dims) + (...,)
+            data = np.broadcast_to(data[expand], self._file._trace_dims + data.shape)
         return data.reshape(self._file._shape, order="F")
 
-    def _get_data(self, info) -> np.ndarray:
-        f = self._file
-        return f["Data/Data"][:, f._data_channel_infos.index((self.name, info)), ...]
+    def _get_data(self) -> np.ndarray:
+        def _data_column(info):
+            column = self._file._data_channel_infos.index((self.name, info))
+            return self._file["Data/Data"][:, column, ...]
+
+        if self._is_complex:
+            return _data_column("Real") + 1j * _data_column("Imaginary")
+        else:
+            return _data_column("")
+
+    def _get_trace_data(self) -> np.ndarray:
+        dset = self._file[f"Traces/{self.name}"]
+        if self._is_complex:
+            return dset[:, 0, ...] + 1j * dset[:, 1, ...]
+        else:
+            return dset[:, 0, ...]
+
+
+@dataclass
+class XChannel:
+    """A "virtual" channel containing a trace channel's step data (i.e. x data)."""
+
+    _channel: Channel
+
+    @property
+    def name(self) -> str:
+        return self._channel._file[f"Traces/{self._channel.name}"].attrs["x, name"]
+
+    @property
+    def unit(self) -> str:
+        return self._channel._file[f"Traces/{self._channel.name}"].attrs["x, unit"]
+
+    @property
+    def npoints(self) -> int:
+        (_,) = self._channel._file[f"Traces/{self._channel.name}_N"]
+        return _
+
+    @property
+    def axis(self) -> int:
+        return self._channel.axis
+
+    def get_data(self) -> np.ndarray:
+        return self._channel._file[f"Traces/{self._channel.name}"][:, -1, ...]
 
 
 class Instrument(_DatasetRow):
