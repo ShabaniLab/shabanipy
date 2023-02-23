@@ -268,6 +268,11 @@ class ShaBlabberFile(File):
             List of slices to take along each axis of the data.
             Axes are ordered according to `order`.  Ellipsis (...) is supported.
         """
+        not_data_channels = set(channel_names) - set(self._data_channel_names)
+        if not_data_channels:
+            raise ValueError(
+                f"{not_data_channels} are not data channels. Available data channels are:\n{pformat(self._data_channel_names)}"
+            )
         if len(channel_names) == 0:
             channel_names = (
                 self._stepped_step_channel_names
