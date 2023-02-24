@@ -140,14 +140,6 @@ class ShaBlabberFile(File):
         """Step configurations for channels that are added to the 'Step sequence'."""
         return [StepConfig(self, self["Step list"].dtype, s) for s in self["Step list"]]
 
-    def _get_step_config(self, channel_name) -> StepConfig:
-        """Get the step config for `channel_name`."""
-        if channel_name not in self._step_channel_names:
-            raise ValueError(
-                f"'{channel_name}' is not in the step sequence.  Available channels in the step sequence are:\n{pformat(self._step_channel_names)}"
-            )
-        return self._step_configs[self._step_channel_names.index(channel_name)]
-
     @cached_property
     def _ivar_channels(self) -> List[Channel]:
         """Channels that are set and varied, i.e. independent variables."""
@@ -161,23 +153,10 @@ class ShaBlabberFile(File):
         """Names of independent-variable channels."""
         return [c.name for c in self._ivar_channels]
 
-    @cached_property
-    def _fixed_step_channels(self) -> List[Channel]:
-        """Channels in the 'Step sequence' that are fixed at a single value."""
-        return [
-            self.get_channel(name)
-            for name in np.array(self._step_channel_names)[self._fixed_idxs]
-        ]
-
     @property
     def _step_idxs(self) -> List[int]:
         """Indexes of channels in the 'Step sequence' that are actually stepped/swept."""
         return self["Data"].attrs["Step index"]
-
-    @property
-    def _fixed_idxs(self) -> List[int]:
-        """Indexes of channels in the 'Step sequence' that are fixed at a single value."""
-        return self["Data"].attrs["Fixed step index"]
 
     @cached_property
     def _log_channel_names(self) -> List[str]:
@@ -230,14 +209,6 @@ class ShaBlabberFile(File):
     def _instrument_ids(self) -> List[str]:
         """IDs of all instruments in the hdf5 file."""
         return [i.id for i in self._instruments]
-
-    def _get_instrument_by_id(self, instrument_id: str) -> Instrument:
-        """Get the instrument with ID `instrument_id`."""
-        if instrument_id not in self._instrument_ids:
-            raise ValueError(
-                f"'{instrument_id}' does not exist.  Available instrument IDs are:\n{pformat(self._instrument_ids)}"
-            )
-        return self._instruments[self._instrument_ids.index(instrument_id)]
 
     def get_data(
         self,
@@ -340,11 +311,13 @@ class Channel(_DatasetRow):
 
     @cached_property
     def instrument(self) -> Instrument:
-        return self._file._get_instrument_by_id(self._instrument)
+        f = self._file
+        return f._instruments[f._instrument_ids.index(self._instrument)]
 
     @cached_property
     def _step_config(self) -> StepConfig:
-        return self._file._get_step_config(self.name)
+        f = self._file
+        return f._step_configs[f._step_channel_names.index(self.name)]
 
     @cached_property
     def _is_complex(self) -> bool:
