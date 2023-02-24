@@ -206,18 +206,19 @@ class ShaBlabberFile(File):
     @cached_property
     def _trace_dims(self) -> Tuple[int]:
         """The dimensions of the trace data."""
-        # assume all trace channels share the same x channel
-        return tuple({c.npoints for c in self._x_channels})
+        return tuple(c.npoints for c in self._x_channels)
 
     @cached_property
     def _x_channels(self) -> List[XChannel]:
         """Virtual channels containing the independent variables of trace channels."""
-        return [c._x_channel for c in self._trace_channels]
+        # assume all trace channels share the same x channel
+        deduped = [self._trace_channels[0]] if self._trace_channels else []
+        return [c._x_channel for c in deduped]
 
     @cached_property
     def _x_channel_names(self) -> List[str]:
         """Names of the trace channels' independent/swept variables."""
-        return list({t._x_channel.name for t in self._trace_channels})
+        return [c.name for c in self._x_channels]
 
     @cached_property
     def _instruments(self) -> List[Instrument]:
@@ -252,8 +253,8 @@ class ShaBlabberFile(File):
         ----------
         *channel_names
             Names of channels to get data from.
-            If empty, data from all step and log channels are returned, followed by the
-            independent variables of any trace channels.
+            If empty, data from all step and log channels are returned, with the
+            independent variable of any trace channels first.
         sort
             Sort the data so all stepped channels are monotonically increasing
             (default).  Otherwise, data remain in the order they were recorded.
@@ -274,11 +275,7 @@ class ShaBlabberFile(File):
                 f"{not_data_channels} are not data channels. Available data channels are:\n{pformat(self._data_channel_names)}"
             )
         if len(channel_names) == 0:
-            channel_names = (
-                self._ivar_channel_names
-                + self._log_channel_names
-                + self._x_channel_names
-            )
+            channel_names = self._ivar_channel_names + self._log_channel_names
         data = tuple(self.get_channel(name).get_data() for name in channel_names)
         if sort:
             ivar_data = tuple(c.get_data() for c in self._ivar_channels)
