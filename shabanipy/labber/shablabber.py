@@ -149,17 +149,17 @@ class ShaBlabberFile(File):
         return self._step_configs[self._step_channel_names.index(channel_name)]
 
     @cached_property
-    def _stepped_step_channels(self) -> List[Channel]:
-        """Channels in the 'Step sequence' that are actually stepped/swept, and x channels."""
+    def _ivar_channels(self) -> List[Channel]:
+        """Channels that are set and varied, i.e. independent variables."""
         return self._x_channels + [
             self.get_channel(name)
             for name in np.array(self._step_channel_names)[self._step_idxs]
         ]
 
     @cached_property
-    def _stepped_step_channel_names(self) -> List[str]:
-        """Names of channels in the 'Step sequence' that are actually stepped/swept."""
-        return [c.name for c in self._stepped_step_channels]
+    def _ivar_channel_names(self) -> List[str]:
+        """Names of independent-variable channels."""
+        return [c.name for c in self._ivar_channels]
 
     @cached_property
     def _fixed_step_channels(self) -> List[Channel]:
@@ -275,18 +275,18 @@ class ShaBlabberFile(File):
             )
         if len(channel_names) == 0:
             channel_names = (
-                self._stepped_step_channel_names
+                self._ivar_channel_names
                 + self._log_channel_names
                 + self._x_channel_names
             )
         data = tuple(self.get_channel(name).get_data() for name in channel_names)
         if sort:
-            step_data = tuple(c.get_data() for c in self._stepped_step_channels)
-            step_axes = tuple(c.axis for c in self._stepped_step_channels)
+            ivar_data = tuple(c.get_data() for c in self._ivar_channels)
+            ivar_axes = tuple(c.axis for c in self._ivar_channels)
             sort_idxs = tuple(
-                np.argsort(sd, axis=ax) for sd, ax in zip(step_data, step_axes)
+                np.argsort(d, axis=ax) for d, ax in zip(ivar_data, ivar_axes)
             )
-            for index, axis in zip(sort_idxs, step_axes):
+            for index, axis in zip(sort_idxs, ivar_axes):
                 data = tuple(np.take_along_axis(d, index, axis) for d in data)
         if filters:
             sort = np.sort if sort else lambda a, *_: a
