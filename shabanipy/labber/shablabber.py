@@ -141,7 +141,7 @@ class ShaBlabberFile(File):
         return [StepConfig(self, self["Step list"].dtype, s) for s in self["Step list"]]
 
     @cached_property
-    def _ivar_channels(self) -> List[Channel]:
+    def _ivar_channels(self) -> List[Union[XChannel, Channel]]:
         """Channels that are set and varied, i.e. independent variables."""
         return self._x_channels + [
             self.get_channel(name)
