@@ -171,13 +171,59 @@ class Loader:
         f = h5py.File(PATH, 'r')
         data = f['Data']['Data']
         gate = data[:, WIRE_GATE_COLUMN, :]
-        z_field = data1[0, Z_FIELD_COLUMN, :]
+        z_field = data[0, Z_FIELD_COLUMN, :]
         vyy = data[:, YY_VOLTAGE_COLUMN, :]
         ryy = vyy / PROBE_CURRENT
         f.close()
         print("done")
         print("Wire gate vs Z magnetic field for device D4 loaded")
         return gate, z_field, ryy
+
+    @classmethod
+    def load_wire_y_field_d4(cls, config_path="config.ini", tag='WIRE_Y_MAGNET_D4'):
+        cls.config.read(config_path)
+        print(f"reading {config_path}...", end =" ")
+        WIRE_GATE_COLUMN = int(cls.config[tag]['WIRE_GATE_COLUMN'])
+        Y_FIELD_COLUMN = int(cls.config[tag]['Y_FIELD_COLUMN'])
+        YY_VOLTAGE_COLUMN = int(cls.config[tag]['YY_VOLTAGE_COLUMN'])
+        PROBE_CURRENT = float(cls.config['GLOBAL']['PROBE_CURRENT'])
+        print("done")
+        PATH = str(cls.config[tag]['PATH'])
+        print("done")
+        print(f"reading {PATH}...", end =" ")
+        f = h5py.File(PATH, 'r')
+        data = f['Data']['Data']
+        gate = data[:, WIRE_GATE_COLUMN, :]
+        y_field = data[0, Y_FIELD_COLUMN, :]
+        vyy = data[:, YY_VOLTAGE_COLUMN, :]
+        ryy = vyy / PROBE_CURRENT
+        f.close()
+        print("done")
+        print("Wire gate vs Y magnetic field for device D4 loaded")
+        return gate, y_field, ryy
+
+    @classmethod
+    def load_wire_x_field_d4(cls, config_path="config.ini", tag='WIRE_X_MAGNET_D4'):
+        cls.config.read(config_path)
+        print(f"reading {config_path}...", end =" ")
+        WIRE_GATE_COLUMN = int(cls.config[tag]['WIRE_GATE_COLUMN'])
+        X_FIELD_COLUMN = int(cls.config[tag]['X_FIELD_COLUMN'])
+        YY_VOLTAGE_COLUMN = int(cls.config[tag]['YY_VOLTAGE_COLUMN'])
+        PROBE_CURRENT = float(cls.config['GLOBAL']['PROBE_CURRENT'])
+        print("done")
+        PATH = str(cls.config[tag]['PATH'])
+        print("done")
+        print(f"reading {PATH}...", end =" ")
+        f = h5py.File(PATH, 'r')
+        data = f['Data']['Data']
+        gate = data[:, WIRE_GATE_COLUMN, :]
+        x_field = data[0, X_FIELD_COLUMN, :]
+        vyy = data[:, YY_VOLTAGE_COLUMN, :]
+        ryy = vyy / PROBE_CURRENT
+        f.close()
+        print("done")
+        print("Wire gate vs X magnetic field for device D4 loaded")
+        return gate, x_field, ryy
     
     
     # @classmethod
