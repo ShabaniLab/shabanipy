@@ -24,10 +24,10 @@ ax.scatter(gate, ryy/1e3,
             s=3,
             edgecolors='none',
             alpha=1.0)
-ax.set_xlabel(r"Wire gate voltage $V_W$ (V)")
+ax.set_xlabel(r"$V_W$ (V)")
 ax.set_ylabel(r"Resistance $R_{4t}$ (k$\Omega$)")
 ax.set_xlim([gate[np.argmin(gate)], gate[np.argmax(gate)]])
-ax.set_title("D4, Wire sweep")
+ax.set_title("D4, Wire gate sweep")
 
 fig.set_size_inches(3.33, 3.33)
 path = "d4_wire_sweep.png"

@@ -12,7 +12,7 @@ class Loader:
         print(f"reading {config_path}...", end =" ")
         X_FIELD_COLUMN = int(cls.config[tag]['X_FIELD_COLUMN'])
         XY_VOLTAGE_COLUMN = int(cls.config[tag]['XY_VOLTAGE_COLUMN'])
-        PROBE_CURRENT = float(cls.config[tag]['PROBE_CURRENT'])
+        PROBE_CURRENT = float(cls.config['GLOBAL']['PROBE_CURRENT'])
         PATH = str(cls.config[tag]['PATH'])
         print("done")
         print(f"reading {PATH}...", end =" ")
@@ -33,10 +33,10 @@ class Loader:
         print(f"reading {config_path}...", end =" ")
         X_FIELD_COLUMN = int(cls.config[tag]['X_FIELD_COLUMN'])
         YY_VOLTAGE_COLUMN = int(cls.config[tag]['YY_VOLTAGE_COLUMN'])
-        PROBE_CURRENT = float(cls.config[tag]['PROBE_CURRENT'])
+        PROBE_CURRENT = float(cls.config['GLOBAL']['PROBE_CURRENT'])
         PATH = str(cls.config[tag]['PATH'])
-        W = float(cls.config[tag]['HALL_BAR_WIDTH'])
-        L = float(cls.config[tag]['HALL_BAR_LENGTH'])
+        W = float(cls.config['GLOBAL']['HALL_BAR_WIDTH_MICRON'])
+        L = float(cls.config['GLOBAL']['HALL_BAR_LENGTH_MICRON'])
         GEOMETRIC_FACTOR = W/L
         print("done")
         print(f"reading {PATH}...", end =" ")
@@ -57,7 +57,7 @@ class Loader:
         print(f"reading {config_path}...", end =" ")
         DEPLETION_GATE_COLUMN = int(cls.config[tag]['DEPLETION_GATE_COLUMN'])
         YY_VOLTAGE_COLUMN = int(cls.config[tag]['YY_VOLTAGE_COLUMN'])
-        PROBE_CURRENT = float(cls.config[tag]['PROBE_CURRENT'])
+        PROBE_CURRENT = float(cls.config['GLOBAL']['PROBE_CURRENT'])
         PATH = str(cls.config[tag]['PATH'])
         print("done")
         print(f"reading {PATH}...", end =" ")
@@ -90,7 +90,7 @@ class Loader:
         print(f"reading {config_path}...", end =" ")
         WIRE_GATE_COLUMN = int(cls.config[tag]['WIRE_GATE_COLUMN'])
         YY_VOLTAGE_COLUMN = int(cls.config[tag]['YY_VOLTAGE_COLUMN'])
-        PROBE_CURRENT = float(cls.config[tag]['PROBE_CURRENT'])
+        PROBE_CURRENT = float(cls.config['GLOBAL']['PROBE_CURRENT'])
         PATH = str(cls.config[tag]['PATH'])
         print("done")
         print(f"reading {PATH}...", end =" ")
@@ -105,6 +105,80 @@ class Loader:
         print("done")
         print("Wire sweep for device D4 loaded")
         return gate, ryy
+    
+    @classmethod
+    def load_magnetoresistance_depletion_d4(cls, config_path="config.ini", tag='MAGNETORESISTANCE_DEPLETION_D4'):
+        cls.config.read(config_path)
+        print(f"reading {config_path}...", end =" ")
+        X_FIELD_COLUMN = int(cls.config[tag]['X_FIELD_COLUMN'])
+        DEPLETION_GATE_COLUMN = int(cls.config[tag]['DEPLETION_GATE_COLUMN'])
+        YY_VOLTAGE_COLUMN = int(cls.config[tag]['YY_VOLTAGE_COLUMN'])
+        PROBE_CURRENT = float(cls.config['GLOBAL']['PROBE_CURRENT'])
+        W = float(cls.config['GLOBAL']['HALL_BAR_WIDTH_MICRON'])
+        L = float(cls.config['GLOBAL']['HALL_BAR_LENGTH_MICRON'])
+        GEOMETRIC_FACTOR = W/L
+        PATH1 = str(cls.config[tag]['PATH1'])
+        PATH2 = str(cls.config[tag]['PATH1'])
+        print("done")
+        print(f"reading {PATH1}...", end =" ")
+        f = h5py.File(PATH1, 'r')
+        data1 = f['Data']['Data']
+        x_field1 = data1[:, X_FIELD_COLUMN, :]
+        gate1 = data1[0, DEPLETION_GATE_COLUMN, :]
+        vyy1 = data1[:, YY_VOLTAGE_COLUMN, :]
+        f.close()
+        print("done")
+        print(f"reading {PATH2}...", end =" ")
+        f = h5py.File(PATH1, 'r')
+        data2 = f['Data']['Data']
+        x_field2 = data2[:, X_FIELD_COLUMN, :]
+        gate2 = data2[0, DEPLETION_GATE_COLUMN, :]
+        vyy2 = data2[:, YY_VOLTAGE_COLUMN, :]
+        f.close()
+        print("done")
+        x_field = np.concatenate((x_field1, x_field2), axis=1)
+        gate = np.concatenate((gate1, gate2), axis=0)
+        vyy = np.concatenate((vyy1, vyy2), axis=1)
+        ryy = vyy / PROBE_CURRENT
+        print("Magnetoresistance vs depletion gates for device D4 loaded")
+        return x_field, gate, ryy, GEOMETRIC_FACTOR
+
+    @classmethod
+    def load_geometry_micron_d4(cls, config_path="config.ini", tag='D4'):
+        cls.config.read(config_path)
+        print(f"reading {config_path}...", end =" ")
+        W = float(cls.config['GLOBAL']['HALL_BAR_WIDTH_MICRON'])
+        L = float(cls.config['GLOBAL']['HALL_BAR_LENGTH_MICRON'])
+        GEOMETRIC_FACTOR = W/L
+        w = float(cls.config[tag]['WIRE_WIDTH_MICRON'])
+        l = float(cls.config[tag]['WIRE_LENGTH_MICRON'])
+        print("done")
+        print("Geometry for device D4 loaded")
+        return GEOMETRIC_FACTOR, w, l
+
+    @classmethod
+    def load_wire_z_field_d4(cls, config_path="config.ini", tag='WIRE_Z_MAGNET_D4'):
+        cls.config.read(config_path)
+        print(f"reading {config_path}...", end =" ")
+        WIRE_GATE_COLUMN = int(cls.config[tag]['WIRE_GATE_COLUMN'])
+        Z_FIELD_COLUMN = int(cls.config[tag]['Z_FIELD_COLUMN'])
+        YY_VOLTAGE_COLUMN = int(cls.config[tag]['YY_VOLTAGE_COLUMN'])
+        PROBE_CURRENT = float(cls.config['GLOBAL']['PROBE_CURRENT'])
+        print("done")
+        PATH = str(cls.config[tag]['PATH'])
+        print("done")
+        print(f"reading {PATH}...", end =" ")
+        f = h5py.File(PATH, 'r')
+        data = f['Data']['Data']
+        gate = data[:, WIRE_GATE_COLUMN, :]
+        z_field = data1[0, Z_FIELD_COLUMN, :]
+        vyy = data[:, YY_VOLTAGE_COLUMN, :]
+        ryy = vyy / PROBE_CURRENT
+        f.close()
+        print("done")
+        print("Wire gate vs Z magnetic field for device D4 loaded")
+        return gate, z_field, ryy
+    
     
     # @classmethod
     # def load_yx_magnet_correction(cls, config_path="config.ini"):
