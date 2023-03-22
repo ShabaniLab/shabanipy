@@ -24,6 +24,13 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     "path", help="path to the .txt histogram data file exported from NMI AFM software"
 )
+parser.add_argument(
+    "--force-zero",
+    "-z",
+    default=False,
+    action="store_true",
+    help="force the fit to intersect the origin",
+)
 args = parser.parse_args()
 df = read_csv(args.path, sep="\t")
 time, thickness, sigma = df.T.to_numpy()
@@ -34,6 +41,8 @@ plt.xlabel(df.columns[0])
 plt.ylabel(df.columns[1])
 
 model = LinearModel()
+if args.force_zero:
+    model.set_param_hint("intercept", value=0, vary=False)
 result = model.fit(thickness, x=time)
 time_extrap = np.insert(time, 0, 0)
 plt.plot(time_extrap, result.eval(x=time_extrap))
