@@ -49,6 +49,8 @@ else:
     plt.plot(time, thickness, "o", markersize=10)
 plt.xlabel(df.columns[0])
 plt.ylabel(df.columns[1])
+plt.xlim(0, None)
+plt.ylim(0, None)
 
 model = LinearModel()
 if args.force_zero:
