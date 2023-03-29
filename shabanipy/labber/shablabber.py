@@ -341,7 +341,9 @@ class Channel(_DatasetRow):
         if self._is_trace_channel:
             return 0
         else:
-            return 1 + self._file._step_channel_names.index(self.name)
+            return len(self._file._trace_dims) + self._file._step_channel_names.index(
+                self.name
+            )
 
     def get_data(self) -> np.ndarray:
         if self.name not in self._file._data_channel_names:
