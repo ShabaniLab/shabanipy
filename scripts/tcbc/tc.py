@@ -65,6 +65,6 @@ ax.set_xlabel("MXC temperature (K)")
 ax.set_ylabel("resistance (Ω)" if config.get("IBIAS") else "voltage (V)")
 ax.set_title(args.config_section)
 stamp(ax, config["DATAPATH"])
-fig.savefig(Path(config["DATAPATH"]).stem + "_Tc.png")
+fig.savefig(Path(config["DATAPATH"]).stem + "_" + args.config_section + "_Tc.png")
 
 plt.show()
