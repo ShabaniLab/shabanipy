@@ -60,7 +60,7 @@ ax.set_title(args.config_section)
 ax.legend()
 
 fig, ax = plt.subplots()
-ax.plot(temp_fresh, volt_fresh / config.getfloat("IBIAS", 1))
+ax.plot(temp_fresh, volt_fresh / config.getfloat("IBIAS", 1), marker=".")
 ax.set_xlabel("MXC temperature (K)")
 ax.set_ylabel("resistance (Ω)" if config.get("IBIAS") else "voltage (V)")
 ax.set_title(args.config_section)
