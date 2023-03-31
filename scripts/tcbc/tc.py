@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from shabanipy.labber import ShaBlabberFile
-from shabanipy.utils import load_config
+from shabanipy.utils import load_config, stamp
 
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -46,8 +46,6 @@ ax.plot(indexs, temp_fresh, ".", label="fresh")
 ax.set_ylabel(config["CH_TEMP"])
 ax.set_title(args.config_section)
 ax.legend()
-outname = Path(config["DATAPATH"]).stem
-fig.savefig(outname + "_temp-fresh.png")
 
 sort_idx = np.argsort(temp_fresh)
 temp_fresh = np.take_along_axis(temp_fresh, sort_idx, axis=0)
@@ -60,6 +58,13 @@ ax.set_xlabel(config["CH_TEMP"])
 ax.set_ylabel(config["CH_VOLT"])
 ax.set_title(args.config_section)
 ax.legend()
-fig.savefig(outname + "_Tc.png")
+
+fig, ax = plt.subplots()
+ax.plot(temp_fresh, volt_fresh / config.getfloat("IBIAS", 1))
+ax.set_xlabel("MXC temperature (K)")
+ax.set_ylabel("resistance (Ω)" if config.get("IBIAS") else "voltage (V)")
+ax.set_title(args.config_section)
+stamp(ax, config["DATAPATH"])
+fig.savefig(Path(config["DATAPATH"]).stem + "_Tc.png")
 
 plt.show()
