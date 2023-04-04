@@ -18,7 +18,7 @@ def read(filename):
         return f.read().decode('utf8')
 
 
-requirements = ['numpy', 'h5py', 'matplotlib', 'lmfit', 'scipy', 'pandas']
+requirements = ['numpy', 'h5py', 'matplotlib', 'lmfit', 'scipy', 'pandas', 'numba']
 
 
 setup(name='shabanipy',
