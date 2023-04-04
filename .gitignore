@@ -121,3 +121,7 @@ pyproject.toml
 
 # HDF5 data files
 *.hdf5
+
+# output figures 
+*.png
+*.pdf
