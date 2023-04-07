@@ -60,13 +60,15 @@ class ShaBlabberFile(File):
 
     @property
     def _step_dims(self) -> Tuple[int]:
-        """Step dimensions, i.e. the shape of the data."""
+        """Step dimensions, i.e. number of points for each step channel."""
         return tuple(self.attrs["Step dimensions"])
 
     @cached_property
     def _shape(self) -> Tuple[int]:
         """The shape of the data."""
-        return self._trace_dims + tuple(d for d in self._step_dims if d != 1)
+        data_shape = list(self["Data/Data"].shape)
+        del data_shape[1]  # number of channels
+        return self._trace_dims + tuple(data_shape)
 
     @property
     def comment(self) -> str:
