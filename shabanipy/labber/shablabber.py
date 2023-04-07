@@ -145,10 +145,12 @@ class ShaBlabberFile(File):
     @cached_property
     def _ivar_channels(self) -> List[Union[XChannel, Channel]]:
         """Channels that are set and varied, i.e. independent variables."""
-        return self._x_channels + [
+        ivar_channels = [
             self.get_channel(name)
             for name in np.array(self._step_channel_names)[self._step_idxs]
         ]
+        ivar_channels = [c for c in ivar_channels if not c._use_relations]
+        return self._x_channels + ivar_channels
 
     @cached_property
     def _ivar_channel_names(self) -> List[str]:
@@ -320,6 +322,10 @@ class Channel(_DatasetRow):
     def _step_config(self) -> StepConfig:
         f = self._file
         return f._step_configs[f._step_channel_names.index(self.name)]
+
+    @property
+    def _use_relations(self) -> bool:
+        return self._step_config.use_relations
 
     @cached_property
     def _is_complex(self) -> bool:
