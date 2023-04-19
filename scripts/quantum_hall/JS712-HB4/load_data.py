@@ -93,7 +93,7 @@ class Loader():
 
     @classmethod
     def load_density(cls, Z_FIELD_COLUMN=0, GATE_COLUMN=1, XX_VOLTAGE_COLUMN=7, YX_VOLTAGE_COLUMN=9):
-        data = cls.load_hdf5(cls.SCAN_FAN)
+        data = cls.load_hdf5(cls.SCAN_DENSITY)
         z_field = data[:, Z_FIELD_COLUMN, :]
         gate = data[:, GATE_COLUMN, :]
         rxx = data[:, XX_VOLTAGE_COLUMN, :] / cls.PROBE_CURRENT
