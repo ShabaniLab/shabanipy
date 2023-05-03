@@ -19,7 +19,7 @@ _, config = load_config(args.config_path, args.config_section)
 
 with ShaBlabberFile(config["DATAPATH"]) as f:
     temp, volt = f.get_data(config["CH_TEMP"], config["CH_VOLT"])
-    volt = np.abs(volt)
+    volt = volt.real
 
 if temp.ndim > 1:
     # assume temperature is swept along last axis (i.e. Labber outer-most loop)
