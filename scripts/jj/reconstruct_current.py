@@ -75,6 +75,12 @@ if config.getint("3RD_AXIS_INDEX") is not None:
 else:
     SLICES = None
 
+filters = []
+if config.getfloat("FIELD_MIN"):
+    filters.append((config["CH_FIELD_PERP"], np.greater, config.getfloat("FIELD_MIN")))
+if config.getfloat("FIELD_MAX"):
+    filters.append((config["CH_FIELD_PERP"], np.less, config.getfloat("FIELD_MAX")))
+
 # load the data
 with ShaBlabberFile(config["DATAPATH"]) as f:
     bfield, ibias, dvdi = f.get_data(
@@ -83,6 +89,7 @@ with ShaBlabberFile(config["DATAPATH"]) as f:
         config["CH_MEASURE"],
         order=(config["CH_FIELD_PERP"], config["CH_BIAS"]),
         slices=SLICES,
+        filters=filters,
     )
     if f.get_channel(config["CH_BIAS"]).unitPhys == "V":
         ibias /= config.getfloat("R_DC_OUT")
