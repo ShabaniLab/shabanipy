@@ -28,6 +28,8 @@ def make_color_dict(colors):
 
 
 def register_color_map(cmap_name, colors):
+    if cmap_name in plt.colormaps():
+        return
     cdict = make_color_dict(colors)
     cmap = LinearSegmentedColormap(cmap_name, cdict)
     plt.register_cmap(cmap=cmap)
