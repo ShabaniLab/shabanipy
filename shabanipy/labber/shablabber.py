@@ -488,7 +488,7 @@ def get_data_dir():
 
 def _parse_field(name, value):
     """Parse `name` and `value` into a more useful format and type."""
-    name = name.lower().replace(" ", "_")
+    name = name.replace(" ", "_")
     # `instrument` is reserved for the Instrument object
     if name == "instrument":
         name = "_instrument"
