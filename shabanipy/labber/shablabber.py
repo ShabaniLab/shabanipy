@@ -278,7 +278,7 @@ class ShaBlabberFile(File):
             data = tuple(
                 np.moveaxis(
                     d,
-                    [self.get_channel(c)._step_config.axis for c in order],
+                    [self.get_channel(c).axis for c in order],
                     np.arange(len(order)),
                 )
                 for d in data
