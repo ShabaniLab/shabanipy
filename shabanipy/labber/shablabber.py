@@ -66,7 +66,7 @@ class ShaBlabberFile(File):
     @cached_property
     def _shape(self) -> Tuple[int]:
         """The shape of the data."""
-        data_shape = list(self["Data/Data"].shape)
+        data_shape = [dim for dim in self["Data/Data"].shape if dim != 1]
         del data_shape[1]  # number of channels
         return self._trace_dims + tuple(data_shape)
 
