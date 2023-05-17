@@ -115,7 +115,9 @@ x, jx = extract_current_distribution(
 fig, ax = plt.subplots(constrained_layout=True)
 ax.set_xlabel(r"$x$ (μm)")
 ax.set_ylabel(r"$J(x)$ (μA/μm)")
+ax.axhline(0, color="k")
 ax.plot(x * 1e6, jx)
+ax.fill_between(x * 1e6, jx, alpha=0.5)
 plt.show()
 fig.savefig(str(OUTPATH) + "_current-density.png")
 
