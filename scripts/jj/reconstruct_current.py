@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 from scipy.constants import physical_constants
 
 from shabanipy.dvdi import extract_switching_current
+from shabanipy.jj.fraunhofer import recenter_fraunhofer, symmetrize_fraunhofer
 from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
     extract_current_distribution,
 )
@@ -30,6 +31,20 @@ parser.add_argument(
 )
 parser.add_argument(
     "--length", "-l", type=float, help="junction length (m)",
+)
+parser.add_argument(
+    "--center",
+    "-c",
+    default=True,
+    action="store_false",
+    help="center fraunhofer at maximum",
+)
+parser.add_argument(
+    "--symmetrize",
+    "-s",
+    default=False,
+    action="store_true",
+    help="symmetrize fraunhofer about 0",
 )
 args = parser.parse_args()
 _, config = load_config(Path(__file__).parent / args.config_path, args.config_section)
@@ -96,6 +111,7 @@ fig, ax = plot2d(
 fig.savefig(str(OUTPATH) + "_raw-data.png")
 
 # extract the switching current
+bfield = np.unique(bfield)  # assumes all field sweeps are identical
 ic = extract_switching_current(
     ibias,
     dvdi,
@@ -106,12 +122,39 @@ ax.set_title("switching current")
 plot(bfield / 1e-3, ic / 1e-6, ax=ax, color="k", lw=1)
 fig.savefig(str(OUTPATH) + "_ic-extraction.png")
 
-# reconstruct critical current distribution and plot
+if args.center:
+    bfield = recenter_fraunhofer(bfield, ic)
+    fig, ax = plt.subplots()
+    ax.axvline(0, color="k")
+    plot(
+        bfield / 1e-3,
+        ic / 1e-6,
+        ax=ax,
+        xlabel="magnetic field (mT)",
+        ylabel="critical current (μA)",
+        title="centered fraunhofer",
+        stamp=config["COOLDOWN"] + "_" + config["SCAN"],
+    )
+    fig.savefig(str(OUTPATH) + "_centered.png")
+
+if args.symmetrize:
+    bfield, ic = symmetrize_fraunhofer(bfield, ic)
+    fig, ax = plt.subplots()
+    ax.axvline(0, color="k")
+    plot(
+        bfield / 1e-3,
+        ic / 1e-6,
+        ax=ax,
+        xlabel="magnetic field (mT)",
+        ylabel="critical current (μA)",
+        title="symmetrized fraunhofer",
+        stamp=config["COOLDOWN"] + "_" + config["SCAN"],
+    )
+    fig.savefig(str(OUTPATH) + "_symmetrized.png")
+
 PHI0 = physical_constants["mag. flux quantum"][0]
 FIELD_TO_WAVENUM = 2 * np.pi * LENGTH / PHI0
-x, jx = extract_current_distribution(
-    bfield[:, 0], ic, FIELD_TO_WAVENUM, WIDTH, len(bfield)
-)
+x, jx = extract_current_distribution(bfield, ic, FIELD_TO_WAVENUM, WIDTH, len(bfield))
 fig, ax = plt.subplots(constrained_layout=True)
 ax.set_xlabel(r"$x$ (μm)")
 ax.set_ylabel(r"$J(x)$ (μA/μm)")
