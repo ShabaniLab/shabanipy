@@ -8,9 +8,10 @@ from matplotlib import pyplot as plt
 from scipy.constants import physical_constants
 
 from shabanipy.dvdi import extract_switching_current
-from shabanipy.jj.fraunhofer import recenter_fraunhofer, symmetrize_fraunhofer
-from shabanipy.jj.fraunhofer.deterministic_reconstruction import (
+from shabanipy.jj import (
     extract_current_distribution,
+    recenter_fraunhofer,
+    symmetrize_fraunhofer,
 )
 from shabanipy.labber import ShaBlabberFile
 from shabanipy.utils import load_config
