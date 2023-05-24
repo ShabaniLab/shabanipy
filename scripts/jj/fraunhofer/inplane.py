@@ -1,8 +1,10 @@
 import argparse
+import json
 from pathlib import Path
 
 import numpy as np
 from matplotlib import pyplot as plt
+from scipy.signal import savgol_filter
 
 from shabanipy.dvdi import extract_switching_current
 from shabanipy.jj import find_fraunhofer_center
@@ -67,11 +69,8 @@ while config.get(f"DATAPATH{i}"):
             filters=filters,
         )
         if ch_meas.endswith(("VI curve", "SingleValue")):  # DC volts from DMM
-            dvdi = (
-                np.gradient(meas, axis=-1)
-                / np.gradient(ibias, axis=-1)
-                / config.getfloat("DC_AMP_GAIN")
-            )
+            volts = meas / config.getfloat("DC_AMP_GAIN")
+            dvdi = np.gradient(volts, axis=-1) / np.gradient(ibias, axis=-1)
             dvdi_label = "ΔV/ΔΙ (Ω)"
         else:  # differential Ω from lock-in
             dvdi = np.abs(meas)
@@ -102,10 +101,25 @@ while config.get(f"DATAPATH{i}"):
     b_perp = np.unique(b_perp)
 
     threshold = config.getfloat(f"THRESHOLD{i}", config.getfloat("THRESHOLD"))
-    ic_p = extract_switching_current(ibias, dvdi, side="positive", threshold=threshold)
+    if config.getboolean(f"THRESHOLD_DC{i}", config.getboolean(f"THRESHOLD_DC")):
+        ic_signal = volts
+    else:
+        ic_signal = dvdi
+    ic_p = extract_switching_current(
+        ibias, ic_signal, side="positive", threshold=threshold
+    )
+    savgol_wlen = config.getint(f"SAVGOL_WLEN{i}", config.getint(f"SAVGOL_WLEN", None))
+    if savgol_wlen is not None:
+        ic_p = savgol_filter(ic_p, savgol_wlen, 2)
     ax.plot(b_perp / 1e-3, ic_p / 1e-6, "k-", lw=1)
 
-    center = find_fraunhofer_center(b_perp, ic_p, debug=args.debug)
+    if args.debug:
+        plt.show()
+
+    field_lim = config.get(f"FIELD_LIM{i}")
+    if field_lim is not None:
+        field_lim = tuple(json.loads(field_lim))
+    center = find_fraunhofer_center(b_perp, ic_p, field_lim=field_lim, debug=args.debug)
     fraun_center.append(center)
     ax.axvline(center / 1e-3, color="k")
     fig.savefig(outpath + "_fraun-center.png")
