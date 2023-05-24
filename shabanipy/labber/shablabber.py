@@ -409,7 +409,9 @@ class XChannel:
         return self._channel.axis
 
     def get_data(self) -> np.ndarray:
-        return self._channel._file[f"Traces/{self._channel.name}"][:, -1, ...]
+        return self._channel._file[f"Traces/{self._channel.name}"][:, -1, ...].reshape(
+            self._channel._file._shape, order="F"
+        )
 
 
 class Instrument(_DatasetRow):
