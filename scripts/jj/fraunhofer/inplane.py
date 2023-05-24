@@ -141,7 +141,7 @@ if args.align:
     ax.plot(
         b_inplane / 1e-3,
         (m * b_inplane + b) / 1e-6,
-        label=f"arcsin$(B_\perp/B_\parallel)$ = {round(np.degrees(np.arcsin(m)) / 1e-3, 2)} mdeg",
+        label=f"arcsin$(B_\perp/B_\parallel)$ = {round(np.degrees(np.arcsin(m)) / 1e-3)} mdeg",
     )
     ax.legend()
     fig.savefig(outpath + "_field-alignment.png")
