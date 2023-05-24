@@ -41,23 +41,31 @@ i = 1
 while config.get(f"DATAPATH{i}"):
     ch_bias = config.get(f"CH_BIAS{i}", config["CH_BIAS"])
     ch_meas = config.get(f"CH_MEAS{i}", config["CH_MEAS"])
-    # if config.get(f"FILTER_VAL{i}"):
-    #    filters = (config.get("FILTER_CH{i}", config["CH_FIELD_INPLANE"]), np.isclose, config.getfloat(f"FILTER_VAL{i}"))
-    # else:
-    #    filters = None
     with ShaBlabberFile(config[f"DATAPATH{i}"]) as f:
+        filter_val = config.getfloat(f"FILTER_VAL{i}")
+        if filter_val is not None:
+            filters = [
+                (
+                    config.get(f"FILTER_CH{i}", config["CH_FIELD_INPLANE"]),
+                    np.equal,
+                    filter_val,
+                )
+            ]
+            inplane = filter_val
+        else:
+            filters = None
+            inplane = f.get_channel(config["CH_FIELD_INPLANE"]).instrument.config[
+                config["CH_FIELD_INPLANE"].split(" - ")[-1]
+            ]
+        b_inplane.append(inplane)
+        print(f"Processing {inplane=}")
         b_perp, ibias, meas = f.get_data(
             config["CH_FIELD_PERP"],
             ch_bias,
             ch_meas,
             order=(config["CH_FIELD_PERP"], ch_bias),
-            #        filters=filters,
+            filters=filters,
         )
-        inplane = f.get_channel(config["CH_FIELD_INPLANE"]).instrument.config[
-            config["CH_FIELD_INPLANE"].split(" - ")[-1]
-        ]
-        b_inplane.append(inplane)
-
         if ch_meas.endswith(("VI curve", "SingleValue")):  # DC volts from DMM
             dvdi = (
                 np.gradient(meas, axis=-1)
