@@ -123,8 +123,24 @@ def plot2d(
     mesh = ax.pcolormesh(x, y, z, **pcm_kwargs)
 
     if extend_min is None:
-        extend_min = "vmin" in pcm_kwargs and pcm_kwargs["vmin"] > np.min(z)
-    extend_max = "vmax" in pcm_kwargs and pcm_kwargs["vmax"] < np.max(z)
+        extend_min = (
+            "vmin" in pcm_kwargs
+            and pcm_kwargs["vmin"] is not None
+            and pcm_kwargs["vmin"] > np.min(z)
+        ) or (
+            "clim" in pcm_kwargs
+            and pcm_kwargs["clim"][0] is not None
+            and pcm_kwargs["clim"][0] > np.min(z)
+        )
+    extend_max = (
+        "vmax" in pcm_kwargs
+        and pcm_kwargs["vmax"] is not None
+        and pcm_kwargs["vmax"] < np.max(z)
+    ) or (
+        "clim" in pcm_kwargs
+        and pcm_kwargs["clim"][1] is not None
+        and pcm_kwargs["clim"][1] < np.max(z)
+    )
     extend = (
         "both"
         if extend_min and extend_max
