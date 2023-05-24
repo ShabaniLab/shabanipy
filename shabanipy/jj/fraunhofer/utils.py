@@ -9,13 +9,12 @@
 """Routines to analyse data taken on JJ.
 
 """
-import logging
-from typing import Tuple, Optional, Union
+from typing import Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.signal import peak_widths
 from lmfit.models import GaussianModel
+from scipy.signal import peak_widths
 
 
 def f2k_from_periodicity_and_width(periodicty: float, width: float) -> float:
@@ -26,7 +25,10 @@ def f2k_from_periodicity_and_width(periodicty: float, width: float) -> float:
 
 
 def find_fraunhofer_center(
-    field: np.ndarray, ic: np.ndarray, debug: bool = False
+    field: np.ndarray,
+    ic: np.ndarray,
+    field_lim: Optional[Tuple[float, float]] = None,
+    debug: bool = False,
 ) -> float:
     """Extract the field at which the Fraunhofer is centered.
 
@@ -36,6 +38,8 @@ def find_fraunhofer_center(
         1D array of the magnetic field applied of the JJ.
     ic : np.ndarray
         1D array of the JJ critical current.
+    field_lim : optional (float, float)
+        Limit search to within field_lim (min, max).
 
     Returns
     -------
@@ -43,7 +47,12 @@ def find_fraunhofer_center(
         Field at which the center of the pattern is located.
 
     """
-    max_loc = np.argmax(ic)
+    if field_lim is not None:
+        max_loc = np.argmax(
+            np.where((field_lim[0] < field) & (field < field_lim[1]), ic, -np.inf)
+        )
+    else:
+        max_loc = np.argmax(ic)
     width, *_ = peak_widths(ic, [max_loc], rel_height=0.5)
     width_index = int(round(width[0] * 0.65))
     subset_field = field[max_loc - width_index : max_loc + width_index + 1]
