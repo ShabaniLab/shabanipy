@@ -265,7 +265,7 @@ class ShaBlabberFile(File):
             masks, shapes = [], []
             for filt in filters:
                 channel = self.get_channel(filt[0])
-                axis = channel._step_config.axis
+                axis = channel.axis
                 mask = filt[1](sort(channel.get_data(), axis), filt[2])
                 shape = list(data[0].shape)
                 shape[axis] = -1
@@ -286,7 +286,7 @@ class ShaBlabberFile(File):
         if slices:
             data = tuple(d[_expand_ellipsis(slices, d.ndim)] for d in data)
 
-        return data
+        return tuple(d.squeeze() for d in data)
 
 
 class _DatasetRow:
