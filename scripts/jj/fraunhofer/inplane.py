@@ -1,5 +1,6 @@
 import argparse
 import json
+import re
 from pathlib import Path
 
 import numpy as np
@@ -36,6 +37,7 @@ args = parser.parse_args()
 _, config = load_config(Path(__file__).parent / args.config_path, args.config_section)
 
 plt.style.use(["fullscreen13"])
+Path("output").mkdir(exist_ok=True)
 
 b_inplane = []
 fraun_center = []
@@ -82,8 +84,6 @@ while config.get(f"DATAPATH{i}"):
                 dvdi /= ibias_ac
                 ibias /= config.getfloat("R_DC_OUT")
 
-    Path("output").mkdir(exist_ok=True)
-    outpath = f"output/{Path(config[f'DATAPATH{i}']).stem}_{inplane=}"
     fig, ax = plot2d(
         b_perp / 1e-3,
         ibias / 1e-6,
@@ -122,7 +122,8 @@ while config.get(f"DATAPATH{i}"):
     center = find_fraunhofer_center(b_perp, ic_p, field_lim=field_lim, debug=args.debug)
     fraun_center.append(center)
     ax.axvline(center / 1e-3, color="k")
-    fig.savefig(outpath + "_fraun-center.png")
+    outpath = f"output/{Path(config[f'DATAPATH{i}']).stem}"
+    fig.savefig(outpath + f"_{inplane=}_fraun-center.png")
 
     i += 1
 b_inplane = np.array(b_inplane)
@@ -131,12 +132,14 @@ fraun_center = np.array(fraun_center)
 # field alignment
 if args.align:
     m, b = np.polyfit(b_inplane, fraun_center, 1)
+    last_scan = re.split("-|_|\.", config[f"DATAPATH{i-1}"])[-2]
     fig, ax = plot(
         b_inplane / 1e-3,
         fraun_center / 1e-6,
         "o-",
         xlabel="in-plane field (mT)",
         ylabel="fraunhofer center (μT)",
+        stamp=f"{config['FRIDGE']}/{config['DATAPATH1'].removesuffix('.hdf5')}$-${last_scan}",
     )
     ax.plot(
         b_inplane / 1e-3,
@@ -144,6 +147,8 @@ if args.align:
         label=f"arcsin$(B_\perp/B_\parallel)$ = {round(np.degrees(np.arcsin(m)) / 1e-3)} mdeg",
     )
     ax.legend()
-    fig.savefig(outpath + "_field-alignment.png")
+    fig.savefig(
+        f"output/{Path(config['DATAPATH1']).stem}-{last_scan}" + "_field-alignment.png"
+    )
 
 plt.show()
