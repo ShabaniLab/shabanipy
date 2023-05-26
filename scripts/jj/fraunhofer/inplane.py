@@ -27,6 +27,13 @@ parser.add_argument(
     help="plot fraunhofer center vs. in-plane for field alignment",
 )
 parser.add_argument(
+    "--max",
+    "-m",
+    default=False,
+    action="store_true",
+    help="plot fraunhofer max (of main lobe) vs. in-plane",
+)
+parser.add_argument(
     "--debug",
     "-d",
     default=False,
@@ -41,6 +48,7 @@ Path("output").mkdir(exist_ok=True)
 
 b_inplane = []
 fraun_center = []
+fraun_max = []
 i = 1
 while config.get(f"DATAPATH{i}"):
     ch_bias = config.get(f"CH_BIAS{i}", config["CH_BIAS"])
@@ -119,27 +127,46 @@ while config.get(f"DATAPATH{i}"):
     field_lim = config.get(f"FIELD_LIM{i}")
     if field_lim is not None:
         field_lim = tuple(json.loads(field_lim))
-    center = find_fraunhofer_center(b_perp, ic_p, field_lim=field_lim, debug=args.debug)
-    fraun_center.append(center)
-    ax.axvline(center / 1e-3, color="k")
+
     outpath = f"output/{Path(config[f'DATAPATH{i}']).stem}"
-    fig.savefig(outpath + f"_{inplane=}_fraun-center.png")
+    if args.align:
+        center = find_fraunhofer_center(
+            b_perp, ic_p, field_lim=field_lim, debug=args.debug
+        )
+        fraun_center.append(center)
+        ax.axvline(center / 1e-3, color="k")
+        fig.savefig(outpath + f"_{inplane=}_fraun-center.png")
+
+    if args.max:
+        if field_lim is not None:
+            max_ = np.max(
+                np.where(
+                    (field_lim[0] < b_perp) & (b_perp < field_lim[1]), ic_p, -np.inf
+                )
+            )
+        else:
+            max_ = np.max(ic_p)
+        fraun_max.append(max_)
+        ax.axhline(max_ / 1e-6, color="k", lw=1)
+        fig.savefig(outpath + f"_{inplane=}_fraun-max.png")
 
     i += 1
 b_inplane = np.array(b_inplane)
 fraun_center = np.array(fraun_center)
+fraun_max = np.array(fraun_max)
+last_scan = re.split("-|_|\.", config[f"DATAPATH{i-1}"])[-2]
+stamp = f"{config['FRIDGE']}/{config['DATAPATH1'].removesuffix('.hdf5')}$-${last_scan}"
+outpath = f"output/{Path(config['DATAPATH1']).stem}-{last_scan}"
 
-# field alignment
 if args.align:
     m, b = np.polyfit(b_inplane, fraun_center, 1)
-    last_scan = re.split("-|_|\.", config[f"DATAPATH{i-1}"])[-2]
     fig, ax = plot(
         b_inplane / 1e-3,
         fraun_center / 1e-6,
         "o-",
         xlabel="in-plane field (mT)",
         ylabel="fraunhofer center (μT)",
-        stamp=f"{config['FRIDGE']}/{config['DATAPATH1'].removesuffix('.hdf5')}$-${last_scan}",
+        stamp=stamp,
     )
     ax.plot(
         b_inplane / 1e-3,
@@ -147,8 +174,17 @@ if args.align:
         label=f"arcsin$(B_\perp/B_\parallel)$ = {round(np.degrees(np.arcsin(m)) / 1e-3)} mdeg",
     )
     ax.legend()
-    fig.savefig(
-        f"output/{Path(config['DATAPATH1']).stem}-{last_scan}" + "_field-alignment.png"
+    fig.savefig(outpath + "_field-alignment.png")
+
+if args.max:
+    fig, ax = plot(
+        b_inplane / 1e-3,
+        fraun_max / 1e-6,
+        "o-",
+        xlabel="in-plane field (mT)",
+        ylabel="critical current (μA)",
+        stamp=stamp,
     )
+    fig.savefig(outpath + "_ic-vs-inplane.png")
 
 plt.show()
