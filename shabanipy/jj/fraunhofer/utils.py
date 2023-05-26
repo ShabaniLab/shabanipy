@@ -55,8 +55,9 @@ def find_fraunhofer_center(
         max_loc = np.argmax(ic)
     width, *_ = peak_widths(ic, [max_loc], rel_height=0.5)
     width_index = int(round(width[0] * 0.65))
-    subset_field = field[max_loc - width_index : max_loc + width_index + 1]
-    subset_ic = ic[max_loc - width_index : max_loc + width_index + 1]
+    start_index = max(0, max_loc - width_index)
+    subset_field = field[start_index : max_loc + width_index + 1]
+    subset_ic = ic[start_index : max_loc + width_index + 1]
     model = GaussianModel()
     params = model.guess(subset_ic, subset_field)
     out = model.fit(subset_ic, params, x=subset_field)
