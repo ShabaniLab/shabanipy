@@ -137,6 +137,8 @@ while config.get(f"DATAPATH{i}"):
     field_lim = config.get(f"FIELD_LIM{i}")
     if field_lim is not None:
         field_lim = tuple(json.loads(field_lim))
+    else:
+        field_lim = (-np.inf, np.inf)
 
     outpath = f"output/{Path(config[f'DATAPATH{i}']).stem}"
     if args.align:
@@ -149,16 +151,16 @@ while config.get(f"DATAPATH{i}"):
         fig.savefig(outpath + f"_{inplane=}_fraun-center.png")
 
     if args.max:
-        if field_lim is not None:
-            max_ = np.max(
-                np.where(
-                    (field_lim[0] < b_perp) & (b_perp < field_lim[1]), ic_p, -np.inf
-                )
+        max_ = [
+            np.max(
+                np.where((field_lim[0] < b_perp) & (b_perp < field_lim[1]), i, -np.inf)
             )
-        else:
-            max_ = np.max(ic_p)
+            for i in np.abs(ic)
+        ]
+        if "-" in args.branch:
+            max_[0] *= -1
         fraun_max.append(max_)
-        ax.axhline(max_ / 1e-6, color="k", lw=1)
+        [ax.axhline(m / 1e-6, color="k", lw=1) for m in max_]
         fig.savefig(outpath + f"_{inplane=}_fraun-max.png")
 
     i += 1
@@ -196,8 +198,11 @@ if args.max:
         xlabel="in-plane field (mT)",
         ylabel="critical current (μA)",
         stamp=stamp,
+        color="tab:blue",
     )
-    ax.fill_between(b_inplane / 1e-3, fraun_max / 1e-6, alpha=0.5)
+    for fm in fraun_max.T:
+        ax.fill_between(b_inplane / 1e-3, fm / 1e-6, color="tab:blue", alpha=0.5)
+    ax.set_xlim((b_inplane.min() / 1e-3, None))
     fig.savefig(outpath + "_ic-vs-inplane.png")
 
 plt.show()
