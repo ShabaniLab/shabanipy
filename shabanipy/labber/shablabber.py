@@ -163,6 +163,28 @@ class ShaBlabberFile(File):
         return self["Data"].attrs["Step index"]
 
     @cached_property
+    def _fixed_channels(self) -> List[Channel]:
+        """Channels in the 'Step sequence' that are fixed at a single value."""
+        return [
+            self.get_channel(name)
+            for name in np.array(self._step_channel_names)[self._fixed_idxs]
+        ]
+
+    @cached_property
+    def _fixed_channel_names(self) -> List[str]:
+        """Names of fixed channels."""
+        return [c.name for c in self._fixed_channels]
+
+    @property
+    def _fixed_idxs(self) -> List[int]:
+        """Indexes of channels in the 'Step sequence' that are fixed."""
+        return self["Data"].attrs["Fixed step index"]
+
+    def get_fixed_value(self, channel_name):
+        """Get the fixed value of channel_name."""
+        return self.get_channel(channel_name).get_fixed_value()
+
+    @cached_property
     def _log_channel_names(self) -> List[str]:
         """Names of channels that are added to the 'Log list'."""
         return [name.decode("utf-8") for name, in self["Log list"]]
@@ -383,6 +405,14 @@ class Channel(_DatasetRow):
             return dset[:, 0, ...] + 1j * dset[:, 1, ...]
         else:
             return dset[:, 0, ...]
+
+    def get_fixed_value(self):
+        if self.name in self._file._fixed_channel_names:
+            return self._file["Data"].attrs["Fixed step values"][
+                self._file._fixed_channel_names.index(self.name)
+            ]
+        else:
+            return self.instrument.config[self.name.split(" - ")[-1]]
 
 
 @dataclass
