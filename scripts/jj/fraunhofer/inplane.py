@@ -20,6 +20,13 @@ parser.add_argument(
 )
 parser.add_argument("config_section", help="section of the .ini config file to use")
 parser.add_argument(
+    "--branch",
+    "-b",
+    default="+",
+    choices=["+", "-", "+-"],
+    help="which branch of critical current to use",
+)
+parser.add_argument(
     "--align",
     "-a",
     default=False,
@@ -113,13 +120,16 @@ while config.get(f"DATAPATH{i}"):
         ic_signal = volts
     else:
         ic_signal = dvdi
-    ic_p = extract_switching_current(
-        ibias, ic_signal, side="positive", threshold=threshold
+    side = {"+": "positive", "-": "negative", "+-": "both"}
+    ic = extract_switching_current(
+        ibias, ic_signal, side=side[args.branch], threshold=threshold
     )
+    if args.branch != "+-":
+        ic = [ic]
     savgol_wlen = config.getint(f"SAVGOL_WLEN{i}", config.getint(f"SAVGOL_WLEN", None))
     if savgol_wlen is not None:
-        ic_p = savgol_filter(ic_p, savgol_wlen, 2)
-    ax.plot(b_perp / 1e-3, ic_p / 1e-6, "k-", lw=1)
+        ic = [savgol_filter(i, savgol_wlen, 2) for i in ic]
+    [ax.plot(b_perp / 1e-3, i / 1e-6, "k-", lw=1) for i in ic]
 
     if args.debug:
         plt.show()
@@ -130,11 +140,12 @@ while config.get(f"DATAPATH{i}"):
 
     outpath = f"output/{Path(config[f'DATAPATH{i}']).stem}"
     if args.align:
-        center = find_fraunhofer_center(
-            b_perp, ic_p, field_lim=field_lim, debug=args.debug
-        )
+        center = [
+            find_fraunhofer_center(b_perp, i, field_lim=field_lim, debug=args.debug)
+            for i in np.abs(ic)
+        ]
         fraun_center.append(center)
-        ax.axvline(center / 1e-3, color="k")
+        [ax.axvline(c / 1e-3, color="k", lw=1) for c in center]
         fig.savefig(outpath + f"_{inplane=}_fraun-center.png")
 
     if args.max:
@@ -159,7 +170,6 @@ stamp = f"{config['FRIDGE']}/{config['DATAPATH1'].removesuffix('.hdf5')}$-${last
 outpath = f"output/{Path(config['DATAPATH1']).stem}-{last_scan}"
 
 if args.align:
-    m, b = np.polyfit(b_inplane, fraun_center, 1)
     fig, ax = plot(
         b_inplane / 1e-3,
         fraun_center / 1e-6,
@@ -168,11 +178,13 @@ if args.align:
         ylabel="fraunhofer center (μT)",
         stamp=stamp,
     )
-    ax.plot(
-        b_inplane / 1e-3,
-        (m * b_inplane + b) / 1e-6,
-        label=f"arcsin$(B_\perp/B_\parallel)$ = {round(np.degrees(np.arcsin(m)) / 1e-3)} mdeg",
-    )
+    for fc in fraun_center.T:
+        m, b = np.polyfit(b_inplane, fc, 1)
+        ax.plot(
+            b_inplane / 1e-3,
+            (m * b_inplane + b) / 1e-6,
+            label=f"arcsin$(B_\perp/B_\parallel)$ = {round(np.degrees(np.arcsin(m)) / 1e-3)} mdeg",
+        )
     ax.legend()
     fig.savefig(outpath + "_field-alignment.png")
 
@@ -185,6 +197,7 @@ if args.max:
         ylabel="critical current (μA)",
         stamp=stamp,
     )
+    ax.fill_between(b_inplane / 1e-3, fraun_max / 1e-6, alpha=0.5)
     fig.savefig(outpath + "_ic-vs-inplane.png")
 
 plt.show()
