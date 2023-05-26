@@ -143,23 +143,23 @@ class ShaBlabberFile(File):
         return [StepConfig(self, self["Step list"].dtype, s) for s in self["Step list"]]
 
     @cached_property
-    def _ivar_channels(self) -> List[Union[XChannel, Channel]]:
-        """Channels that are set and varied, i.e. independent variables."""
-        ivar_channels = [
+    def _sweep_channels(self) -> List[Union[XChannel, Channel]]:
+        """Channels in the 'Step sequence' that are swept."""
+        sweep_channels = [
             self.get_channel(name)
-            for name in np.array(self._step_channel_names)[self._step_idxs]
+            for name in np.array(self._step_channel_names)[self._sweep_idxs]
         ]
-        ivar_channels = [c for c in ivar_channels if not c._use_relations]
-        return self._x_channels + ivar_channels
+        sweep_channels = [c for c in sweep_channels if not c._use_relations]
+        return self._x_channels + sweep_channels
 
     @cached_property
-    def _ivar_channel_names(self) -> List[str]:
-        """Names of independent-variable channels."""
-        return [c.name for c in self._ivar_channels]
+    def _sweep_channel_names(self) -> List[str]:
+        """Names of sweep channels."""
+        return [c.name for c in self._sweep_channels]
 
     @property
-    def _step_idxs(self) -> List[int]:
-        """Indexes of channels in the 'Step sequence' that are actually stepped/swept."""
+    def _sweep_idxs(self) -> List[int]:
+        """Indexes of channels in the 'Step sequence' that are swept."""
         return self["Data"].attrs["Step index"]
 
     @cached_property
@@ -222,7 +222,7 @@ class ShaBlabberFile(File):
 
     @cached_property
     def _x_channel_names(self) -> List[str]:
-        """Names of the trace channels' independent/swept variables."""
+        """Names of the trace channels' swept variables."""
         return [c.name for c in self._x_channels]
 
     @cached_property
@@ -250,8 +250,8 @@ class ShaBlabberFile(File):
         ----------
         *channel_names
             Names of channels to get data from.
-            If empty, data from all step and log channels are returned, with the
-            independent variable of any trace channels first.
+            If empty, data from all sweep and log channels are returned, with the
+            sweep variable of any trace channels first.
         sort
             Sort the data so all stepped channels are monotonically increasing
             (default).  Otherwise, data remain in the order they were recorded.
@@ -272,15 +272,15 @@ class ShaBlabberFile(File):
                 f"{not_data_channels} are not data channels. Available data channels are:\n{pformat(self._data_channel_names)}"
             )
         if len(channel_names) == 0:
-            channel_names = self._ivar_channel_names + self._log_channel_names
+            channel_names = self._sweep_channel_names + self._log_channel_names
         data = tuple(self.get_channel(name).get_data() for name in channel_names)
         if sort:
-            ivar_data = tuple(c.get_data() for c in self._ivar_channels)
-            ivar_axes = tuple(c.axis for c in self._ivar_channels)
+            sweep_data = tuple(c.get_data() for c in self._sweep_channels)
+            sweep_axes = tuple(c.axis for c in self._sweep_channels)
             sort_idxs = tuple(
-                np.argsort(d, axis=ax) for d, ax in zip(ivar_data, ivar_axes)
+                np.argsort(d, axis=ax) for d, ax in zip(sweep_data, sweep_axes)
             )
-            for index, axis in zip(sort_idxs, ivar_axes):
+            for index, axis in zip(sort_idxs, sweep_axes):
                 data = tuple(np.take_along_axis(d, index, axis) for d in data)
         if filters:
             sort = np.sort if sort else lambda a, *_: a
