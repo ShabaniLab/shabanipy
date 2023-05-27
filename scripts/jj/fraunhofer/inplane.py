@@ -63,7 +63,7 @@ plt.style.use(["fullscreen13"])
 Path("output").mkdir(exist_ok=True)
 
 
-def plot_data(b_perp, ibias, dvdi, ax=None):
+def plot_data(b_perp, ibias, dvdi, ax=None, cb=True):
     return plot2d(
         b_perp / 1e-3,
         ibias / 1e-6,
@@ -77,6 +77,7 @@ def plot_data(b_perp, ibias, dvdi, ax=None):
         vmin=config.getfloat("VMIN"),
         vmax=config.getfloat("VMAX"),
         extend_min=False,
+        colorbar=cb,
     )
 
 
@@ -131,8 +132,10 @@ while config.get(f"DATAPATH{i}"):
         fig, ax = plot_data(b_perp, ibias, dvdi)
     else:
         fig, ax = plt.subplots()
-        for mask in (ibias_1d < 0, ibias_1d > 0):
-            fig, ax = plot_data(b_perp[:, mask], ibias[:, mask], dvdi[:, mask], ax=ax)
+        for mask, cb in zip((ibias_1d < 0, ibias_1d > 0), (True, False)):
+            fig, ax = plot_data(
+                b_perp[:, mask], ibias[:, mask], dvdi[:, mask], ax=ax, cb=cb
+            )
 
     b_perp = np.unique(b_perp)
 

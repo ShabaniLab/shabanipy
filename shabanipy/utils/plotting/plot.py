@@ -78,6 +78,7 @@ def plot2d(
     ax: Optional[plt.Axes] = None,
     stamp: Optional[str] = None,
     extend_min: Optional[bool] = None,
+    colorbar: bool = True,
     **pcm_kwargs
 ) -> Tuple[plt.Figure, plt.Axes]:
     """Plot 2-dimensional data z(x, y) in a color plot with a colorbar.
@@ -122,35 +123,37 @@ def plot2d(
     pcm_kwargs.setdefault("shading", "auto")
     mesh = ax.pcolormesh(x, y, z, **pcm_kwargs)
 
-    if extend_min is None:
-        extend_min = (
-            "vmin" in pcm_kwargs
-            and pcm_kwargs["vmin"] is not None
-            and pcm_kwargs["vmin"] > np.min(z)
+    if colorbar:
+        if extend_min is None:
+            extend_min = (
+                "vmin" in pcm_kwargs
+                and pcm_kwargs["vmin"] is not None
+                and pcm_kwargs["vmin"] > np.min(z)
+            ) or (
+                "clim" in pcm_kwargs
+                and pcm_kwargs["clim"][0] is not None
+                and pcm_kwargs["clim"][0] > np.min(z)
+            )
+        extend_max = (
+            "vmax" in pcm_kwargs
+            and pcm_kwargs["vmax"] is not None
+            and pcm_kwargs["vmax"] < np.max(z)
         ) or (
             "clim" in pcm_kwargs
-            and pcm_kwargs["clim"][0] is not None
-            and pcm_kwargs["clim"][0] > np.min(z)
+            and pcm_kwargs["clim"][1] is not None
+            and pcm_kwargs["clim"][1] < np.max(z)
         )
-    extend_max = (
-        "vmax" in pcm_kwargs
-        and pcm_kwargs["vmax"] is not None
-        and pcm_kwargs["vmax"] < np.max(z)
-    ) or (
-        "clim" in pcm_kwargs
-        and pcm_kwargs["clim"][1] is not None
-        and pcm_kwargs["clim"][1] < np.max(z)
-    )
-    extend = (
-        "both"
-        if extend_min and extend_max
-        else "min"
-        if extend_min
-        else "max"
-        if extend_max
-        else "neither"
-    )
-    cb = fig.colorbar(mesh, ax=ax, extend=extend, label=zlabel)
+        extend = (
+            "both"
+            if extend_min and extend_max
+            else "min"
+            if extend_min
+            else "max"
+            if extend_max
+            else "neither"
+        )
+        cb = fig.colorbar(mesh, ax=ax, extend=extend, label=zlabel)
+
     return fig, ax
 
 
