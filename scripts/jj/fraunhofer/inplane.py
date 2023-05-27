@@ -41,17 +41,44 @@ parser.add_argument(
     help="plot fraunhofer max (of main lobe) vs. in-plane",
 )
 parser.add_argument(
-    "--debug",
+    "--diode",
     "-d",
+    default=False,
+    action="store_true",
+    help="plot difference between positive and negative branch critical currents",
+)
+parser.add_argument(
+    "--debug",
+    "-g",
     default=False,
     action="store_true",
     help="show additional plots for debugging purposes",
 )
 args = parser.parse_args()
+if args.diode:
+    args.branch = "+-"
 _, config = load_config(Path(__file__).parent / args.config_path, args.config_section)
 
 plt.style.use(["fullscreen13"])
 Path("output").mkdir(exist_ok=True)
+
+
+def plot_data(b_perp, ibias, dvdi, ax=None):
+    return plot2d(
+        b_perp / 1e-3,
+        ibias / 1e-6,
+        dvdi,
+        xlabel="out-of-plane field (mT)",
+        ylabel="current bias (μA)",
+        zlabel=dvdi_label,
+        title=f"in-plane field = {round(inplane / 1e-3)} mT",
+        ax=ax,
+        stamp=f"{config['FRIDGE']}/{config[f'DATAPATH{i}']}",
+        vmin=config.getfloat("VMIN"),
+        vmax=config.getfloat("VMAX"),
+        extend_min=False,
+    )
+
 
 b_inplane = []
 fraun_center = []
@@ -99,19 +126,15 @@ while config.get(f"DATAPATH{i}"):
                 dvdi /= ibias_ac
                 ibias /= config.getfloat("R_DC_OUT")
 
-    fig, ax = plot2d(
-        b_perp / 1e-3,
-        ibias / 1e-6,
-        dvdi,
-        xlabel="out-of-plane field (mT)",
-        ylabel="current bias (μA)",
-        zlabel=dvdi_label,
-        title=f"in-plane field = {round(inplane / 1e-3)} mT",
-        stamp=f"{config['FRIDGE']}/{config[f'DATAPATH{i}']}",
-        vmin=config.getfloat("VMIN"),
-        vmax=config.getfloat("VMAX"),
-        extend_min=False,
-    )
+    # in case bias sweep was done in disjoint sections about Ic+ and Ic-
+    ibias_1d = np.unique(ibias, axis=0).squeeze()
+    ibias_deltas = np.unique(np.diff(ibias_1d))
+    if np.allclose(ibias_deltas, ibias_deltas[0]):
+        fig, ax = plot_data(b_perp, ibias, dvdi)
+    else:
+        fig, ax = plt.subplots()
+        for mask in (ibias_1d < 0, ibias_1d > 0):
+            fig, ax = plot_data(b_perp[:, mask], ibias[:, mask], dvdi[:, mask], ax=ax)
 
     b_perp = np.unique(b_perp)
 
@@ -150,7 +173,7 @@ while config.get(f"DATAPATH{i}"):
         [ax.axvline(c / 1e-3, color="k", lw=1) for c in center]
         fig.savefig(outpath + f"_{inplane=}_fraun-center.png")
 
-    if args.max:
+    if args.max or args.diode:
         max_ = [
             np.max(
                 np.where((field_lim[0] < b_perp) & (b_perp < field_lim[1]), i, -np.inf)
@@ -190,19 +213,35 @@ if args.align:
     ax.legend()
     fig.savefig(outpath + "_field-alignment.png")
 
-if args.max:
+if args.max or args.diode:
     fig, ax = plot(
         b_inplane / 1e-3,
-        fraun_max / 1e-6,
+        (np.abs(fraun_max) if args.diode else fraun_max) / 1e-6,
         "o-",
         xlabel="in-plane field (mT)",
         ylabel="critical current (μA)",
         stamp=stamp,
-        color="tab:blue",
+        color="tab:blue" if args.max else None,
+        label=("$I_{c-}$", "$I_{c+}$") if args.diode else None,
     )
-    for fm in fraun_max.T:
-        ax.fill_between(b_inplane / 1e-3, fm / 1e-6, color="tab:blue", alpha=0.5)
-    ax.set_xlim((b_inplane.min() / 1e-3, None))
+    if args.max:
+        for fm in fraun_max.T:
+            ax.fill_between(b_inplane / 1e-3, fm / 1e-6, color="tab:blue", alpha=0.5)
+        ax.set_xlim((b_inplane.min() / 1e-3, None))
     fig.savefig(outpath + "_ic-vs-inplane.png")
+
+if args.diode:
+    fig, ax = plt.subplots()
+    ax.axhline(0, color="k")
+    plot(
+        b_inplane / 1e-3,
+        np.diff(np.abs(fraun_max)).squeeze() / 1e-9,
+        "o-",
+        xlabel="in-plane field (mT)",
+        ylabel="$\Delta I_c$ (nA)",
+        ax=ax,
+        stamp=stamp,
+    )
+    fig.savefig(outpath + "_diode.png")
 
 plt.show()
