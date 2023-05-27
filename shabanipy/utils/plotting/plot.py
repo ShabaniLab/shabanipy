@@ -61,7 +61,7 @@ def plot(
         sp_stamp(ax, stamp)
 
     lines = ax.plot(*plot_args, **plot_kwargs)
-    if "label" in plot_kwargs:
+    if "label" in plot_kwargs and plot_kwargs["label"] is not None:
         ax.legend()
     return fig, ax
 
