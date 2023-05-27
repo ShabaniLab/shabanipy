@@ -100,9 +100,7 @@ while config.get(f"DATAPATH{i}"):
             inplane = filter_val
         else:
             filters = None
-            inplane = f.get_channel(config["CH_FIELD_INPLANE"]).instrument.config[
-                config["CH_FIELD_INPLANE"].split(" - ")[-1]
-            ]
+            inplane = f.get_fixed_value(config["CH_FIELD_INPLANE"])
         b_inplane.append(inplane)
         print(f"Processing {inplane=}")
         b_perp, ibias, meas = f.get_data(
