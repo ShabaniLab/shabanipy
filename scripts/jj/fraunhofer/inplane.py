@@ -242,4 +242,6 @@ if args.diode:
     )
     fig.savefig(outpath + "_diode.png")
 
-plt.show()
+if i < 10:
+    plt.show()
+print("All plots written to output/")
