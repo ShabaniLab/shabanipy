@@ -165,32 +165,29 @@ while config.get(f"DATAPATH{i}"):
         field_lim = (-np.inf, np.inf)
 
     outpath = f"output/{Path(config[f'DATAPATH{i}']).stem}"
-    if args.align:
-        center = [
-            find_fraunhofer_center(b_perp, i, field_lim=field_lim, debug=args.debug)
-            for i in np.abs(ic)
-        ]
-        fraun_center.append(center)
-        [ax.axvline(c / 1e-3, color="k", lw=1) for c in center]
-        fig.savefig(outpath + f"_{inplane=}_fraun-center.png")
+    center = [
+        find_fraunhofer_center(b_perp, i, field_lim=field_lim, debug=args.debug)
+        for i in np.abs(ic)
+    ]
+    fraun_center.append(center)
+    [ax.axvline(c / 1e-3, color="k", lw=1) for c in center]
+    fig.savefig(outpath + f"_{inplane=}_fraun-center.png")
 
-    if args.max or args.diode:
-        max_ = [
-            np.max(
-                np.where((field_lim[0] < b_perp) & (b_perp < field_lim[1]), i, -np.inf)
-            )
-            for i in np.abs(ic)
-        ]
-        if "-" in args.branch:
-            max_[0] *= -1
-        fraun_max.append(max_)
-        [ax.axhline(m / 1e-6, color="k", lw=1) for m in max_]
-        fig.savefig(outpath + f"_{inplane=}_fraun-max.png")
+    max_ = [
+        np.max(np.where((field_lim[0] < b_perp) & (b_perp < field_lim[1]), i, -np.inf))
+        for i in np.abs(ic)
+    ]
+    if "-" in args.branch:
+        max_[0] *= -1
+    fraun_max.append(max_)
+    [ax.axhline(m / 1e-6, color="k", lw=1) for m in max_]
+    fig.savefig(outpath + f"_{inplane=}_fraun-max.png")
 
     i += 1
-b_inplane = np.array(b_inplane)
-fraun_center = np.array(fraun_center)
-fraun_max = np.array(fraun_max)
+sort_idx = np.argsort(b_inplane)
+b_inplane = np.array(b_inplane)[sort_idx]
+fraun_center = np.array(fraun_center)[sort_idx]
+fraun_max = np.array(fraun_max)[sort_idx]
 last_scan = re.split("-|_|\.", config[f"DATAPATH{i-1}"])[-2]
 stamp = f"{config['FRIDGE']}/{config['DATAPATH1'].removesuffix('.hdf5')}$-${last_scan}"
 outpath = f"output/{Path(config['DATAPATH1']).stem}-{last_scan}"
