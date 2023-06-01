@@ -12,7 +12,7 @@ from get_density_mobility import get_density_mobility
 
 rcParams['font.family'] = 'serif'
 rcParams['font.size'] = 8
-rcParams['text.usetex'] = True
+# rcParams['text.usetex'] = True
 cmap = colormaps['jy_pink']
 
 # load data 
