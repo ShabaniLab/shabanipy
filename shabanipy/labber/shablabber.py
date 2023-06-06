@@ -36,15 +36,15 @@ class ShaBlabberFile(File):
         `path`.
         """
         p = Path(path).expanduser()
-        root = get_data_dir()
         if not p.is_absolute():
+            root = get_data_dir()
             p = root / path
-        if not p.exists():
-            print(f"Searching for {path} in {root}...")
-            try:
-                p = next(root.rglob(path))
-            except StopIteration as e:
-                raise ValueError(f"Can't find {path} in {root}") from e
+            if not p.exists():
+                print(f"Searching for {path} in {root}...")
+                try:
+                    p = next(root.rglob(path))
+                except StopIteration as e:
+                    raise ValueError(f"Can't find {path} in {root}") from e
         self.path = p
         super().__init__(str(p), "r")
 
