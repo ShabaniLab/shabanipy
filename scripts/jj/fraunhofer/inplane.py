@@ -195,18 +195,18 @@ outpath = f"output/{Path(config['DATAPATH1']).stem}-{last_scan}"
 if args.align:
     fig, ax = plot(
         b_inplane / 1e-3,
-        fraun_center / 1e-6,
+        fraun_center / 1e-3,
         "o-",
         xlabel="in-plane field (mT)",
-        ylabel="fraunhofer center (μT)",
+        ylabel="fraunhofer center (mT)",
         stamp=stamp,
     )
     for fc in fraun_center.T:
         m, b = np.polyfit(b_inplane, fc, 1)
         ax.plot(
             b_inplane / 1e-3,
-            (m * b_inplane + b) / 1e-6,
-            label=f"arcsin$(B_\perp/B_\parallel)$ = {round(np.degrees(np.arcsin(m)) / 1e-3)} mdeg",
+            (m * b_inplane + b) / 1e-3,
+            label=f"arcsin$(B_\perp/B_\parallel)$ = {round(np.degrees(np.arcsin(m)), 3)} deg",
         )
     ax.legend()
     fig.savefig(outpath + "_field-alignment.png")
