@@ -1,0 +1,18 @@
+# Style for plots to be published in Physical Review journals
+#
+# Figure sizes should be set manually for each figure depending on the journal layout so
+# that they don't have to be massively rescaled (which also scales the fonts).
+# E.g. for a two-column layout on 8.5x11" with 0.75" margins and a 0.25" margin between
+# the columns use the following column widths:
+# - 3.375" (single-column, full width)
+# - 7.000" (double-column, full width)
+figure.constrained_layout.use : True
+pdf.fonttype : 42
+font.family : Arial
+font.size : 10
+axes.labelsize : 10
+xtick.labelsize : 10
+ytick.labelsize : 10
+xtick.direction : in
+ytick.direction : in
+savefig.format : pdf
