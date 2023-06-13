@@ -28,10 +28,16 @@ parser.add_argument(
 )
 parser.add_argument("config_section", help="section of the .ini config file to use")
 parser.add_argument(
-    "--width", "-w", type=float, help="junction width (m)",
+    "--width",
+    "-w",
+    type=float,
+    help="junction width (m)",
 )
 parser.add_argument(
-    "--length", "-l", type=float, help="junction length (m)",
+    "--length",
+    "-l",
+    type=float,
+    help="junction length (m)",
 )
 parser.add_argument(
     "--center",
@@ -67,7 +73,8 @@ Path(OUTDIR).mkdir(parents=True, exist_ok=True)
 SLICE_STR = (
     f"_idx={config.getfloat('3RD_AXIS_INDEX')}" if "3RD_AXIS_INDEX" in config else ""
 )
-OUTPATH = Path(OUTDIR) / f"{config['FILENAME']}{SLICE_STR}_current-reconstruction"
+datapath = Path(config["DATAPATH"])
+OUTPATH = Path(OUTDIR) / f"{datapath.stem}{SLICE_STR}_current-reconstruction"
 jy_pink.register()
 plt.style.use(["jy_pink", "fullscreen13"])
 
@@ -83,7 +90,7 @@ if config.getfloat("FIELD_MAX"):
     filters.append((config["CH_FIELD_PERP"], np.less, config.getfloat("FIELD_MAX")))
 
 # load the data
-with ShaBlabberFile(config["DATAPATH"]) as f:
+with ShaBlabberFile(datapath) as f:
     bfield, ibias, dvdi = f.get_data(
         config["CH_FIELD_PERP"],
         config["CH_BIAS"],
@@ -114,7 +121,7 @@ fig, ax = plot2d(
     ylabel="dc bias (μA)",
     zlabel="dV/dI (Ω)",
     title="raw data",
-    stamp=config["COOLDOWN"] + "_" + config["SCAN"],
+    stamp=datapath.stem,
 )
 fig.savefig(str(OUTPATH) + "_raw-data.png")
 
@@ -141,7 +148,7 @@ if args.center:
         xlabel="magnetic field (mT)",
         ylabel="critical current (μA)",
         title="centered fraunhofer",
-        stamp=config["COOLDOWN"] + "_" + config["SCAN"],
+        stamp=datapath.stem,
     )
     fig.savefig(str(OUTPATH) + "_centered.png")
 
@@ -156,7 +163,7 @@ if args.symmetrize:
         xlabel="magnetic field (mT)",
         ylabel="critical current (μA)",
         title="symmetrized fraunhofer",
-        stamp=config["COOLDOWN"] + "_" + config["SCAN"],
+        stamp=datapath.stem,
     )
     fig.savefig(str(OUTPATH) + "_symmetrized.png")
 
