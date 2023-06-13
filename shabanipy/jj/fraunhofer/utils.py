@@ -18,15 +18,14 @@ from scipy.signal import peak_widths
 
 
 def f2k_from_periodicity_and_width(periodicty: float, width: float) -> float:
-    """Field to k estimate from the periodicity of a pattern and the assumed width.
-
-    """
+    """Field to k estimate from the periodicity of a pattern and the assumed width."""
     return 2 * np.pi / (periodicty * width)
 
 
 def find_fraunhofer_center(
     field: np.ndarray,
     ic: np.ndarray,
+    *,
     field_lim: Optional[Tuple[float, float]] = None,
     debug: bool = False,
 ) -> float:
@@ -94,7 +93,7 @@ def recenter_fraunhofer(
     res = np.copy(field)
     for b in it:
         index = it.multi_index
-        center = find_fraunhofer_center(field[index], ic[index], debug)
+        center = find_fraunhofer_center(field[index], ic[index], debug=debug)
         res[index] -= center
 
     return res
