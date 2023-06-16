@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 from matplotlib import pyplot as plt
+from pandas import DataFrame
 from scipy.signal import savgol_filter
 
 from shabanipy.dvdi import extract_switching_current
@@ -60,7 +61,8 @@ if args.diode:
 _, config = load_config(Path(__file__).parent / args.config_path, args.config_section)
 
 plt.style.use(["fullscreen13"])
-Path("output").mkdir(exist_ok=True)
+outdir = Path(f"output/{Path(args.config_path).stem}")
+outdir.mkdir(exist_ok=True, parents=True)
 
 
 def plot_data(b_perp, ibias, dvdi, ax=None, cb=True):
@@ -84,8 +86,10 @@ def plot_data(b_perp, ibias, dvdi, ax=None, cb=True):
 b_inplane = []
 fraun_center = []
 fraun_max = []
+datafiles = []
 i = 1
 while config.get(f"DATAPATH{i}"):
+    datafiles.append(config.get(f"DATAPATH{i}"))
     ch_bias = config.get(f"CH_BIAS{i}", config["CH_BIAS"])
     ch_meas = config.get(f"CH_MEAS{i}", config["CH_MEAS"])
     with ShaBlabberFile(config[f"DATAPATH{i}"]) as f:
@@ -164,7 +168,7 @@ while config.get(f"DATAPATH{i}"):
     else:
         field_lim = (-np.inf, np.inf)
 
-    outpath = f"output/{Path(config[f'DATAPATH{i}']).stem}"
+    outpath = str(outdir / f"{Path(config[f'DATAPATH{i}']).stem}")
     center = [
         find_fraunhofer_center(b_perp, i, field_lim=field_lim, debug=args.debug)
         for i in np.abs(ic)
@@ -188,10 +192,29 @@ sort_idx = np.argsort(b_inplane)
 b_inplane = np.array(b_inplane)[sort_idx]
 fraun_center = np.array(fraun_center)[sort_idx]
 fraun_max = np.array(fraun_max)[sort_idx]
+datafiles = np.array(datafiles)[sort_idx]
+
+if args.diode:
+    database_path = outdir / f"{args.config_section}.csv"
+    if database_path.exists():
+        write = input(f"{database_path} already exists.  Overwrite? [y/n]: ")
+        write = True if write.lower() == "y" else False
+    else:
+        write = True
+    if write:
+        df = DataFrame(
+            {
+                "b_inplane": b_inplane,
+                "ic-": fraun_max[:, 0],
+                "ic+": fraun_max[:, 1],
+                "datafile": datafiles,
+            },
+        )
+        df.to_csv(database_path, index=False)
+
 last_scan = re.split("-|_|\.", config[f"DATAPATH{i-1}"])[-2]
 stamp = f"{config['FRIDGE']}/{config['DATAPATH1'].removesuffix('.hdf5')}$-${last_scan}"
 outpath = f"output/{Path(config['DATAPATH1']).stem}-{last_scan}"
-
 if args.align:
     fig, ax = plot(
         b_inplane / 1e-3,
