@@ -98,7 +98,7 @@ while config.get(f"DATAPATH{i}"):
             filters = [
                 (
                     config.get(f"FILTER_CH{i}", config["CH_FIELD_INPLANE"]),
-                    np.equal,
+                    np.isclose,
                     filter_val,
                 )
             ]
