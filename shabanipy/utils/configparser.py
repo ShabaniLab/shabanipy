@@ -2,6 +2,7 @@
 
 from configparser import ConfigParser, ExtendedInterpolation, SectionProxy
 from pathlib import Path
+from pprint import pformat
 from typing import Optional, Tuple, Union
 
 
@@ -31,7 +32,7 @@ def load_config(
                 config = ini[section]
             except KeyError as e:
                 raise ValueError(
-                    f"'{section}' not found. Available sections are {ini.sections()}"
+                    f"'{section}' not found. Available sections are:\n{pformat(ini.sections())}"
                 ) from e
         else:
             config = None
