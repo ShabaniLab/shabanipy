@@ -32,39 +32,23 @@ parser.add_argument(
     "-b",
     default="+",
     choices=["+", "-", "+-"],
-    help="which branch of critical current to use",
+    help="which branch of critical current to analyze",
 )
 parser.add_argument(
     "--align",
     "-a",
     default=False,
     action="store_true",
-    help="plot fraunhofer center vs. CH_VARIABLE for field alignment",
-)
-parser.add_argument(
-    "--max",
-    "-m",
-    default=False,
-    action="store_true",
-    help="plot fraunhofer max (of main lobe) vs. CH_VARIABLE",
-)
-parser.add_argument(
-    "--diode",
-    "-d",
-    default=False,
-    action="store_true",
-    help="plot difference between positive and negative branch critical currents",
+    help="fit fraunhofer center vs. CH_VARIABLE for field alignment angle",
 )
 parser.add_argument(
     "--debug",
-    "-g",
+    "-d",
     default=False,
     action="store_true",
     help="show additional plots for debugging purposes",
 )
 args = parser.parse_args()
-if args.diode:
-    args.branch = "+-"
 _, config = load_config(Path(__file__).parent / args.config_path, args.config_section)
 
 plt.style.use(["fullscreen13"])
@@ -200,36 +184,42 @@ fraun_center = np.array(fraun_center)[sort_idx]
 fraun_max = np.array(fraun_max)[sort_idx]
 datafiles = np.array(datafiles)[sort_idx]
 
-if args.diode:
-    database_path = outdir / f"{args.config_section}.csv"
-    if database_path.exists():
-        write = input(f"{database_path} already exists.  Overwrite? [y/n]: ")
-        write = True if write.lower() == "y" else False
+database_path = outdir / f"{args.config_section}.csv"
+if database_path.exists():
+    write = input(f"{database_path} already exists.  Overwrite? [y/n]: ")
+    write = True if write.lower() == "y" else False
+else:
+    write = True
+if write:
+    df = DataFrame(
+        {
+            "datafile": datafiles,
+            config["CH_VARIABLE"]: variable,
+        },
+    )
+    if args.branch == "+-":
+        df["ic-"] = fraun_max[:, 0]
+        df["ic+"] = fraun_max[:, 1]
     else:
-        write = True
-    if write:
-        df = DataFrame(
-            {
-                config["CH_VARIABLE"]: variable,
-                "ic-": fraun_max[:, 0],
-                "ic+": fraun_max[:, 1],
-                "datafile": datafiles,
-            },
-        )
-        df.to_csv(database_path, index=False)
+        df[f"ic{args.branch}"] = fraun_max
+    df.to_csv(database_path, index=False)
 
 last_scan = re.split("-|_|\.", config[f"DATAPATH{i-1}"])[-2]
 stamp = f"{config['FRIDGE']}/{config['DATAPATH1'].removesuffix('.hdf5')}$-${last_scan}"
 outpath = f"output/{Path(config['DATAPATH1']).stem}-{last_scan}"
+ic_label = (
+    ("$I_{c-}$", "$I_{c+}$") if args.branch == "+-" else f"$I_{{c{args.branch}}}$"
+)
+fig, ax = plot(
+    variable,
+    fraun_center / 1e-3,
+    "o-",
+    xlabel=config["CH_VARIABLE"],
+    ylabel="fraunhofer center (mT)",
+    stamp=stamp,
+    label=ic_label,
+)
 if args.align:
-    fig, ax = plot(
-        variable,
-        fraun_center / 1e-3,
-        "o-",
-        xlabel=config["CH_VARIABLE"],
-        ylabel="fraunhofer center (mT)",
-        stamp=stamp,
-    )
     for fc in fraun_center.T:
         m, b = np.polyfit(variable, fc, 1)
         ax.plot(
@@ -237,27 +227,36 @@ if args.align:
             (m * variable + b) / 1e-3,
             label=f"arcsin$(y/x)$ = {round(np.degrees(np.arcsin(m)), 3)} deg",
         )
-    ax.legend()
-    fig.savefig(outpath + "_field-alignment.png")
+ax.legend()
+fig.savefig(outpath + "_center.png")
 
-if args.max or args.diode:
+fig, ax = plot(
+    variable,
+    fraun_max / 1e-6,
+    "o-",
+    color="tab:blue",
+    xlabel=config["CH_VARIABLE"],
+    ylabel="critical current (μA)",
+    stamp=stamp,
+)
+for fm in fraun_max.T:
+    ax.fill_between(variable, fm / 1e-6, color="tab:blue", alpha=0.5)
+ax.set_xlim((variable.min(), variable.max()))
+fig.savefig(outpath + "_max.png")
+
+if args.branch == "+-":
     fig, ax = plot(
         variable,
-        (np.abs(fraun_max) if args.diode else fraun_max) / 1e-6,
+        np.abs(fraun_max) / 1e-6,
         "o-",
         xlabel=config["CH_VARIABLE"],
         ylabel="critical current (μA)",
+        label=ic_label,
         stamp=stamp,
-        color="tab:blue" if args.max else None,
-        label=("$I_{c-}$", "$I_{c+}$") if args.diode else None,
     )
-    if args.max:
-        for fm in fraun_max.T:
-            ax.fill_between(variable, fm / 1e-6, color="tab:blue", alpha=0.5)
-        ax.set_xlim((variable.min(), None))
-    fig.savefig(outpath + "_ic-vs-var.png")
+    ax.fill_between(variable, *np.abs(fraun_max.T / 1e-6), color="tab:gray", alpha=0.5)
+    fig.savefig(outpath + "_absmax.png")
 
-if args.diode:
     fig, ax = plt.subplots()
     ax.axhline(0, color="k")
     plot(
@@ -269,7 +268,7 @@ if args.diode:
         ax=ax,
         stamp=stamp,
     )
-    fig.savefig(outpath + "_diode.png")
+    fig.savefig(outpath + "_deltamax.png")
 
 if i < 10:
     plt.show()
