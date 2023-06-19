@@ -1,3 +1,10 @@
+"""Analysis of fraunhofer center and maximum.
+
+This extracts the center and maximum of the fraunhofer as a function of some independent
+variable specified by CH_VARIABLE in the config.
+
+This can be used e.g. for field alignment or diode analysis.
+"""
 import argparse
 import json
 import re
@@ -32,14 +39,14 @@ parser.add_argument(
     "-a",
     default=False,
     action="store_true",
-    help="plot fraunhofer center vs. in-plane for field alignment",
+    help="plot fraunhofer center vs. CH_VARIABLE for field alignment",
 )
 parser.add_argument(
     "--max",
     "-m",
     default=False,
     action="store_true",
-    help="plot fraunhofer max (of main lobe) vs. in-plane",
+    help="plot fraunhofer max (of main lobe) vs. CH_VARIABLE",
 )
 parser.add_argument(
     "--diode",
@@ -73,7 +80,7 @@ def plot_data(b_perp, ibias, dvdi, ax=None, cb=True):
         xlabel="out-of-plane field (mT)",
         ylabel="current bias (μA)",
         zlabel=dvdi_label,
-        title=f"in-plane field = {round(inplane / 1e-3)} mT",
+        title=f"{config['CH_VARIABLE']} = {var}",
         ax=ax,
         stamp=f"{config['FRIDGE']}/{config[f'DATAPATH{i}']}",
         vmin=config.getfloat("VMIN"),
@@ -83,7 +90,7 @@ def plot_data(b_perp, ibias, dvdi, ax=None, cb=True):
     )
 
 
-b_inplane = []
+variable = []
 fraun_center = []
 fraun_max = []
 datafiles = []
@@ -97,17 +104,17 @@ while config.get(f"DATAPATH{i}"):
         if filter_val is not None:
             filters = [
                 (
-                    config.get(f"FILTER_CH{i}", config["CH_FIELD_INPLANE"]),
+                    config.get(f"FILTER_CH{i}", config["CH_VARIABLE"]),
                     np.isclose,
                     filter_val,
                 )
             ]
-            inplane = filter_val
+            var = filter_val
         else:
             filters = None
-            inplane = f.get_fixed_value(config["CH_FIELD_INPLANE"])
-        b_inplane.append(inplane)
-        print(f"Processing {inplane=}")
+            var = f.get_fixed_value(config["CH_VARIABLE"])
+        variable.append(var)
+        print(f"Processing {var}")
         b_perp, ibias, meas = f.get_data(
             config["CH_FIELD_PERP"],
             ch_bias,
@@ -175,7 +182,6 @@ while config.get(f"DATAPATH{i}"):
     ]
     fraun_center.append(center)
     [ax.axvline(c / 1e-3, color="k", lw=1) for c in center]
-    fig.savefig(outpath + f"_{inplane=}_fraun-center.png")
 
     max_ = [
         np.max(np.where((field_lim[0] < b_perp) & (b_perp < field_lim[1]), i, -np.inf))
@@ -185,11 +191,11 @@ while config.get(f"DATAPATH{i}"):
         max_[0] *= -1
     fraun_max.append(max_)
     [ax.axhline(m / 1e-6, color="k", lw=1) for m in max_]
-    fig.savefig(outpath + f"_{inplane=}_fraun-max.png")
+    fig.savefig(outpath + f"_{var}_centermax.png")
 
     i += 1
-sort_idx = np.argsort(b_inplane)
-b_inplane = np.array(b_inplane)[sort_idx]
+sort_idx = np.argsort(variable)
+variable = np.array(variable)[sort_idx]
 fraun_center = np.array(fraun_center)[sort_idx]
 fraun_max = np.array(fraun_max)[sort_idx]
 datafiles = np.array(datafiles)[sort_idx]
@@ -204,7 +210,7 @@ if args.diode:
     if write:
         df = DataFrame(
             {
-                "b_inplane": b_inplane,
+                config["CH_VARIABLE"]: variable,
                 "ic-": fraun_max[:, 0],
                 "ic+": fraun_max[:, 1],
                 "datafile": datafiles,
@@ -217,29 +223,29 @@ stamp = f"{config['FRIDGE']}/{config['DATAPATH1'].removesuffix('.hdf5')}$-${last
 outpath = f"output/{Path(config['DATAPATH1']).stem}-{last_scan}"
 if args.align:
     fig, ax = plot(
-        b_inplane / 1e-3,
+        variable,
         fraun_center / 1e-3,
         "o-",
-        xlabel="in-plane field (mT)",
+        xlabel=config["CH_VARIABLE"],
         ylabel="fraunhofer center (mT)",
         stamp=stamp,
     )
     for fc in fraun_center.T:
-        m, b = np.polyfit(b_inplane, fc, 1)
+        m, b = np.polyfit(variable, fc, 1)
         ax.plot(
-            b_inplane / 1e-3,
-            (m * b_inplane + b) / 1e-3,
-            label=f"arcsin$(B_\perp/B_\parallel)$ = {round(np.degrees(np.arcsin(m)), 3)} deg",
+            variable,
+            (m * variable + b) / 1e-3,
+            label=f"arcsin$(y/x)$ = {round(np.degrees(np.arcsin(m)), 3)} deg",
         )
     ax.legend()
     fig.savefig(outpath + "_field-alignment.png")
 
 if args.max or args.diode:
     fig, ax = plot(
-        b_inplane / 1e-3,
+        variable,
         (np.abs(fraun_max) if args.diode else fraun_max) / 1e-6,
         "o-",
-        xlabel="in-plane field (mT)",
+        xlabel=config["CH_VARIABLE"],
         ylabel="critical current (μA)",
         stamp=stamp,
         color="tab:blue" if args.max else None,
@@ -247,18 +253,18 @@ if args.max or args.diode:
     )
     if args.max:
         for fm in fraun_max.T:
-            ax.fill_between(b_inplane / 1e-3, fm / 1e-6, color="tab:blue", alpha=0.5)
-        ax.set_xlim((b_inplane.min() / 1e-3, None))
-    fig.savefig(outpath + "_ic-vs-inplane.png")
+            ax.fill_between(variable, fm / 1e-6, color="tab:blue", alpha=0.5)
+        ax.set_xlim((variable.min(), None))
+    fig.savefig(outpath + "_ic-vs-var.png")
 
 if args.diode:
     fig, ax = plt.subplots()
     ax.axhline(0, color="k")
     plot(
-        b_inplane / 1e-3,
+        variable,
         np.diff(np.abs(fraun_max)).squeeze() / 1e-9,
         "o-",
-        xlabel="in-plane field (mT)",
+        xlabel=config["CH_VARIABLE"],
         ylabel="$\Delta I_c$ (nA)",
         ax=ax,
         stamp=stamp,
