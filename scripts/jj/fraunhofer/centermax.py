@@ -9,6 +9,7 @@ import argparse
 import json
 import re
 from pathlib import Path
+from warnings import warn
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -136,6 +137,10 @@ while config.get(f"DATAPATH{i}"):
 
     threshold = config.getfloat(f"THRESHOLD{i}", config.getfloat("THRESHOLD"))
     if config.getboolean(f"THRESHOLD_DC{i}", config.getboolean(f"THRESHOLD_DC")):
+        if args.branch == "+-":
+            warn(
+                "Using a DC threshold with --branch +- is not yet supported...this will probably crash."
+            )
         ic_signal = volts
     else:
         ic_signal = dvdi
