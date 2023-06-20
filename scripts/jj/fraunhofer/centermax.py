@@ -191,7 +191,9 @@ datafiles = np.array(datafiles)[sort_idx]
 
 database_path = outdir / f"{args.config_section}.csv"
 if database_path.exists():
-    write = input(f"{database_path} already exists.  Overwrite? [y/n]: ")
+    write = None
+    while write not in ("y", "n"):
+        write = input(f"{database_path} already exists.  Overwrite? [y/n]: ").lower()
     write = True if write.lower() == "y" else False
 else:
     write = True
