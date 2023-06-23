@@ -39,7 +39,7 @@ ax2.plot(z_field_xy, rxy/1e3,
 ax.plot([], [], color=colors[-1], linewidth=0.5, label=r"$R_{xy}$, rate $=+500$ $\mu$T/s")
 ax.legend()
 ax.set_xlim(z_field_xx[0], z_field_xx[-1])
-ax.set_xlabel(r"$H_z$ (T)")
+ax.set_xlabel(r"$B_z$ (T)")
 ax.set_ylabel(r"$R_{xx}, R_{yy}$ (k$\Omega$)")
 ax2.set_ylabel(r"$R_{xy}$ (k$\Omega$)")
 ax.yaxis.label.set_color(colors[0])

@@ -31,7 +31,7 @@ ax.plot(z_field_xx_november, rxx_november/1e3,
     label=r"$I=20$ nA, rate $=-500$ $\mu$T/s, November 2022")
 ax.legend()
 ax.set_xlim(z_field_xx[0], z_field_xx[-1])
-ax.set_xlabel(r"$H_z$ (T)")
+ax.set_xlabel(r"$B_z$ (T)")
 ax.set_ylabel(r"$R_{xx}$ (k$\Omega$)")
 name = Loader.get_name()
 ax.set_title(name + " Device NW")

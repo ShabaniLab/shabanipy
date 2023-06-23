@@ -39,7 +39,7 @@ for i in range(num_traces):
         linewidth=0.5)
     ax.annotate(r" {0:.2f} V".format(gate[0, i]), xy=(0, r[0]))
 
-ax.set_xlabel(r"$H_z$ (T)")
+ax.set_xlabel(r"$B_z$ (T)")
 ax.set_ylabel(r"Normalized $R_{yy}$")
 ax.set_title(r"JS712-HB1, Gate dependeence")
 plt.yticks([])
@@ -59,7 +59,7 @@ for i in range(num_traces):
         linestyle='-', 
         linewidth=0.5)
 
-ax.set_xlabel(r"$H_z$ (T)")
+ax.set_xlabel(r"$B_z$ (T)")
 ax.set_ylabel(r"$R_{yx}$ (k$\Omega$)")
 ax.set_title(r"JS712-HB1, Gate dependeence")
 ax.set_xlim([z_field[0, 0], z_field[-1, 0]])

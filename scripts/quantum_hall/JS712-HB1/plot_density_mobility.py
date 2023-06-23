@@ -53,3 +53,7 @@ path = "density_mobility.png"
 plt.savefig(path, bbox_inches='tight') 
 print(f"figure saved: {path}")
 plt.close(fig)
+
+idx = np.argmin(np.abs(gate[0, :] - 0.0))
+print(f"n = {density[idx]/1e16:.2f} 1e12/cm^2")
+print(f"mu = {mobility_yy[idx]*1e4:.2f} cm^2/V.s")

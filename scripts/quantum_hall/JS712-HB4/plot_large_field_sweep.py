@@ -42,7 +42,7 @@ ax.plot(z_field_yy, ryy,
     alpha=1.0,
     label=r"$R_{yy}$, $\mu_{yy}=$" + r"{0:.3e} (cm$^2$/V.s)".format(mobility_yy*1e4))
 
-ax.set_xlabel(r"$H_z$ (T)")
+ax.set_xlabel(r"$B_z$ (T)")
 ax.set_ylabel(r"$R_{4\mathrm{t}}$ ($\Omega$)")
 ax.set_title(r"JS712-HB4, Longitudinal resistance")
 ax.set_xlim([z_field_xx[0], z_field_xx[-1]])
@@ -66,7 +66,7 @@ ax.plot(z_field_yx, ryx/1000,
     alpha=1.0,
     label=r"$R_{yx}$, " + r"$n = ${0:.2e} (1/cm$^2$)".format(density_yx/1e4))
 
-ax.set_xlabel(r"$H_z$ (T)")
+ax.set_xlabel(r"$B_z$ (T)")
 ax.set_ylabel(r"$R_{4\mathrm{t}}$ ($k\Omega$)")
 ax.set_title(r"JS712-HB4, Hall resistance")
 ax.set_xlim([z_field_xy[0], z_field_xy[-1]])
