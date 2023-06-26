@@ -1,7 +1,7 @@
 # Contributing to shabanipy
 This document contains the bare minimum requirements for contributing to
 shabanipy.
-For more information, reach out to one of the [authors](AUTHORS).
+For more information, reach out to one of the [authors](AUTHORS.md).
 
 ## git hooks
 Install git hooks with [pre-commit](https://pre-commit.com/):

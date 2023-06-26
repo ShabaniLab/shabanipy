@@ -1,4 +1,5 @@
-ShabaniPy is developed and maintained by William F. Schiela <bschiela@gmail.com>.
+ShabaniPy is developed and maintained by William F. Schiela
+(<bschiela@gmail.com>).
 
 Other contributors, listed alphabetically, are:
 - M. C. Dartiailh
