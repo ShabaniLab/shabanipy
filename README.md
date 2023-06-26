@@ -8,12 +8,4 @@ pip install .
 ```
 
 # For developers
-
-## git hooks
-Install git hooks with [pre-commit](https://pre-commit.com/):
-```shell
-conda install pre-commit
-pre-commit install --hook-type pre-commit --hook-type pre-push
-```
-This will enforce code style conventions on `git commit` and run unit tests on
-`git push`.
+See [instructions for contributors](CONTRIBUTING.md).

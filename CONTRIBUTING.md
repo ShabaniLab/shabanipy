@@ -1,7 +1,13 @@
 # Contributing to shabanipy
-If you would like to contribute to this repository, be sure to install the git
-hooks located in `./githooks/`:
-```bash
-$ ./githooks/install
+This document contains the bare minimum requirements for contributing to
+shabanipy.
+For more information, reach out to one of the [authors](AUTHORS).
+
+## git hooks
+Install git hooks with [pre-commit](https://pre-commit.com/):
+```shell
+conda install pre-commit
+pre-commit install --hook-type pre-commit --hook-type pre-push
 ```
-The `pre-push` hook prevents pushing broken unit tests.
+This will enforce code style conventions on `git commit` and run unit tests on
+`git push`.
