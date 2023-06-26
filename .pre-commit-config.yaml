@@ -2,9 +2,11 @@
 default_stages: [commit]
 repos:
   - repo: https://github.com/bschiela/githooks
-    rev: 6f17280
+    rev: 19b1347
     hooks:
       - id: do-not-commit
+      - id: python-unittest
+        stages: [push]
   - repo: https://github.com/PyCQA/autoflake
     rev: v2.1.1
     hooks:

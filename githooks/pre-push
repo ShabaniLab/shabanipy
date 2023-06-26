@@ -1,7 +1,0 @@
-#!/bin/bash
-
-if ! python -m unittest discover
-then
-  echo "There are broken unit tests! Fix them before pushing."
-  exit 1
-fi
