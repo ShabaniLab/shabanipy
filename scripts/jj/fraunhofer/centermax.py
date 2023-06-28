@@ -207,8 +207,11 @@ if write:
     if args.branch == "+-":
         df["ic-"] = fraun_max[:, 0]
         df["ic+"] = fraun_max[:, 1]
+        df["center-"] = fraun_center[:, 0]
+        df["center+"] = fraun_center[:, 1]
     else:
         df[f"ic{args.branch}"] = fraun_max
+        df[f"center{args.branch}"] = fraun_center
     df.to_csv(database_path, index=False)
 
 last_scan = re.split("-|_|\.", config[f"DATAPATH{i-1}"])[-2]
