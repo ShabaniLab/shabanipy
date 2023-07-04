@@ -53,7 +53,7 @@ args = parser.parse_args()
 _, config = load_config(Path(__file__).parent / args.config_path, args.config_section)
 
 plt.style.use(["fullscreen13"])
-outdir = Path(f"output/{Path(args.config_path).stem}")
+outdir = Path(f"output/centermax/{Path(args.config_path).stem}")
 outdir.mkdir(exist_ok=True, parents=True)
 
 
@@ -216,7 +216,7 @@ if write:
 
 last_scan = re.split("-|_|\.", config[f"DATAPATH{i-1}"])[-2]
 stamp = f"{config['FRIDGE']}/{config['DATAPATH1'].removesuffix('.hdf5')}$-${last_scan}"
-outpath = f"output/{Path(config['DATAPATH1']).stem}-{last_scan}"
+outpath = f"output/centermax/{Path(config['DATAPATH1']).stem}-{last_scan}"
 ic_label = (
     ("$I_{c-}$", "$I_{c+}$") if args.branch == "+-" else f"$I_{{c{args.branch}}}$"
 )

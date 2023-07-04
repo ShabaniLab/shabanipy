@@ -67,14 +67,14 @@ if LENGTH is None:
     )
 
 # output
-OUTDIR = "./output/"
+OUTDIR = "./output/current-reconstruction/"
 print(f"Output directory: `{OUTDIR}`")
 Path(OUTDIR).mkdir(parents=True, exist_ok=True)
 SLICE_STR = (
     f"_idx={config.getfloat('3RD_AXIS_INDEX')}" if "3RD_AXIS_INDEX" in config else ""
 )
 datapath = Path(config["DATAPATH"])
-OUTPATH = Path(OUTDIR) / f"{datapath.stem}{SLICE_STR}_current-reconstruction"
+OUTPATH = Path(OUTDIR) / f"{datapath.stem}{SLICE_STR}"
 jy_pink.register()
 plt.style.use(["jy_pink", "fullscreen13"])
 
