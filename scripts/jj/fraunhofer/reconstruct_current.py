@@ -94,14 +94,14 @@ with ShaBlabberFile(datapath) as f:
     bfield, ibias, dvdi = f.get_data(
         config["CH_FIELD_PERP"],
         config["CH_BIAS"],
-        config["CH_MEASURE"],
+        config["CH_MEAS"],
         order=(config["CH_FIELD_PERP"], config["CH_BIAS"]),
         slices=SLICES,
         filters=filters,
     )
     if f.get_channel(config["CH_BIAS"]).unitPhys == "V":
         ibias /= config.getfloat("R_DC_OUT")
-    ibias_ac = f.get_channel(config["CH_MEASURE"]).instrument.config[
+    ibias_ac = f.get_channel(config["CH_MEAS"]).instrument.config[
         "Output amplitude"
     ] / config.getfloat("R_AC_OUT")
     dvdi = np.abs(dvdi) / ibias_ac
@@ -130,7 +130,7 @@ bfield = np.unique(bfield)  # assumes all field sweeps are identical
 ic = extract_switching_current(
     ibias,
     dvdi,
-    threshold=config.getfloat("RESISTANCE_THRESHOLD", fallback=None),
+    threshold=config.getfloat("THRESHOLD", fallback=None),
     interp=True,
 )
 ax.set_title("switching current")
