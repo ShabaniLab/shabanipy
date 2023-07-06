@@ -19,7 +19,7 @@ from scipy.signal import savgol_filter
 from shabanipy.dvdi import extract_switching_current
 from shabanipy.jj import find_fraunhofer_center
 from shabanipy.labber import ShaBlabberFile
-from shabanipy.utils import load_config, plot, plot2d
+from shabanipy.utils import get_output_dir, load_config, plot, plot2d
 
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -53,8 +53,10 @@ args = parser.parse_args()
 _, config = load_config(Path(__file__).parent / args.config_path, args.config_section)
 
 plt.style.use(["fullscreen13"])
-outdir = Path(f"output/centermax/{Path(args.config_path).stem}")
-outdir.mkdir(exist_ok=True, parents=True)
+outdir = get_output_dir() / "centermax"
+print(f"Output directory: {outdir}")
+outdirvv = outdir / Path(args.config_path).stem
+outdirvv.mkdir(parents=True, exist_ok=True)
 
 
 def plot_data(b_perp, ibias, dvdi, ax=None, cb=True):
@@ -164,7 +166,6 @@ while config.get(f"DATAPATH{i}"):
     else:
         field_lim = (-np.inf, np.inf)
 
-    outpath = str(outdir / f"{Path(config[f'DATAPATH{i}']).stem}")
     center = [
         find_fraunhofer_center(b_perp, i, field_lim=field_lim, debug=args.debug)
         for i in np.abs(ic)
@@ -180,7 +181,7 @@ while config.get(f"DATAPATH{i}"):
         max_[0] *= -1
     fraun_max.append(max_)
     [ax.axhline(m / 1e-6, color="k", lw=1) for m in max_]
-    fig.savefig(outpath + f"_{var}_centermax.png")
+    fig.savefig(str(outdirvv / f"{Path(config[f'DATAPATH{i}']).stem}_{var}.png"))
 
     i += 1
 sort_idx = np.argsort(variable)
@@ -188,8 +189,10 @@ variable = np.array(variable)[sort_idx]
 fraun_center = np.array(fraun_center)[sort_idx]
 fraun_max = np.array(fraun_max)[sort_idx]
 datafiles = np.array(datafiles)[sort_idx]
+last_scan = re.split("-|_|\.", config[f"DATAPATH{i-1}"])[-2]
 
-database_path = outdir / f"{args.config_section}.csv"
+outpath = outdir / f"{Path(config['DATAPATH1']).stem}-{last_scan}"
+database_path = Path(str(outpath) + ".csv")
 if database_path.exists():
     write = None
     while write not in ("y", "n"):
@@ -214,9 +217,7 @@ if write:
         df[f"center{args.branch}"] = fraun_center
     df.to_csv(database_path, index=False)
 
-last_scan = re.split("-|_|\.", config[f"DATAPATH{i-1}"])[-2]
 stamp = f"{config['FRIDGE']}/{config['DATAPATH1'].removesuffix('.hdf5')}$-${last_scan}"
-outpath = f"output/centermax/{Path(config['DATAPATH1']).stem}-{last_scan}"
 ic_label = (
     ("$I_{c-}$", "$I_{c+}$") if args.branch == "+-" else f"$I_{{c{args.branch}}}$"
 )
@@ -238,7 +239,7 @@ if args.align:
             label=f"arcsin$(y/x)$ = {round(np.degrees(np.arcsin(m)), 3)} deg",
         )
 ax.legend()
-fig.savefig(outpath + "_center.png")
+fig.savefig(str(outpath) + "_center.png")
 
 fig, ax = plot(
     variable,
@@ -252,7 +253,7 @@ fig, ax = plot(
 for fm in fraun_max.T:
     ax.fill_between(variable, fm / 1e-6, color="tab:blue", alpha=0.5)
 ax.set_xlim((variable.min(), variable.max()))
-fig.savefig(outpath + "_max.png")
+fig.savefig(str(outpath) + "_max.png")
 
 if args.branch == "+-":
     fig, ax = plot(
@@ -265,7 +266,7 @@ if args.branch == "+-":
         stamp=stamp,
     )
     ax.fill_between(variable, *np.abs(fraun_max.T / 1e-6), color="tab:gray", alpha=0.5)
-    fig.savefig(outpath + "_absmax.png")
+    fig.savefig(str(outpath) + "_absmax.png")
 
     fig, ax = plt.subplots()
     ax.axhline(0, color="k")
@@ -278,8 +279,7 @@ if args.branch == "+-":
         ax=ax,
         stamp=stamp,
     )
-    fig.savefig(outpath + "_deltamax.png")
+    fig.savefig(str(outpath) + "_deltamax.png")
 
 if i < 10:
     plt.show()
-print("All plots written to output/")

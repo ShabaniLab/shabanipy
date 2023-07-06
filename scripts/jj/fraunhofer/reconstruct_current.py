@@ -14,8 +14,7 @@ from shabanipy.jj import (
     symmetrize_fraunhofer,
 )
 from shabanipy.labber import ShaBlabberFile
-from shabanipy.utils import load_config
-from shabanipy.utils.plotting import jy_pink, plot, plot2d
+from shabanipy.utils import get_output_dir, jy_pink, load_config, plot, plot2d
 
 print = partial(print, flush=True)
 
@@ -67,14 +66,16 @@ if LENGTH is None:
     )
 
 # output
-OUTDIR = "./output/current-reconstruction/"
-print(f"Output directory: `{OUTDIR}`")
-Path(OUTDIR).mkdir(parents=True, exist_ok=True)
+outdir = get_output_dir() / "current-reconstruction"
+print(f"Output directory: {outdir}")
+outdirvv = outdir / Path(args.config_path).stem
+outdirvv.mkdir(parents=True, exist_ok=True)
 SLICE_STR = (
     f"_idx={config.getfloat('3RD_AXIS_INDEX')}" if "3RD_AXIS_INDEX" in config else ""
 )
 datapath = Path(config["DATAPATH"])
-OUTPATH = Path(OUTDIR) / f"{datapath.stem}{SLICE_STR}"
+outpath = outdir / f"{datapath.stem}{SLICE_STR}"
+outpathvv = outdirvv / f"{datapath.stem}{SLICE_STR}"
 jy_pink.register()
 plt.style.use(["jy_pink", "fullscreen13"])
 
@@ -123,7 +124,7 @@ fig, ax = plot2d(
     title="raw data",
     stamp=datapath.stem,
 )
-fig.savefig(str(OUTPATH) + "_raw-data.png")
+fig.savefig(str(outpathvv) + "_raw-data.png")
 
 # extract the switching current
 bfield = np.unique(bfield)  # assumes all field sweeps are identical
@@ -135,7 +136,7 @@ ic = extract_switching_current(
 )
 ax.set_title("switching current")
 plot(bfield / 1e-3, ic / 1e-6, ax=ax, color="k", lw=1)
-fig.savefig(str(OUTPATH) + "_ic-extraction.png")
+fig.savefig(str(outpathvv) + "_ic-extraction.png")
 
 if args.center:
     bfield = recenter_fraunhofer(bfield, ic)
@@ -150,7 +151,7 @@ if args.center:
         title="centered fraunhofer",
         stamp=datapath.stem,
     )
-    fig.savefig(str(OUTPATH) + "_centered.png")
+    fig.savefig(str(outpathvv) + "_centered.png")
 
 if args.symmetrize:
     bfield, ic = symmetrize_fraunhofer(bfield, ic)
@@ -165,7 +166,7 @@ if args.symmetrize:
         title="symmetrized fraunhofer",
         stamp=datapath.stem,
     )
-    fig.savefig(str(OUTPATH) + "_symmetrized.png")
+    fig.savefig(str(outpathvv) + "_symmetrized.png")
 
 PHI0 = physical_constants["mag. flux quantum"][0]
 FIELD_TO_WAVENUM = 2 * np.pi * LENGTH / PHI0
@@ -177,6 +178,6 @@ ax.axhline(0, color="k")
 ax.plot(x * 1e6, jx)
 ax.fill_between(x * 1e6, jx, alpha=0.5)
 plt.show()
-fig.savefig(str(OUTPATH) + "_current-density.png")
+fig.savefig(str(outpath) + "_current-density.png")
 
 plt.show()
