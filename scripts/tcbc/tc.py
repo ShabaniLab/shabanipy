@@ -39,7 +39,7 @@ for i, t in enumerate(temp):
 temp_fresh = np.array(temp_fresh)
 volt_fresh = volt[indexs]
 
-plt.style.use("fullscreen13")
+#plt.style.use("fullscreen13")
 fig, ax = plt.subplots()
 ax.plot(temp, ".", label="stale")
 ax.plot(indexs, temp_fresh, ".", label="fresh")
