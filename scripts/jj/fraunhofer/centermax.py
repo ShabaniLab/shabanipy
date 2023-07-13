@@ -192,8 +192,7 @@ fraun_max = np.array(fraun_max)[sort_idx]
 datafiles = np.array(datafiles)[sort_idx]
 last_scan = re.split("-|_|\.", config[f"DATAPATH{i-1}"])[-2]
 
-outpath = outdir / f"{Path(config['DATAPATH1']).stem}-{last_scan}"
-database_path = Path(str(outpath) + ".csv")
+database_path = outdir / f"{Path(args.config_path).stem}_{args.config_section}"
 if database_path.exists():
     write = None
     while write not in ("y", "n"):
@@ -240,6 +239,7 @@ if args.align:
             label=f"arcsin$(y/x)$ = {round(np.degrees(np.arcsin(m)), 3)} deg",
         )
 ax.legend()
+outpath = outdir / f"{Path(config['DATAPATH1']).stem}-{last_scan}"
 fig.savefig(str(outpath) + "_center.png")
 
 fig, ax = plot(
