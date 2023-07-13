@@ -271,6 +271,7 @@ if args.branch == "+-":
 
     fig, ax = plt.subplots()
     ax.axhline(0, color="k")
+    ax.axvline(0, color="k")
     plot(
         variable,
         np.diff(np.abs(fraun_max)).squeeze() / 1e-9,
