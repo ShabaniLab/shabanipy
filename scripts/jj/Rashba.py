@@ -1,25 +1,9 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
-from pandas import read_csv
-import math as m
-from scipy.optimize import curve_fit
-import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-
-
-# In[2]:
-
+import numpy as np
+from pandas import read_csv
+from scipy.optimize import curve_fit
 
 df = read_csv("0.6um-NNW_diode-z.csv")
-
-
-# In[3]:
-
 
 # Define the equation
 def equation(By, Bs, b, c, I0, Ic):
@@ -30,19 +14,10 @@ def equation2(By, Bs, b, c, I0, Ic):
     "used for ic-"
     return -(np.abs(Ic) / I0) + (1 - b * (1 - c * np.sign(By + Bs)) * (By + Bs) ** 2)
 
-
-# In[4]:
-
-
 # Extract Ic and By from the DataFrame
 Ic = np.abs(df['ic-'].values)
 Icp = np.abs(df['ic+'].values)
 By = df['b_inplane'].values
-
-
-
-# In[5]:
-
 
 #restrict to +/- 100mT:
 
@@ -56,17 +31,9 @@ Icp_cut = Icp_cut[:np.where(By==0.1)[0][0]-len(By)+1]
 By_cut = By[np.where(By==-0.1)[0][0]:]
 By_cut = By_cut[:np.where(By==0.1)[0][0]-len(By)+1]
 
-
-# In[6]:
-
-
 #define I0+/-:
 I0 = np.abs(df['ic-'].min())
 I0p = df['ic+'].max()
-
-
-# In[18]:
-
 
 # Concatenate the data for both curves
 Ic_concat = np.concatenate((Icp_cut, Ic_cut))
@@ -122,10 +89,3 @@ plt.title('Curve Fitting')
 plt.legend()
 plt.grid(True)
 plt.show()
-
-
-# In[ ]:
-
-
-
-
