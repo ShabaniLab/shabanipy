@@ -1,9 +1,19 @@
+import argparse
+
 import matplotlib.pyplot as plt
 import numpy as np
 from pandas import read_csv
 from scipy.optimize import curve_fit
 
-df = read_csv("0.6um-NNW_diode-z.csv")
+parser = argparse.ArgumentParser(
+    description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
+parser.add_argument(
+    "datapath", help="path to .csv file containing positive & negative switching current vs. field"
+)
+args = parser.parse_args()
+
+df = read_csv(args.datapath)
 
 # Define the equation
 def equation(By, Bs, b, c, I0, Ic):
