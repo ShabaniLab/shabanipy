@@ -1,3 +1,8 @@
+"""Fit the diode effect on the switching current vs. in-plane field.
+
+This script fits Ic+(B||) and Ic-(B||) according to Eq. (1) of
+https://arxiv.org/abs/2303.01902v2.
+"""
 import argparse
 
 import matplotlib.pyplot as plt
