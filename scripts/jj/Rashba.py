@@ -27,13 +27,13 @@ args = parser.parse_args()
 df = read_csv(args.datapath)
 
 # Define the equation
-def equation(By, Bs, b, c, I0, Ic):
+def equation(By, Bs, b, c, I0):
     "used for ic+"
-    return -(np.abs(Ic) / I0) + (1 - b * (1 + c * np.sign(By - Bs)) * (By - Bs) ** 2)
+    return I0 * (1 - b * (1 + c * np.sign(By - Bs)) * (By - Bs) ** 2)
 
-def equation2(By, Bs, b, c, I0, Ic):
+def equation2(By, Bs, b, c, I0):
     "used for ic-"
-    return -(np.abs(Ic) / I0) + (1 - b * (1 - c * np.sign(By + Bs)) * (By + Bs) ** 2)
+    return I0 * (1 - b * (1 - c * np.sign(By + Bs)) * (By + Bs) ** 2)
 
 # Extract Ic and By from the DataFrame
 Ic = np.abs(df['ic-'].values)
@@ -60,9 +60,9 @@ By_concat = np.concatenate((By, By))
 I0_concat = np.max([I0, I0p])
 
 # Define the combined equation
-def combined_equation(By, Bs, b, c, I0, Ic, Icp):
-    equation1 = -(np.abs(Ic) / I0) + (1 - b * (1 - c * np.sign(By + Bs)) * (By + Bs) ** 2)
-    equation2 = -(np.abs(Icp) / I0p) + (1 - b * (1 + c * np.sign(By - Bs)) * (By - Bs) ** 2)
+def combined_equation(By, Bs, b, c, I0):
+    equation1 = I0 * (1 - b * (1 - c * np.sign(By + Bs)) * (By + Bs) ** 2)
+    equation2 = I0p * (1 - b * (1 + c * np.sign(By - Bs)) * (By - Bs) ** 2)
     n = len(By) // 2
     return np.concatenate([equation1[:n], equation2[n:]])
 
@@ -73,11 +73,9 @@ bounds = ([By.min(), 10, -0.1], [By.max(), 30, 0.1])
 
 # Perform curve fitting
 popt, pcov = curve_fit(
-    lambda By_concat, Bs, b, c: combined_equation(By_concat, Bs, b, c, I0_concat, Ic_concat, Ic_concat),
+    lambda By_concat, Bs, b, c: combined_equation(By_concat, Bs, b, c, I0_concat),
     By_concat, Ic_concat,
     p0=initial_guess,
-    bounds=bounds,
-    maxfev=10000
 )
 
 # Retrieve the fitted parameters
@@ -91,14 +89,14 @@ print("c:", c_fit)
 
 # Generate points for the fitted curve
 By_fit = np.linspace(By.min(), By.max(), 100)
-Ic_fit = equation2(By_fit, Bs_fit, b_fit, c_fit, I0, 0)  # Use 0 as the reference Ic value
-Icp_fit = equation(By_fit, Bs_fit, b_fit, c_fit, I0p, 0)  # Use 0 as the reference Ic value
+Ic_fit = equation2(By_fit, Bs_fit, b_fit, c_fit, I0)
+Icp_fit = equation(By_fit, Bs_fit, b_fit, c_fit, I0p)
 
 # Plot the original data points and the fitted curve
-plt.scatter(By, Icp/I0p, label='Original Data Ic+')
+plt.scatter(By, Icp, label='Original Data Ic+')
 plt.plot(By_fit, Icp_fit, 'g-', label='Fitted Curve Ic+')
 
-plt.scatter(By, Ic/I0, label='Original Data Ic-')
+plt.scatter(By, Ic, label='Original Data Ic-')
 plt.plot(By_fit, Ic_fit, 'r-', label='Fitted Curve Ic-')
 
 plt.xlabel('By')
