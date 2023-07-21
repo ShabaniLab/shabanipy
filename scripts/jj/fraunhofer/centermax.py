@@ -283,5 +283,9 @@ if args.branch == "+-":
     )
     fig.savefig(str(outpath) + "_deltamax.png")
 
-if i < 10:
+show = None
+while show not in ("y", "n"):
+    show = input(f"Show >{i} plots? [y/n]: ").lower()
+show = True if show == "y" else False
+if show:
     plt.show()
