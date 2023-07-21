@@ -61,7 +61,8 @@ I0_concat = np.max([I0, I0p])
 def combined_equation(By, Bs, b, c, I0, Ic, Icp):
     equation1 = -(np.abs(Ic) / I0) + (1 - b * (1 - c * np.sign(By + Bs)) * (By + Bs) ** 2)
     equation2 = -(np.abs(Icp) / I0p) + (1 - b * (1 + c * np.sign(By - Bs)) * (By - Bs) ** 2)
-    return np.where(By >= 0, equation1, equation2)
+    n = len(By) // 2
+    return np.concatenate([equation1[:n], equation2[n:]])
 
 initial_guess = [0.001, 25, -0.1]
 
