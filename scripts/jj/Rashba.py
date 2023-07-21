@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pandas import read_csv
 from scipy.optimize import curve_fit
+from lmfit import Model
 
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -26,14 +27,6 @@ args = parser.parse_args()
 
 df = read_csv(args.datapath)
 
-# Define the equation
-def equation(By, Bs, b, c, I0):
-    "used for ic+"
-    return I0 * (1 - b * (1 + c * np.sign(By - Bs)) * (By - Bs) ** 2)
-
-def equation2(By, Bs, b, c, I0):
-    "used for ic-"
-    return I0 * (1 - b * (1 - c * np.sign(By + Bs)) * (By + Bs) ** 2)
 
 # Extract Ic and By from the DataFrame
 Ic = np.abs(df['ic-'].values)
@@ -47,61 +40,43 @@ if args.bmax is not None:
     Icp = Icp[mask]
     By = By[mask]
 
-
-#define I0+/-:
-I0 = np.abs(df['ic-'].min())
-I0p = df['ic+'].max()
-
 # Concatenate the data for both curves
 Ic_concat = np.concatenate((Icp, Ic))
-By_concat = np.concatenate((By, By))
 
-# Define the value of I0
-I0_concat = np.max([I0, I0p])
+# build model from https://arxiv.org/abs/2303.01902v2 Eq. (1)
+def ic_p(x, imax, b, c, bstar):
+    """Positive critical current, Ic+."""
+    return imax * (1 - b * (1 + c * np.sign(x - bstar)) * (x - bstar) ** 2)
 
-# Define the combined equation
-def combined_equation(By, Bs, b, c, I0):
-    equation1 = I0 * (1 - b * (1 - c * np.sign(By + Bs)) * (By + Bs) ** 2)
-    equation2 = I0p * (1 - b * (1 + c * np.sign(By - Bs)) * (By - Bs) ** 2)
-    n = len(By) // 2
-    return np.concatenate([equation1[:n], equation2[n:]])
+def ic_m(x, imax, b, c, bstar):
+    """Negative critical current, Ic-."""
+    return imax * (1 - b * (1 - c * np.sign(x + bstar)) * (x + bstar) ** 2)
 
-initial_guess = [0.001, 25, -0.1]
+def ic_pm(x, imax, b, c, bstar):
+    """Positive and negative critical current, Ic+-."""
+    return np.concatenate([f(x, imax, b, c, bstar) for f in (ic_p, ic_m)])
 
-# Define the bounds for the fitting parameters
-bounds = ([By.min(), 10, -0.1], [By.max(), 30, 0.1])
+model = Model(ic_pm)
+model.set_param_hint("imax", value=np.max([Icp, np.abs(Ic)]), vary=False)
+model.set_param_hint("b", value=25)
+model.set_param_hint("c", value=-0.1)
+model.set_param_hint("bstar", value=0.001)
+params = model.make_params()
 
 # Perform curve fitting
-popt, pcov = curve_fit(
-    lambda By_concat, Bs, b, c: combined_equation(By_concat, Bs, b, c, I0_concat),
-    By_concat, Ic_concat,
-    p0=initial_guess,
-)
+result = model.fit(Ic_concat, x=By)
+print(result.fit_report())
 
-# Retrieve the fitted parameters
-Bs_fit, b_fit, c_fit = popt
+n = 100
+bfield_smooth = np.linspace(By.min(), By.max(), n)
+fit = model.eval(result.params, x=bfield_smooth)
 
-print("Fitted parameters:")
-print("Bs:", Bs_fit)
-print("b:", b_fit)
-print("c:", c_fit)
+plt.scatter(By / 1e-3, Ic / 1e-6, label='$I_{c-}$ data', color="tab:blue")
+plt.scatter(By / 1e-3, Icp / 1e-6, label='$I_{c+}$ data', color="tab:orange")
+plt.plot(bfield_smooth / 1e-3, fit[n:] / 1e-6, label='$I_{c-}$ fit', color="tab:blue")
+plt.plot(bfield_smooth / 1e-3, fit[:n] / 1e-6, label='$I_{c+}$ fit', color="tab:orange")
 
-
-# Generate points for the fitted curve
-By_fit = np.linspace(By.min(), By.max(), 100)
-Ic_fit = equation2(By_fit, Bs_fit, b_fit, c_fit, I0)
-Icp_fit = equation(By_fit, Bs_fit, b_fit, c_fit, I0p)
-
-# Plot the original data points and the fitted curve
-plt.scatter(By, Icp, label='Original Data Ic+')
-plt.plot(By_fit, Icp_fit, 'g-', label='Fitted Curve Ic+')
-
-plt.scatter(By, Ic, label='Original Data Ic-')
-plt.plot(By_fit, Ic_fit, 'r-', label='Fitted Curve Ic-')
-
-plt.xlabel('By')
-plt.ylabel('|Ic|/I0')
-plt.title('Curve Fitting')
+plt.xlabel('in-plane field (mT)')
+plt.ylabel('critical current (μA)')
 plt.legend()
-plt.grid(True)
 plt.show()
