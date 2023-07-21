@@ -14,7 +14,7 @@ from shabanipy.jj import (
     symmetrize_fraunhofer,
 )
 from shabanipy.labber import ShaBlabberFile
-from shabanipy.utils import get_output_dir, jy_pink, load_config, plot, plot2d
+from shabanipy.utils import get_output_dir, jy_pink, load_config, plot, plot2d, stamp
 
 print = partial(print, flush=True)
 
@@ -114,6 +114,7 @@ if dvdi.ndim > 2:
     )
 
 # plot the raw data
+stamp_str = f"{config['FRIDGE']}/{datapath}"
 fig, ax = plot2d(
     bfield / 1e-3,
     ibias / 1e-6,
@@ -122,7 +123,7 @@ fig, ax = plot2d(
     ylabel="dc bias (μA)",
     zlabel="dV/dI (Ω)",
     title="raw data",
-    stamp=datapath.stem,
+    stamp=stamp_str,
 )
 fig.savefig(str(outpathvv) + "_raw-data.png")
 
@@ -149,7 +150,7 @@ if args.center:
         xlabel="magnetic field (mT)",
         ylabel="critical current (μA)",
         title="centered fraunhofer",
-        stamp=datapath.stem,
+        stamp=stamp_str,
     )
     fig.savefig(str(outpathvv) + "_centered.png")
 
@@ -164,7 +165,7 @@ if args.symmetrize:
         xlabel="magnetic field (mT)",
         ylabel="critical current (μA)",
         title="symmetrized fraunhofer",
-        stamp=datapath.stem,
+        stamp=stamp_str,
     )
     fig.savefig(str(outpathvv) + "_symmetrized.png")
 
@@ -177,6 +178,7 @@ ax.set_ylabel(r"$J(x)$ (μA/μm)")
 ax.axhline(0, color="k")
 ax.plot(x * 1e6, jx)
 ax.fill_between(x * 1e6, jx, alpha=0.5)
+stamp(ax, stamp_str)
 plt.show()
 fig.savefig(str(outpath) + "_current-density.png")
 
