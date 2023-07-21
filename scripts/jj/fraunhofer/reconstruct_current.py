@@ -124,6 +124,8 @@ fig, ax = plot2d(
     zlabel="dV/dI (Ω)",
     title="raw data",
     stamp=stamp_str,
+    vmin=config.getfloat("VMIN", None),
+    vmax=config.getfloat("VMAX", None),
 )
 fig.savefig(str(outpathvv) + "_raw-data.png")
 
