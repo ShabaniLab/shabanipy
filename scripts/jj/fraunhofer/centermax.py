@@ -192,7 +192,7 @@ fraun_max = np.array(fraun_max)[sort_idx]
 datafiles = np.array(datafiles)[sort_idx]
 last_scan = re.split("-|_|\.", config[f"DATAPATH{i-1}"])[-2]
 
-database_path = outdir / f"{Path(args.config_path).stem}_{args.config_section}"
+database_path = outdir / f"{Path(args.config_path).stem}_{args.config_section}.csv"
 if database_path.exists():
     write = None
     while write not in ("y", "n"):
