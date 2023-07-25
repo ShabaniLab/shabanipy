@@ -4,6 +4,7 @@ This script fits Ic+(B||) and Ic-(B||) according to Eq. (1) of
 https://arxiv.org/abs/2303.01902v2.
 """
 import argparse
+from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -39,6 +40,11 @@ if args.bmax is not None:
     icp = icp[mask]
     bfield = bfield[mask]
 
+# swap Ic+ and Ic- to match sign convention that Ic+ > Ic- for B > 0
+# n.b. assume data is sorted by field
+if icp[-1] < icm[-1]:
+    icp, icm = icm, icp
+
 # build model from https://arxiv.org/abs/2303.01902v2 Eq. (1)
 def icp_model(x, imax, b, c, bstar):
     """Positive critical current, Ic+."""
@@ -55,13 +61,19 @@ def icpm_model(x, imax, b, c, bstar):
 model = Model(icpm_model)
 model.set_param_hint("imax", value=np.mean([icp.max(), icm.max()]), vary=False)
 model.set_param_hint("b", value=25)
-model.set_param_hint("c", value=-0.1)
-model.set_param_hint("bstar", value=0.001)
+model.set_param_hint("c", value=0)
+model.set_param_hint("bstar", value=0)
 params = model.make_params()
 
 # fit and plot
 result = model.fit(np.concatenate((icp, icm)), x=bfield)
 print(result.fit_report())
+if result.params["b"].value < 0:
+    warn("best fit b < 0 but b = (g* μ_B / 4 E_T)^2 > 0")
+if result.params["c"].value < 0:
+    warn("best fit c < 0 but c = k_so / k_F > 0 (k_so = αm*/hbar^2 > 0)")
+if result.params["bstar"].value < 0:
+    warn("best fit B* < 0 but B* > 0 by definition")
 
 n = 100
 bfield_smooth = np.linspace(bfield.min(), bfield.max(), n)
