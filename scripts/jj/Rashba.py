@@ -6,6 +6,7 @@ https://arxiv.org/abs/2303.01902v2.
 import argparse
 from warnings import warn
 from pprint import pprint
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -73,9 +74,15 @@ model.set_param_hint("c", value=0)
 model.set_param_hint("bstar", value=0)
 params = model.make_params()
 
+# set up output
+outpath = Path(args.datapath)
+print(f"Output directory: {outpath.parent}")
+outpath = str(outpath.parent / outpath.stem) + f"_fit-{args.bmax}"
+
 # fit and plot
 result = model.fit(np.concatenate((icp, icm)), x=bfield)
 print(result.fit_report())
+print(result.fit_report(), file=open(outpath + ".txt", "w"))
 if result.params["b"].value < 0:
     warn("best fit b < 0 but b = (g* μ_B / 4 E_T)^2 > 0")
 if result.params["c"].value < 0:
@@ -86,13 +93,13 @@ if result.params["bstar"].value < 0:
 n = 100
 bfield_smooth = np.linspace(bfield.min(), bfield.max(), n)
 fit = model.eval(result.params, x=bfield_smooth)
-
-plt.scatter(bfield / 1e-3, icm / 1e-6, label='$I_{c-}$ data', color="tab:blue")
-plt.scatter(bfield / 1e-3, icp / 1e-6, label='$I_{c+}$ data', color="tab:orange")
-plt.plot(bfield_smooth / 1e-3, fit[n:] / 1e-6, label='$I_{c-}$ fit', color="tab:blue")
-plt.plot(bfield_smooth / 1e-3, fit[:n] / 1e-6, label='$I_{c+}$ fit', color="tab:orange")
-
+plt.style.use(["fullscreen13"])
+plt.plot(bfield / 1e-3, icp / 1e-6, 'o', label='$I_{c+}$ data', color="tab:blue")
+plt.plot(bfield / 1e-3, icm / 1e-6, 'o', label='$I_{c-}$ data', color="tab:orange")
+plt.plot(bfield_smooth / 1e-3, fit[:n] / 1e-6, label='$I_{c+}$ fit', color="tab:blue")
+plt.plot(bfield_smooth / 1e-3, fit[n:] / 1e-6, label='$I_{c-}$ fit', color="tab:orange")
 plt.xlabel('in-plane field (mT)')
 plt.ylabel('critical current (μA)')
 plt.legend()
+plt.savefig(outpath + ".png")
 plt.show()
