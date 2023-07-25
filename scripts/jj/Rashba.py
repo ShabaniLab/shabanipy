@@ -5,6 +5,7 @@ https://arxiv.org/abs/2303.01902v2.
 """
 import argparse
 from warnings import warn
+from pprint import pprint
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,7 +32,14 @@ args = parser.parse_args()
 df = read_csv(args.datapath)
 icp = np.abs(df['ic+'].values)
 icm = np.abs(df['ic-'].values)
-bfield = df['b_inplane'].values
+# field column name might vary
+colname = [c for c in df.columns if "field" in c.lower()]
+if len(colname) == 1:
+    bfield = df[colname[0]].values
+else:
+    pprint({i: colname for i, colname in enumerate(df.columns)})
+    colindex = int(input(f"Which column has the field data? [select index 0-{len(df.columns) - 1}]: "))
+    bfield = df.iloc[:, colindex].values
 
 # limit field range
 if args.bmax is not None:
