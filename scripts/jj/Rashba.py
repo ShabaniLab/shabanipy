@@ -53,7 +53,7 @@ def icpm_model(x, imax, b, c, bstar):
     return np.concatenate([f(x, imax, b, c, bstar) for f in (icp_model, icm_model)])
 
 model = Model(icpm_model)
-model.set_param_hint("imax", value=np.max([icp, np.abs(icm)]), vary=False)
+model.set_param_hint("imax", value=np.mean([icp.max(), icm.max()]), vary=False)
 model.set_param_hint("b", value=25)
 model.set_param_hint("c", value=-0.1)
 model.set_param_hint("bstar", value=0.001)
