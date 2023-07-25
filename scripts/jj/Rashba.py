@@ -11,6 +11,7 @@ from pandas import read_csv
 from scipy.optimize import curve_fit
 from lmfit import Model
 
+# set up command-line interface
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
@@ -25,54 +26,49 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
+# extract data
 df = read_csv(args.datapath)
+icp = np.abs(df['ic+'].values)
+icm = np.abs(df['ic-'].values)
+bfield = df['b_inplane'].values
 
-
-# Extract Ic and By from the DataFrame
-Ic = np.abs(df['ic-'].values)
-Icp = np.abs(df['ic+'].values)
-By = df['b_inplane'].values
-
-
+# limit field range
 if args.bmax is not None:
-    mask = (-args.bmax <= By) & (By <= args.bmax)
-    Ic = Ic[mask]
-    Icp = Icp[mask]
-    By = By[mask]
-
-# Concatenate the data for both curves
-Ic_concat = np.concatenate((Icp, Ic))
+    mask = (-args.bmax <= bfield) & (bfield <= args.bmax)
+    icm = icm[mask]
+    icp = icp[mask]
+    bfield = bfield[mask]
 
 # build model from https://arxiv.org/abs/2303.01902v2 Eq. (1)
-def ic_p(x, imax, b, c, bstar):
+def icp_model(x, imax, b, c, bstar):
     """Positive critical current, Ic+."""
     return imax * (1 - b * (1 + c * np.sign(x - bstar)) * (x - bstar) ** 2)
 
-def ic_m(x, imax, b, c, bstar):
+def icm_model(x, imax, b, c, bstar):
     """Negative critical current, Ic-."""
     return imax * (1 - b * (1 - c * np.sign(x + bstar)) * (x + bstar) ** 2)
 
-def ic_pm(x, imax, b, c, bstar):
+def icpm_model(x, imax, b, c, bstar):
     """Positive and negative critical current, Ic+-."""
-    return np.concatenate([f(x, imax, b, c, bstar) for f in (ic_p, ic_m)])
+    return np.concatenate([f(x, imax, b, c, bstar) for f in (icp_model, icm_model)])
 
-model = Model(ic_pm)
-model.set_param_hint("imax", value=np.max([Icp, np.abs(Ic)]), vary=False)
+model = Model(icpm_model)
+model.set_param_hint("imax", value=np.max([icp, np.abs(icm)]), vary=False)
 model.set_param_hint("b", value=25)
 model.set_param_hint("c", value=-0.1)
 model.set_param_hint("bstar", value=0.001)
 params = model.make_params()
 
-# Perform curve fitting
-result = model.fit(Ic_concat, x=By)
+# fit and plot
+result = model.fit(np.concatenate((icp, icm)), x=bfield)
 print(result.fit_report())
 
 n = 100
-bfield_smooth = np.linspace(By.min(), By.max(), n)
+bfield_smooth = np.linspace(bfield.min(), bfield.max(), n)
 fit = model.eval(result.params, x=bfield_smooth)
 
-plt.scatter(By / 1e-3, Ic / 1e-6, label='$I_{c-}$ data', color="tab:blue")
-plt.scatter(By / 1e-3, Icp / 1e-6, label='$I_{c+}$ data', color="tab:orange")
+plt.scatter(bfield / 1e-3, icm / 1e-6, label='$I_{c-}$ data', color="tab:blue")
+plt.scatter(bfield / 1e-3, icp / 1e-6, label='$I_{c+}$ data', color="tab:orange")
 plt.plot(bfield_smooth / 1e-3, fit[n:] / 1e-6, label='$I_{c-}$ fit', color="tab:blue")
 plt.plot(bfield_smooth / 1e-3, fit[:n] / 1e-6, label='$I_{c+}$ fit', color="tab:orange")
 
