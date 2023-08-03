@@ -52,6 +52,13 @@ parser.add_argument(
     action="store_true",
     help="symmetrize fraunhofer about 0",
 )
+parser.add_argument(
+    "--branch",
+    "-b",
+    default="+",
+    choices=["+", "-"],
+    help="which branch of critical current to use",
+)
 args = parser.parse_args()
 _, config = load_config(Path(__file__).parent / args.config_path, args.config_section)
 WIDTH = args.width if args.width else config.getfloat("JJ_WIDTH")
@@ -136,10 +143,13 @@ ic = extract_switching_current(
     dvdi,
     threshold=config.getfloat("THRESHOLD", fallback=None),
     interp=True,
+    side="negative" if args.branch == "-" else "positive",
 )
 ax.set_title("switching current")
 plot(bfield / 1e-3, ic / 1e-6, ax=ax, color="k", lw=1)
 fig.savefig(str(outpathvv) + "_ic-extraction.png")
+
+ic = np.abs(ic)
 
 if args.center:
     bfield = recenter_fraunhofer(bfield, ic)
