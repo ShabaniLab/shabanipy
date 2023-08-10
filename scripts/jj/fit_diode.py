@@ -1,4 +1,4 @@
-"""Fit the diode effect on the switching current vs. in-plane field.
+"""Fit the diode effect on the critical current vs. in-plane magnetic field.
 
 This script fits Ic+(B||) and Ic-(B||) according to Eq. (1) of
 https://arxiv.org/abs/2303.01902v2.
@@ -19,7 +19,8 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument(
     "datapath",
-    help="path to .csv file containing positive & negative switching current vs. field",
+    help="path to .csv file containing columns 'ic+', 'ic-', and '*[Ff]ield*'"
+    "for positive & negative critical current vs. field",
 )
 parser.add_argument(
     "--bmax",
