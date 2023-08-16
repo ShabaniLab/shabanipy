@@ -28,6 +28,7 @@ parser.add_argument(
     type=float,
     help="limit the fit to magnetic fields within +-bmax",
 )
+# TODO add data symmetrization option as in Alex's jupyter notebook
 args = parser.parse_args()
 
 # extract data
