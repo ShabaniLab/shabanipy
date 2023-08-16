@@ -167,10 +167,17 @@ while config.get(f"DATAPATH{i}"):
     else:
         field_lim = (-np.inf, np.inf)
 
-    center = [
-        find_fraunhofer_center(b_perp, i, field_lim=field_lim, debug=args.debug)
-        for i in np.abs(ic)
-    ]
+    center = []
+    for ii in np.abs(ic):
+        try:
+            center.append(
+                find_fraunhofer_center(
+                    b_perp, ii, field_lim=field_lim, debug=args.debug
+                )
+            )
+        except TypeError as e:
+            warn(f"Failed to find fraunhofer center.")
+            center.append(np.nan)
     fraun_center.append(center)
     [ax.axvline(c / 1e-3, color="k", lw=1) for c in center]
 
