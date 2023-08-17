@@ -86,6 +86,7 @@ i = 1
 while config.get(f"DATAPATH{i}"):
     datafiles.append(config.get(f"DATAPATH{i}"))
     ch_bias = config.get(f"CH_BIAS{i}", config["CH_BIAS"])
+    ch_field = config.get(f"CH_FIELD_PERP{i}", config["CH_FIELD_PERP"])
     ch_meas = config.get(f"CH_MEAS{i}", config["CH_MEAS"])
     with ShaBlabberFile(config[f"DATAPATH{i}"]) as f:
         filter_val = config.getfloat(f"FILTER_VAL{i}")
@@ -104,16 +105,21 @@ while config.get(f"DATAPATH{i}"):
         variable.append(var)
         print(f"Processing {var}")
 
-        for key, op in (("BIAS_MIN", np.greater), ("BIAS_MAX", np.less)):
-            minmax = config.getfloat(key)
+        for ch, op, val in (
+            (ch_field, np.greater, "FIELD_MIN"),
+            (ch_field, np.less, "FIELD_MAX"),
+            (ch_bias, np.greater, "BIAS_MIN"),
+            (ch_bias, np.less, "BIAS_MAX"),
+        ):
+            minmax = config.getfloat(f"{val}{i}", config.getfloat(f"{val}"))
             if minmax:
-                filters.append((config["CH_BIAS"], op, minmax))
+                filters.append((ch, op, minmax))
 
         b_perp, ibias, meas = f.get_data(
-            config["CH_FIELD_PERP"],
+            ch_field,
             ch_bias,
             ch_meas,
-            order=(config["CH_FIELD_PERP"], ch_bias),
+            order=(ch_field, ch_bias),
             filters=filters,
         )
         if ch_meas.endswith(("VI curve", "SingleValue")):  # DC volts from DMM
