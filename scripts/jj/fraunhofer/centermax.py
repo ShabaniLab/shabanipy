@@ -99,10 +99,16 @@ while config.get(f"DATAPATH{i}"):
             ]
             var = filter_val
         else:
-            filters = None
+            filters = []
             var = f.get_fixed_value(config["CH_VARIABLE"])
         variable.append(var)
         print(f"Processing {var}")
+
+        for key, op in (("BIAS_MIN", np.greater), ("BIAS_MAX", np.less)):
+            minmax = config.getfloat(key)
+            if minmax:
+                filters.append((config["CH_BIAS"], op, minmax))
+
         b_perp, ibias, meas = f.get_data(
             config["CH_FIELD_PERP"],
             ch_bias,
