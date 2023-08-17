@@ -179,7 +179,9 @@ while config.get(f"DATAPATH{i}"):
             warn(f"Failed to find fraunhofer center.")
             center.append(np.nan)
     fraun_center.append(center)
-    [ax.axvline(c / 1e-3, color="k", lw=1) for c in center]
+    for c in center:
+        if b_perp.min() < c and c < b_perp.max():
+            ax.axvline(c / 1e-3, color="k", lw=1)
 
     max_ = [
         np.max(np.where((field_lim[0] < b_perp) & (b_perp < field_lim[1]), i, -np.inf))
