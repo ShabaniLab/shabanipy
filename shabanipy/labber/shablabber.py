@@ -72,7 +72,10 @@ class ShaBlabberFile(File):
     def _shape(self) -> Tuple[int]:
         """The shape of the data."""
         step_dims = [d for d in self._step_dims if d != 1]
-        if self._completed:
+        # The first step dimension is always fully allocated and padded with
+        # NaNs if interrupted, so we can treat it as a completed scan.
+        # N.b. I'm not yet sure how Labber handles interrupted traces (i.e. VICurveTracer).
+        if self._completed or self._ndim == 1:
             return self._trace_dims + tuple(step_dims)
         else:  # scan aborted/crashed/interrupted
             # infer the last dimension from the available data
@@ -80,6 +83,11 @@ class ShaBlabberFile(File):
             del data_shape[1]  # number of channels/columns
             step_dims[-1] = np.prod(data_shape) // np.prod(step_dims[:-1])
             return self._trace_dims + tuple(step_dims)
+
+    @cached_property
+    def _ndim(self) -> int:
+        """Number of nontrivial step dimensions of the data."""
+        return len([d for d in self._step_dims if d != 1])
 
     @property
     def comment(self) -> str:
@@ -395,7 +403,8 @@ class Channel(_DatasetRow):
         else:
             data = self._get_data()
         data = data.squeeze()
-        data = data[:, : np.prod(self._file._shape[1:])]  # discards interrupted sweeps
+        if not self._file._completed and self._file._ndim > 1:
+            data = data[..., : np.prod(self._file._shape[1:])]  # discards interrupted sweeps
         if self._file._x_channels and not self._is_trace_channel:
             expand = (np.newaxis,) * len(self._file._trace_dims) + (...,)
             data = np.broadcast_to(data[expand], self._file._trace_dims + data.shape)
