@@ -1,4 +1,8 @@
-"""Determine critical temperature by thresholding."""
+"""Determine critical temperature by thresholding.
+
+This script discards repeated temperature measurements due to Oxford software's
+infrequent temperature updates from the Lakeshore resistance bridge.
+"""
 
 import argparse
 from pathlib import Path
