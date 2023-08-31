@@ -137,14 +137,13 @@ while config.get(f"DATAPATH{i}"):
                 dvdi /= ibias_ac
                 ibias /= config.getfloat("R_DC_OUT")
 
-    # in case bias sweep was done in disjoint sections about Ic+ and Ic-
-    ibias_1d = np.unique(ibias, axis=0).squeeze()
-    ibias_deltas = np.unique(np.diff(ibias_1d))
-    if np.allclose(ibias_deltas, ibias_deltas[0]):
-        plot_data(b_perp, ibias, dvdi, ax=ax)
-    else:
-        for mask, cb in zip((ibias_1d < 0, ibias_1d > 0), (True, False)):
-            plot_data(b_perp[:, mask], ibias[:, mask], dvdi[:, mask], ax=ax, cb=cb)
+    # in case bias sweep was done in disjoint sections about Ic+ and Ic-,
+    # plot +ve and -ve bias separately
+    for mask, cb in zip((ibias <= 0, ibias >= 0), (True, False)):
+        shape = (b_perp.shape[0], -1)
+        plot_data(
+            *(_[mask].reshape(shape) for _ in (b_perp, ibias, dvdi)), ax=ax, cb=cb
+        )
 
     b_perp = np.unique(b_perp)
 
