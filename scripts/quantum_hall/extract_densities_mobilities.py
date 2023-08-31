@@ -12,7 +12,7 @@ from scipy.constants import e, hbar, m_e
 
 from shabanipy.labber import ShaBlabberFile
 from shabanipy.quantum_hall import extract_density, extract_mobility
-from shabanipy.utils import load_config, plot
+from shabanipy.utils import get_output_dir, load_config, plot
 
 print = partial(print, flush=True)
 
@@ -26,11 +26,14 @@ parser.add_argument("config_section", help="section of the .ini config file to u
 args = parser.parse_args()
 _, config = load_config(args.config_path, args.config_section)
 plt.style.use("fullscreen13")
-OUTDIR = Path("./output/")
+OUTDIR = get_output_dir() / "density-mobility"
 OUTDIR.mkdir(exist_ok=True)
 print(f"Output directory: {OUTDIR}")
-CHIP_ID = f"{config['WAFER']}-{config['PIECE']}"
+OUTPATH = OUTDIR / f"{Path(args.config_path).stem}"
+OUTDIRVV = OUTDIR / f"{Path(args.config_path).stem}_fits"
+OUTDIRVV.mkdir(exist_ok=True)
 CH_GATE = config.get("CH_GATE", "gate - Source voltage")
+STAMP = f"{config['FRIDGE']}/{config[f'DATAPATH_RXY']}"
 
 
 def get_hall_data(datapath, ch_lockin_meas):
@@ -67,8 +70,6 @@ print(
 )
 
 # plot density fits
-FITS_DIR = OUTDIR / f"{CHIP_ID}_fits"
-FITS_DIR.mkdir(exist_ok=True)
 fig, ax = plt.subplots()
 for g, b, r, n, n_std, fit in zip(gate_xy, bfield_xy, rxy, density, density_std, fits):
     if len(set(g)) != 1:
@@ -84,7 +85,7 @@ for g, b, r, n, n_std, fit in zip(gate_xy, bfield_xy, rxy, density, density_std,
         xlabel="out-of-plane field (T)",
         ylabel=r"$R_{xy}$ (Ω)",
         title=f"gate voltage = {round(g, 5)} V",
-        stamp=f"{config['COOLDOWN']}_{config['SCAN_RXY']}",
+        stamp=STAMP,
         label="data",
     )
     ax.text(
@@ -97,7 +98,7 @@ for g, b, r, n, n_std, fit in zip(gate_xy, bfield_xy, rxy, density, density_std,
     )
     ax.plot(b, fit.best_fit, label="fit")
     ax.legend()
-    fig.savefig(FITS_DIR / f"rxy_{g:+.3f}V.png")
+    fig.savefig(OUTDIRVV / f"rxy_{g:+.3f}V.png")
     plt.cla()
 
 # calculate mobility
@@ -118,8 +119,8 @@ fig, _ = plot(
     label="$n$",
     xlabel="gate voltage (V)",
     ylabel="density ($10^{12}$ cm$^{-2}$)",
-    title=f"{config.get('FILENAME_PREFIX')}",
     ax=ax,
+    stamp=STAMP,
 )
 ax.errorbar(
     gate_xy[:, 0],
@@ -140,7 +141,7 @@ plot(
 lines = ax.get_lines() + ax2.get_lines()
 ax.get_legend().remove()
 ax2.legend(lines, [l.get_label() for l in lines])
-fig.savefig(OUTDIR / f"{CHIP_ID}_density-mobility-vs-gate.png")
+fig.savefig(str(OUTPATH) + "_density-mobility-vs-gate.png")
 
 # plot mobility vs. density
 fig, ax = plot(
@@ -149,10 +150,10 @@ fig, ax = plot(
     "o-",
     xlabel="density ($10^{12}$ cm$^{-2}$)",
     ylabel="mobility ($10^3$ cm$^2$ / V.s)",
-    title=f"{config.get('FILENAME_PREFIX')}",
+    stamp=STAMP,
 )
 ax.legend(["$\mu_\mathrm{xx}$", "$\mu_\mathrm{yy}$"])
-fig.savefig(OUTDIR / f"{CHIP_ID}_mobility-vs-density")
+fig.savefig(str(OUTPATH) + "_mobility-vs-density.png")
 
 
 # compute and save transport parameters vs. gate
@@ -182,7 +183,7 @@ df = DataFrame(
         "diffusion coefficient yy (m^2/s)": vf**2 * tyy / 2,
     }
 )
-with open(OUTDIR / f"{CHIP_ID}_transport-params.csv", "w") as f:
+with open(str(OUTPATH) + "_transport-params.csv", "w") as f:
     df.to_csv(f, index=False)
 
 plt.show()
