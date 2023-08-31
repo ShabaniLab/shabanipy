@@ -76,15 +76,15 @@ def extract_density(field, rxy, field_cutoffs):
 
     # Perform a linear fit in the specified field range and extract the slope
     for i in range(trace_number):
-        start_field, stop_field = field_cutoffs[i]
         # Filter out NaNs from 1D data
         mask = ~np.isnan(field[i])
         f = field[i][mask]
-        start_ind = np.argmin(np.abs(f - start_field))
-        stop_ind = np.argmin(np.abs(f - stop_field))
-        start_ind, stop_ind = min(start_ind, stop_ind), max(start_ind, stop_ind) + 1
-        f = f[start_ind:stop_ind]
-        r = rxy[i][mask][start_ind:stop_ind]
+        r = rxy[i][mask]
+        # limit field range
+        start_field, stop_field = field_cutoffs[i]
+        field_mask = (start_field <= f) & (f <= stop_field)
+        f = f[field_mask]
+        r = r[field_mask]
         res = model.fit(r, x=f)
         results[0, i] = 1 / res.best_values["slope"] / cs.e  # value in m^-2
         results[1, i] = results[0, i] * (
