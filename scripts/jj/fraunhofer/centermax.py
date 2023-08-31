@@ -84,6 +84,7 @@ fraun_max = []
 datafiles = []
 i = 1
 while config.get(f"DATAPATH{i}"):
+    fig, ax = plt.subplots()
     datafiles.append(config.get(f"DATAPATH{i}"))
     ch_bias = config.get(f"CH_BIAS{i}", config["CH_BIAS"])
     ch_field = config.get(f"CH_FIELD_PERP{i}", config["CH_FIELD_PERP"])
@@ -140,13 +141,10 @@ while config.get(f"DATAPATH{i}"):
     ibias_1d = np.unique(ibias, axis=0).squeeze()
     ibias_deltas = np.unique(np.diff(ibias_1d))
     if np.allclose(ibias_deltas, ibias_deltas[0]):
-        fig, ax = plot_data(b_perp, ibias, dvdi)
+        plot_data(b_perp, ibias, dvdi, ax=ax)
     else:
-        fig, ax = plt.subplots()
         for mask, cb in zip((ibias_1d < 0, ibias_1d > 0), (True, False)):
-            fig, ax = plot_data(
-                b_perp[:, mask], ibias[:, mask], dvdi[:, mask], ax=ax, cb=cb
-            )
+            plot_data(b_perp[:, mask], ibias[:, mask], dvdi[:, mask], ax=ax, cb=cb)
 
     b_perp = np.unique(b_perp)
 
@@ -205,6 +203,7 @@ while config.get(f"DATAPATH{i}"):
     [ax.axhline(m / 1e-6, color="k", lw=1) for m in max_]
     fig.savefig(str(outdirvv / f"{Path(config[f'DATAPATH{i}']).stem}_{var}.png"))
 
+    plt.close()
     i += 1
 sort_idx = np.argsort(variable)
 variable = np.array(variable)[sort_idx]
@@ -304,9 +303,4 @@ if args.branch == "+-":
     )
     fig.savefig(str(outpath) + "_deltamax.png")
 
-show = None
-while show not in ("y", "n"):
-    show = input(f"Show >{i} plots? [y/n]: ").lower()
-show = True if show == "y" else False
-if show:
-    plt.show()
+plt.show()
