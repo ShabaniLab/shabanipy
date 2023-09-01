@@ -36,6 +36,12 @@ CH_GATE = config.get("CH_GATE", "gate - Source voltage")
 STAMP = f"{config['FRIDGE']}/{config[f'DATAPATH_RXY']}"
 
 
+filters = []
+if config.get("EXCLUDE_GATES"):
+    for g in json.loads(config.get("EXCLUDE_GATES")):
+        filters.append((CH_GATE, lambda ch, g: ~np.isclose(ch, g), g))
+
+
 def get_hall_data(datapath, ch_lockin_meas):
     with ShaBlabberFile(datapath) as f:
         gate, bfield, dvdi = f.get_data(
@@ -43,6 +49,7 @@ def get_hall_data(datapath, ch_lockin_meas):
             config["CH_FIELD_PERP"],
             ch_lockin_meas,
             order=(CH_GATE, config["CH_FIELD_PERP"]),
+            filters=filters,
         )
         dvdi /= config.getfloat("IBIAS_AC")
     return gate, bfield, dvdi.real
