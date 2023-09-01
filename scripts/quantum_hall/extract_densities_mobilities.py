@@ -1,9 +1,9 @@
 """Extract the density and mobility vs. gate voltage from a quantum Hall measurement."""
 import argparse
 import json
-import warnings
 from functools import partial
 from pathlib import Path
+from warnings import warn
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -73,7 +73,7 @@ print(
 fig, ax = plt.subplots()
 for g, b, r, n, n_std, fit in zip(gate_xy, bfield_xy, rxy, density, density_std, fits):
     if len(set(g)) != 1:
-        warnings.warn(
+        warn(
             f"Gate voltage is assumed constant for each field sweep, but {min(g)=}, {max(g)=}"
         )
     g = g[0]
@@ -102,7 +102,7 @@ for g, b, r, n, n_std, fit in zip(gate_xy, bfield_xy, rxy, density, density_std,
     plt.cla()
 
 # calculate mobility
-print("Assuming bfield sweeps for rxx and ryy are the same")
+warn("Assuming bfield sweeps for rxx and ryy are the same")
 mobility_xx, mobility_yy = extract_mobility(
     bfield_xx, rxx, ryy, density, config.getfloat("GEOMETRIC_FACTOR")
 )
@@ -158,8 +158,8 @@ fig.savefig(str(OUTPATH) + "_mobility-vs-density.png")
 
 # compute and save transport parameters vs. gate
 mass = 0.03
-print(f"Assuming effective mass: {mass} m_e")
-print(f"Assuming gate voltage sweeps are the same for Rxx, Ryy, and Rxy")
+warn(f"Assuming effective mass: {mass} m_e")
+warn(f"Assuming gate voltage sweeps are the same for Rxx, Ryy, and Rxy")
 mass *= m_e
 kf = np.sqrt(2 * np.pi * density)
 vf = hbar * kf / mass
