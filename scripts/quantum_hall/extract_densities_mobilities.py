@@ -73,7 +73,9 @@ else:
 density, density_std, fits = extract_density(bfield_xy, rxy, field_cutoffs)
 gate0mask = np.isclose(gate_xy[:, 0], 0)
 print(
-    f"Density @ 0V: {density[gate0mask].squeeze() / 1e16:.2f} (+/- {density_std[gate0mask].squeeze() / 1e16:.2f}) e12/cm2 "
+    "Density @ 0V: "
+    f"{density[gate0mask].squeeze() / 1e16:.2f} "
+    f"(+/- {density_std[gate0mask].squeeze() / 1e16:.2f}) e12/cm2"
 )
 
 # plot density fits
@@ -114,7 +116,14 @@ mobility_xx, mobility_yy = extract_mobility(
     bfield_xx, rxx, ryy, density, config.getfloat("GEOMETRIC_FACTOR")
 )
 print(
-    f"Peak mobility (xx, yy): ({mobility_xx.max() / 1e-1:.1f}, {mobility_yy.max() / 1e-1:.1f}) e3 cm2/Vs"
+    "Peak mobility (xx, yy): "
+    f"({mobility_xx.max() / 1e-1:.1f}, {mobility_yy.max() / 1e-1:.1f}) e3 cm2/Vs"
+)
+idx_xx = np.argmax(mobility_xx)
+idx_yy = np.argmax(mobility_yy)
+print(
+    "Density @ peak mobility (xx, yy): "
+    f"{density[idx_xx] / 1e16:.2f}, {density[idx_yy] / 1e16:.2f} e12/cm2"
 )
 
 # plot density/mobility vs. gate
