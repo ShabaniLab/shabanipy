@@ -404,7 +404,9 @@ class Channel(_DatasetRow):
             data = self._get_data()
         data = data.squeeze()
         if not self._file._completed and self._file._ndim > 1:
-            data = data[..., : np.prod(self._file._shape[1:])]  # discards interrupted sweeps
+            data = data[
+                ..., : np.prod(self._file._shape[1:])
+            ]  # discards interrupted sweeps
         if self._file._x_channels and not self._is_trace_channel:
             expand = (np.newaxis,) * len(self._file._trace_dims) + (...,)
             data = np.broadcast_to(data[expand], self._file._trace_dims + data.shape)
