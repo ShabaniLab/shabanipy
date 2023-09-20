@@ -261,6 +261,7 @@ class ShaBlabberFile(File):
         filters: Optional[Iterable[Tuple[str, Callable, float]]] = None,
         order: Optional[Iterable[str]] = None,
         slices: Optional[Iterable[Union[int, slice, Ellipsis]]] = None,
+        flatten: bool = False,
     ) -> Tuple[np.ndarray]:
         """Get the data from `channel_names`.
 
@@ -283,6 +284,13 @@ class ShaBlabberFile(File):
         slices
             List of slices to take along each axis of the data.
             Axes are ordered according to `order`.  Ellipsis (...) is supported.
+        flatten
+            Flatten the data into 1d arrays.  By default, the data will be reshaped into
+            nd arrays where n is the number of step (+ trace) dimensions.
+            With `sort=False` and `flatten=True`, data will be returned in the order
+            they were recorded.
+            The behavior of `order` with `flatten=True` is undefined.  Currently, the
+            axes will be reordered before flattening.
         """
         not_data_channels = set(channel_names) - set(self._data_channel_names)
         if not_data_channels:
@@ -325,7 +333,8 @@ class ShaBlabberFile(File):
             )
         if slices:
             data = tuple(d[_expand_ellipsis(slices, d.ndim)] for d in data)
-
+        if flatten:
+            data = tuple(d.flatten(order="F") for d in data)
         return tuple(d.squeeze() for d in data)
 
 
@@ -391,16 +400,7 @@ class Channel(_DatasetRow):
         else:
             return len(self._file._trace_dims) + self._step_config.axis
 
-    def get_data(self, flat=False) -> np.ndarray:
-        """Get the data for this channel.
-
-        Parameters
-        ----------
-        flat : bool (optional)
-            If True, return a 1d array of data points in the order they were recorded.
-            Otherwise, return an nd array where n is the number of step (+ trace)
-            dimensions.
-        """
+    def get_data(self) -> np.ndarray:
         if self.name not in self._file._data_channel_names:
             raise ValueError(
                 f"'{self.name}' is not a data channel in {Path(self._file.filename).name}.\n"
@@ -418,8 +418,7 @@ class Channel(_DatasetRow):
         if self._file._x_channels and not self._is_trace_channel:
             expand = (np.newaxis,) * len(self._file._trace_dims) + (...,)
             data = np.broadcast_to(data[expand], self._file._trace_dims + data.shape)
-        data = data.reshape(self._file._shape, order="F")
-        return data.flatten(order="F") if flat else data
+        return data.reshape(self._file._shape, order="F")
 
     def _get_data(self) -> np.ndarray:
         def _data_column(info):
@@ -470,14 +469,13 @@ class XChannel:
     def axis(self) -> int:
         return self._channel.axis
 
-    def get_data(self, flat=False) -> np.ndarray:
+    def get_data(self) -> np.ndarray:
         data = self._channel._file[f"Traces/{self._channel.name}"][:, -1, ...]
         # add missing traces due to interrupted scans by padding with NaN
         shape = self._channel._file._shape
         pad_width = np.prod(shape[1:]) - data.shape[-1]
         data = np.pad(data, ((0, 0), (0, pad_width)), constant_values=np.nan)
-        data = data.reshape(shape, order="F")
-        return data.flatten(order="F") if flat else data
+        return data.reshape(shape, order="F")
 
 
 class Instrument(_DatasetRow):

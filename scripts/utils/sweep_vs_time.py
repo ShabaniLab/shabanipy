@@ -58,11 +58,10 @@ print(
 )
 data = []
 for f in datafiles:
-    ch = f.get_channel(args.channel)
     try:
-        d = ch.get_data(flat=True)
+        (d,) = f.get_data(args.channel, sort=False, flatten=True)
     except ValueError:
-        d = [ch.get_fixed_value()]
+        d = [f.get_fixed_value(args.channel)]
     data.append(d)
 
 fig, ax = plt.subplots()
