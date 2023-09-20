@@ -74,7 +74,6 @@ class ShaBlabberFile(File):
         step_dims = [d for d in self._step_dims if d != 1]
         # The first step dimension is always fully allocated and padded with
         # NaNs if interrupted, so we can treat it as a completed scan.
-        # N.b. I'm not yet sure how Labber handles interrupted traces (i.e. VICurveTracer).
         if self._completed or self._ndim == 1:
             return self._trace_dims + tuple(step_dims)
         else:  # scan aborted/crashed/interrupted
@@ -471,10 +470,14 @@ class XChannel:
     def axis(self) -> int:
         return self._channel.axis
 
-    def get_data(self) -> np.ndarray:
-        return self._channel._file[f"Traces/{self._channel.name}"][:, -1, ...].reshape(
-            self._channel._file._shape, order="F"
-        )
+    def get_data(self, flat=False) -> np.ndarray:
+        data = self._channel._file[f"Traces/{self._channel.name}"][:, -1, ...]
+        # add missing traces due to interrupted scans by padding with NaN
+        shape = self._channel._file._shape
+        pad_width = np.prod(shape[1:]) - data.shape[-1]
+        data = np.pad(data, ((0, 0), (0, pad_width)), constant_values=np.nan)
+        data = data.reshape(shape, order="F")
+        return data.flatten(order="F") if flat else data
 
 
 class Instrument(_DatasetRow):
