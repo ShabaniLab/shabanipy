@@ -392,11 +392,20 @@ class Channel(_DatasetRow):
         else:
             return len(self._file._trace_dims) + self._step_config.axis
 
-    def get_data(self) -> np.ndarray:
+    def get_data(self, flat=False) -> np.ndarray:
+        """Get the data for this channel.
+
+        Parameters
+        ----------
+        flat : bool (optional)
+            If True, return a 1d array of data points in the order they were recorded.
+            Otherwise, return an nd array where n is the number of step (+ trace)
+            dimensions.
+        """
         if self.name not in self._file._data_channel_names:
             raise ValueError(
-                f"'{self.name}' is not a data channel.  Available data channels are:\n"
-                f"{pformat(self._file._data_channel_names)}"
+                f"'{self.name}' is not a data channel in {Path(self._file.filename).name}.\n"
+                f"Available data channels are:\n{pformat(self._file._data_channel_names)}"
             )
         if self._is_trace_channel:
             data = self._get_trace_data()
@@ -410,7 +419,8 @@ class Channel(_DatasetRow):
         if self._file._x_channels and not self._is_trace_channel:
             expand = (np.newaxis,) * len(self._file._trace_dims) + (...,)
             data = np.broadcast_to(data[expand], self._file._trace_dims + data.shape)
-        return data.reshape(self._file._shape, order="F")
+        data = data.reshape(self._file._shape, order="F")
+        return data.flatten(order="F") if flat else data
 
     def _get_data(self) -> np.ndarray:
         def _data_column(info):
