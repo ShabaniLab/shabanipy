@@ -4,7 +4,7 @@ For a given step channel (e.g. magnetic field), plot the channel's value as a fu
 of time (in arbitrary "step" units).
 """
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
 from itertools import chain
 from pathlib import Path
 from pprint import pformat
@@ -43,7 +43,7 @@ print(f"output directory: {outdir}")
 root = get_data_dir()
 print(f"collecting datafiles between {t0} and {tf} in {root}")
 datafiles = []
-for t in pd.date_range(t0, tf, freq="D"):
+for t in pd.date_range(t0, tf + timedelta(days=1), freq="D"):
     for path in (root / t.strftime("%Y/%m/Data_%m%d")).glob("*.hdf5"):
         datafiles.append(ShaBlabberFile(path))
 
