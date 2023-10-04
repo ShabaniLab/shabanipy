@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 from matplotlib import pyplot as plt
 
+from shabanipy.dvdi import find_rising_edge
 from shabanipy.labber import ShaBlabberFile
 from shabanipy.utils import get_output_dir, load_config, stamp
 
@@ -78,11 +79,17 @@ ax.set_ylabel(config["CH_VOLT"])
 ax.set_title(args.config_section)
 ax.legend()
 
+tc = find_rising_edge(temp_fresh, volt_fresh, interp=True)
+
 fig, ax = plt.subplots()
 ax.plot(temp_fresh, volt_fresh / config.getfloat("IBIAS", 1), marker=".")
 ax.set_xlabel("MXC temperature (K)")
 ax.set_ylabel("resistance (Ω)" if config.get("IBIAS") else "voltage (V)")
 ax.set_title(args.config_section)
+ax.axvline(tc, color="k", ls=":")
+ax.text(
+    tc, volt_fresh.min() / config.getfloat("IBIAS", 1), f"$T_c \\approx {round(tc, 2)}$"
+)
 stamp(ax, config["DATAPATH"])
 fig.savefig(
     outdir
