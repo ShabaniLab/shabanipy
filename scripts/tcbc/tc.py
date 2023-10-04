@@ -11,7 +11,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from shabanipy.labber import ShaBlabberFile
-from shabanipy.utils import load_config, stamp
+from shabanipy.utils import get_output_dir, load_config, stamp
 
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -20,6 +20,10 @@ parser.add_argument("config_path", help="path to .ini config file")
 parser.add_argument("config_section", help="section of the .ini config file to use")
 args = parser.parse_args()
 _, config = load_config(args.config_path, args.config_section)
+
+outdir = get_output_dir() / "tcbc"
+outdir.mkdir(exist_ok=True, parents=True)
+print(f"Output directory: {outdir}")
 
 with ShaBlabberFile(config["DATAPATH"]) as f:
     temp, volt = f.get_data(config["CH_TEMP"], config["CH_VOLT"])
@@ -69,6 +73,6 @@ ax.set_xlabel("MXC temperature (K)")
 ax.set_ylabel("resistance (Ω)" if config.get("IBIAS") else "voltage (V)")
 ax.set_title(args.config_section)
 stamp(ax, config["DATAPATH"])
-fig.savefig(Path(config["DATAPATH"]).stem + "_" + args.config_section + "_Tc.png")
+fig.savefig(outdir / f"{Path(args.config_path).stem}_{args.config_section}_Tc.png")
 
 plt.show()
