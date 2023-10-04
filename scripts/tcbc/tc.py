@@ -18,6 +18,8 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument("config_path", help="path to .ini config file")
 parser.add_argument("config_section", help="section of the .ini config file to use")
+parser.add_argument("--minT", type=float, default=None, help="minimum temperature")
+parser.add_argument("--maxT", type=float, default=None, help="maximum temperature")
 args = parser.parse_args()
 _, config = load_config(args.config_path, args.config_section)
 
@@ -59,6 +61,15 @@ sort_idx = np.argsort(temp_fresh)
 temp_fresh = np.take_along_axis(temp_fresh, sort_idx, axis=0)
 volt_fresh = np.take_along_axis(volt_fresh, sort_idx, axis=0)
 
+if args.minT is not None:
+    mask = temp_fresh >= args.minT
+    temp_fresh = temp_fresh[mask]
+    volt_fresh = volt_fresh[mask]
+if args.maxT is not None:
+    mask = temp_fresh <= args.maxT
+    temp_fresh = temp_fresh[mask]
+    volt_fresh = volt_fresh[mask]
+
 fig, ax = plt.subplots()
 ax.plot(temp, volt, ".", label="stale")
 ax.plot(temp_fresh, volt_fresh, label="fresh")
@@ -73,6 +84,9 @@ ax.set_xlabel("MXC temperature (K)")
 ax.set_ylabel("resistance (Ω)" if config.get("IBIAS") else "voltage (V)")
 ax.set_title(args.config_section)
 stamp(ax, config["DATAPATH"])
-fig.savefig(outdir / f"{Path(args.config_path).stem}_{args.config_section}_Tc.png")
+fig.savefig(
+    outdir
+    / f"{Path(args.config_path).stem}_{args.config_section}_Tc_{args.minT}-{args.maxT}.png"
+)
 
 plt.show()
