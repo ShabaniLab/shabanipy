@@ -32,7 +32,7 @@ def load_config(
                 config = ini[section]
             except KeyError as e:
                 raise ValueError(
-                    f"'{section}' not found. Available sections are:\n{pformat(ini.sections())}"
+                    f"'{section}' not found. Available sections are:\n{pformat(sorted(ini.sections()))}"
                 ) from e
         else:
             config = None
