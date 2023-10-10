@@ -149,16 +149,16 @@ while config.get(f"DATAPATH{i}"):
 
     threshold = config.getfloat(f"THRESHOLD{i}", config.getfloat("THRESHOLD"))
     if config.getboolean(f"THRESHOLD_DC{i}", config.getboolean(f"THRESHOLD_DC")):
-        if args.branch == "+-":
-            warn(
-                "Using a DC threshold with --branch +- is not yet supported...this will probably crash."
-            )
         ic_signal = volts
     else:
         ic_signal = dvdi
     side = {"+": "positive", "-": "negative", "+-": "both"}
     ic = extract_switching_current(
-        ibias, ic_signal, side=side[args.branch], threshold=threshold
+        ibias,
+        ic_signal,
+        side=side[args.branch],
+        threshold=threshold,
+        offset=config.getfloat("OFFSET", 0),
     )
     if args.branch != "+-":
         ic = [ic]
