@@ -10,7 +10,7 @@ from typing import Callable, Dict, Optional, Tuple, Union
 import numpy as np
 from matplotlib import pyplot as plt
 
-from shabanipy.labber import LabberData, get_data_dir
+from shabanipy.labber import ShaBlabberFile, get_data_dir
 
 from .utils import stamp as sp_stamp
 
@@ -190,7 +190,7 @@ def plot_labberdata(
         transform the data.
     filters
         Dictionary of {"channel": value} pairs used to select 2d slices of n-dimensional
-        data.  Passed to LabberData.get_data().
+        data.  Passed to ShaBlabberFile.get_data().
     xlim, ylim
         x- and y-axis limits, in the form (min, max), referring to the transformed data
         if `transform` is given.  If either min or max is None, the limit is left
@@ -212,29 +212,8 @@ def plot_labberdata(
         path = get_data_dir() / path
 
     # get the data
-    data = []
-    with LabberData(path) as f:
-        for name in (x, y, z):
-            try:
-                data.append(f.get_data(name, filters=filters))
-            except ValueError:
-                # TODO refactor LabberData.get_data to normalize data access
-                for log in (l for l in f.logs if l.x_name == name):
-                    vdata, _ = f.get_data(log.name, get_x=True, filters=filters)
-                    data.append(vdata)
-                    break
-
-    # normalize shapes against potentially vectorial data and handle interrupted scans
-    # TODO refactor into LabberData.get_data
-    dims = [d.ndim for d in data]
-    max_dim = max(dims)
-    min_length = min([d.shape[0] for d in data])
-    for i, d in enumerate(data):
-        if d.ndim < max_dim:
-            data[i] = np.expand_dims(
-                d[:min_length], axis=tuple(-np.arange(1, 1 + max_dim - d.ndim))
-            )
-    data = np.broadcast_arrays(*data)
+    with ShaBlabberFile(path) as f:
+        data = f.get_data(x, y, z, filters=filters)
 
     # apply transformations
     if transform is not None:
