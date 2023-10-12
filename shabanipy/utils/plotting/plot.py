@@ -219,14 +219,16 @@ def plot_labberdata(
     if transform is not None:
         data = transform(*data)
 
+    fig, ax = _fig_ax(ax)
     # plot
-    fig, ax = plot2d(
+    plot2d(
         *data,
         # TODO: automatically add units in the default case
         xlabel=xlabel if xlabel is not None else x,
         ylabel=ylabel if ylabel is not None else y,
         zlabel=zlabel if zlabel is not None else z,
         title=title,
+        ax=ax,
         **kwargs
     )
     ax.set_xlim(xlim)
