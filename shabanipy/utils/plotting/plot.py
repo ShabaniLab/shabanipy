@@ -223,7 +223,6 @@ def plot_labberdata(
     # plot
     plot2d(
         *data,
-        # TODO: automatically add units in the default case
         xlabel=xlabel if xlabel is not None else x,
         ylabel=ylabel if ylabel is not None else y,
         zlabel=zlabel if zlabel is not None else z,
