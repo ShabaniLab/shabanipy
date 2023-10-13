@@ -7,7 +7,6 @@ This can be used e.g. for field alignment or diode analysis.
 """
 import argparse
 import json
-import re
 from pathlib import Path
 from warnings import warn
 
@@ -19,7 +18,7 @@ from scipy.signal import savgol_filter
 from shabanipy.dvdi import extract_switching_current
 from shabanipy.jj import find_fraunhofer_center
 from shabanipy.labber import ShaBlabberFile
-from shabanipy.utils import get_output_dir, jy_pink, load_config, plot, plot2d
+from shabanipy.utils import get_output_dir, jy_pink, load_config, plot2d
 
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -34,13 +33,6 @@ parser.add_argument(
     default="+",
     choices=["+", "-", "+-"],
     help="which branch of critical current to analyze",
-)
-parser.add_argument(
-    "--align",
-    "-a",
-    default=False,
-    action="store_true",
-    help="fit fraunhofer center vs. CH_VARIABLE for field alignment angle",
 )
 parser.add_argument(
     "--debug",
@@ -209,7 +201,6 @@ variable = np.array(variable)[sort_idx]
 fraun_center = np.array(fraun_center)[sort_idx]
 fraun_max = np.array(fraun_max)[sort_idx]
 datafiles = np.array(datafiles)[sort_idx]
-last_scan = re.split("-|_|\.", config[f"DATAPATH{i-1}"])[-2]
 
 database_path = outdir / f"{Path(args.config_path).stem}_{args.config_section}.csv"
 if database_path.exists():
@@ -235,71 +226,4 @@ if write:
         df[f"ic{args.branch}"] = fraun_max
         df[f"center{args.branch}"] = fraun_center
     df.to_csv(database_path, index=False)
-
-stamp = f"{config['FRIDGE']}/{config['DATAPATH1'].removesuffix('.hdf5')}$-${last_scan}"
-ic_label = (
-    ("$I_{c-}$", "$I_{c+}$") if args.branch == "+-" else f"$I_{{c{args.branch}}}$"
-)
-fig, ax = plot(
-    variable,
-    fraun_center / 1e-3,
-    "o-",
-    xlabel=config["CH_VARIABLE"],
-    ylabel="fraunhofer center (mT)",
-    stamp=stamp,
-    label=ic_label,
-)
-if args.align:
-    for fc in fraun_center.T:
-        m, b = np.polyfit(variable, fc, 1)
-        ax.plot(
-            variable,
-            (m * variable + b) / 1e-3,
-            label=f"arcsin$(y/x)$ = {round(np.degrees(np.arcsin(m)), 3)} deg",
-        )
-ax.legend()
-outpath = outdir / f"{Path(config['DATAPATH1']).stem}-{last_scan}"
-fig.savefig(str(outpath) + "_center.png")
-
-fig, ax = plot(
-    variable,
-    fraun_max / 1e-6,
-    "o-",
-    color="tab:blue",
-    xlabel=config["CH_VARIABLE"],
-    ylabel="critical current (μA)",
-    stamp=stamp,
-)
-for fm in fraun_max.T:
-    ax.fill_between(variable, fm / 1e-6, color="tab:blue", alpha=0.5)
-ax.set_xlim((variable.min(), variable.max()))
-fig.savefig(str(outpath) + "_max.png")
-
-if args.branch == "+-":
-    fig, ax = plot(
-        variable,
-        np.abs(fraun_max) / 1e-6,
-        "o-",
-        xlabel=config["CH_VARIABLE"],
-        ylabel="critical current (μA)",
-        label=ic_label,
-        stamp=stamp,
-    )
-    ax.fill_between(variable, *np.abs(fraun_max.T / 1e-6), color="tab:gray", alpha=0.5)
-    fig.savefig(str(outpath) + "_absmax.png")
-
-    fig, ax = plt.subplots()
-    ax.axhline(0, color="k")
-    ax.axvline(0, color="k")
-    plot(
-        variable,
-        np.diff(np.abs(fraun_max)).squeeze() / 1e-9,
-        "o-",
-        xlabel=config["CH_VARIABLE"],
-        ylabel="$\Delta I_c$ (nA)",
-        ax=ax,
-        stamp=stamp,
-    )
-    fig.savefig(str(outpath) + "_deltamax.png")
-
-plt.show()
+print(f"Wrote {database_path}")
