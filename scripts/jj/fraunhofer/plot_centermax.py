@@ -49,7 +49,7 @@ ic_label = ("$I_{c-}$", "$I_{c+}$") if branch == "+-" else f"$I_{{c{branch}}}$"
 fig, ax = plot(
     variable,
     fraun_center / 1e-3,
-    "o-",
+    ".-",
     xlabel=variable_name,
     ylabel="fraunhofer center (mT)",
     stamp=stamp,
@@ -70,7 +70,7 @@ fig.savefig(str(outpath) + "_center.png")
 fig, ax = plot(
     variable,
     fraun_max / 1e-6,
-    "o-",
+    ".-",
     color="tab:blue",
     xlabel=variable_name,
     ylabel="critical current (μA)",
@@ -85,7 +85,7 @@ if branch == "+-":
     fig, ax = plot(
         variable,
         np.abs(fraun_max) / 1e-6,
-        "o-",
+        ".-",
         xlabel=variable_name,
         ylabel="critical current (μA)",
         label=ic_label,
@@ -100,7 +100,7 @@ if branch == "+-":
     plot(
         variable,
         np.diff(np.abs(fraun_max)).squeeze() / 1e-9,
-        "o-",
+        ".-",
         xlabel=variable_name,
         ylabel="$\Delta I_c$ (nA)",
         ax=ax,
