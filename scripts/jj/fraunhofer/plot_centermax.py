@@ -57,7 +57,8 @@ fig, ax = plot(
 )
 if args.align:
     for fc in fraun_center.T:
-        m, b = np.polyfit(variable, fc, 1)
+        mask = np.isfinite(fc)
+        m, b = np.polyfit(variable[mask], fc[mask], 1)
         ax.plot(
             variable,
             (m * variable + b) / 1e-3,
