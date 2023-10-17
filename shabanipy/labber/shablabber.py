@@ -70,18 +70,9 @@ class ShaBlabberFile(File):
 
     @cached_property
     def _shape(self) -> Tuple[int]:
-        """The shape of the data."""
+        """The intended shape of the data."""
         step_dims = [d for d in self._step_dims if d != 1]
-        # The first step dimension is always fully allocated and padded with
-        # NaNs if interrupted, so we can treat it as a completed scan.
-        if self._completed or self._ndim == 1:
-            return self._trace_dims + tuple(step_dims)
-        else:  # scan aborted/crashed/interrupted
-            # infer the last dimension from the available data
-            data_shape = list(self["Data/Data"].shape)
-            del data_shape[1]  # number of channels/columns
-            step_dims[-1] = np.prod(data_shape) // np.prod(step_dims[:-1])
-            return self._trace_dims + tuple(step_dims)
+        return self._trace_dims + tuple(step_dims)
 
     @cached_property
     def _ndim(self) -> int:
@@ -411,14 +402,17 @@ class Channel(_DatasetRow):
         else:
             data = self._get_data()
         data = data.squeeze()
-        if not self._file._completed and self._file._ndim > 1:
-            data = data[
-                ..., : np.prod(self._file._shape[1:])
-            ]  # discards interrupted sweeps
         if self._file._x_channels and not self._is_trace_channel:
             expand = (np.newaxis,) * len(self._file._trace_dims) + (...,)
             data = np.broadcast_to(data[expand], self._file._trace_dims + data.shape)
-        return data.reshape(self._file._shape, order="F")
+        # pad interrupted scans
+        shape = self._file._shape
+        data = np.pad(
+            data.flatten(order="F"),
+            (0, np.prod(shape) - data.size),
+            constant_values=np.nan,
+        )
+        return data.reshape(shape, order="F")
 
     def _get_data(self) -> np.ndarray:
         def _data_column(info):
