@@ -31,6 +31,7 @@ setup(name='shabanipy',
       python_requires='>=3.9',
       install_requires=requirements,
       packages=find_packages(),
+      package_data={'shabanipy': ['Supplemental_Sawada_2016.txt']},
       platforms="Linux, Windows,Mac",
       use_2to3=False,
       zip_safe=False)
