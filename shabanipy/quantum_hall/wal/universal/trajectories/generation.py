@@ -25,7 +25,6 @@ import pandas as pd
 import numpy as np
 from scipy.integrate import trapz
 from numba import njit
-from typing_extensions import Literal, overload
 
 from .random_number_generator import ran1, seed_ran1
 from .utils import find_each_angle, find_each_length
@@ -190,7 +189,7 @@ def create_all_data(verbose=False) -> None:
         L = dt["L"].values
         S = dt["S"].values
         cosj = dt["cosj'"].values
-        valid_traces = np.empty_like(number, dtype=np.bool)
+        valid_traces = np.empty_like(number, dtype=bool)
 
         # Maximum number of scattering events to consider in a trajectory.
         # (set in Sawada 2016)
