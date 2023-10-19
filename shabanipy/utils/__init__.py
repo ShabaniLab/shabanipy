@@ -8,6 +8,7 @@
 # -----------------------------------------------------------------------------
 """Utility tools used throughout the project."""
 
+from .argparse import ConfArgParser
 from .configparser import load_config
 from .io import get_output_dir
 from .lmfit_utils import to_dataframe
