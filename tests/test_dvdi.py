@@ -24,7 +24,7 @@ class TestExtractSwitchingCurrent(unittest.TestCase):
         self.assertEqual(
             extract_switching_current(bias, dvdi, threshold=0.5, side="negative"), -2
         )
-        self.assertEqual(
+        assert_array_equal(
             extract_switching_current(bias, dvdi, threshold=0.5, side="both"), (-2, 2)
         )
 
@@ -90,7 +90,7 @@ class TestExtractSwitchingCurrent(unittest.TestCase):
             ),
             -1,
         )
-        self.assertEqual(
+        assert_array_equal(
             extract_switching_current(
                 bias, dvdi, threshold=None, side="both", interp=True
             ),

@@ -6,7 +6,7 @@
 # The full license is in the file LICENCE, distributed with this software.
 # -----------------------------------------------------------------------------
 """Analysis of differential resistance and IV curves of superconducting devices."""
-from typing import Literal, Optional, Tuple, Union
+from typing import Literal, Optional
 
 import numpy as np
 
@@ -19,7 +19,7 @@ def extract_switching_current(
     threshold: Optional[float] = None,
     interp: bool = False,
     offset: float = 0,
-) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+) -> np.ndarray:
     """Extract the switching currents from a set of differential resistance curves.
 
     This function will also work for V(I) curves if `offset` and an explicit `threshold`
@@ -48,9 +48,9 @@ def extract_switching_current(
 
     Returns
     -------
-    ndarray or (ndarray, ndarray)
-        The positive or negative branch of the switching current, or (negative,
-        positive) if `side` is "both".  The returned array(s) have the same shape as the
+    ic: ndarray
+        The positive or negative branch of the switching current.  If `side` is "both",
+        ic[0] = ic- and ic[1] = ic+.  The returned arrays have the same shape as the
         input arrays without the last axis.
     """
     if side not in ("positive", "negative", "both"):
@@ -60,7 +60,7 @@ def extract_switching_current(
 
     if side != "negative":
         ic_p = find_rising_edge(
-            bias, np.where(bias >= 0, dvdi, np.nan), threshold=threshold, interp=interp,
+            bias, np.where(bias >= 0, dvdi, np.nan), threshold=threshold, interp=interp
         )
         ic_p = np.nan_to_num(ic_p)
     if side != "positive":
@@ -73,7 +73,13 @@ def extract_switching_current(
         )
         ic_n = np.nan_to_num(ic_n)
 
-    return ic_p if side == "positive" else ic_n if side == "negative" else (ic_n, ic_p)
+    return (
+        ic_p
+        if side == "positive"
+        else ic_n
+        if side == "negative"
+        else np.array((ic_n, ic_p))
+    )
 
 
 def find_rising_edge(x, y, *, threshold=None, interp=False):
