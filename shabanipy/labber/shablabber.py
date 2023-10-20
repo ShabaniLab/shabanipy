@@ -405,14 +405,7 @@ class Channel(_DatasetRow):
         if self._file._x_channels and not self._is_trace_channel:
             expand = (np.newaxis,) * len(self._file._trace_dims) + (...,)
             data = np.broadcast_to(data[expand], self._file._trace_dims + data.shape)
-        # pad interrupted scans
-        shape = self._file._shape
-        data = np.pad(
-            data.flatten(order="F"),
-            (0, np.prod(shape) - data.size),
-            constant_values=np.nan,
-        )
-        return data.reshape(shape, order="F")
+        return _pad_and_reshape(data, self._file._shape)
 
     def _get_step_data(self) -> np.ndarray:
         def _data_column(info):
@@ -465,11 +458,7 @@ class XChannel:
 
     def get_data(self) -> np.ndarray:
         data = self._channel._file[f"Traces/{self._channel.name}"][:, -1, ...]
-        # add missing traces due to interrupted scans by padding with NaN
-        shape = self._channel._file._shape
-        pad_width = np.prod(shape[1:]) - data.shape[-1]
-        data = np.pad(data, ((0, 0), (0, pad_width)), constant_values=np.nan)
-        return data.reshape(shape, order="F")
+        return _pad_and_reshape(data, self._channel._file._shape)
 
 
 class Instrument(_DatasetRow):
@@ -583,3 +572,18 @@ def _check_empty_list(self, list_) -> List[str]:
         return []
     else:
         return list_
+
+
+def _pad_and_reshape(a: np.ndarray, shape: Tuple[int]) -> np.ndarray:
+    """Minimally pad `a` with NaN so it can be reshaped to `shape`.
+
+    Pad all but the last (outermost) sweep axis.  The last dimension is then inferred.
+    We do not pad the last axis because it would introduce slices containing only NaN values.
+    """
+    a = a.flatten(order="F")
+    for i in range(len(shape) - 1):
+        dim = np.prod(shape[: i + 1])
+        n_partial = a.size % dim
+        pad_width = (dim - n_partial) % dim
+        a = np.pad(a, (0, pad_width), constant_values=np.nan)
+    return a.reshape(shape[:-1] + (-1,), order="F")
