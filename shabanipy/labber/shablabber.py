@@ -400,7 +400,7 @@ class Channel(_DatasetRow):
         if self._is_trace_channel:
             data = self._get_trace_data()
         else:
-            data = self._get_data()
+            data = self._get_step_data()
         data = data.squeeze()
         if self._file._x_channels and not self._is_trace_channel:
             expand = (np.newaxis,) * len(self._file._trace_dims) + (...,)
@@ -414,7 +414,7 @@ class Channel(_DatasetRow):
         )
         return data.reshape(shape, order="F")
 
-    def _get_data(self) -> np.ndarray:
+    def _get_step_data(self) -> np.ndarray:
         def _data_column(info):
             column = self._file._data_channel_infos.index((self.name, info))
             return self._file["Data/Data"][:, column, ...]
