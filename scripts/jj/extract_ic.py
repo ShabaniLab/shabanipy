@@ -1,4 +1,6 @@
 """Extract critical current as a function of some variable."""
+import json
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -7,7 +9,7 @@ from pandas import DataFrame
 
 from shabanipy.dvdi import extract_switching_current
 from shabanipy.labber import ShaBlabberFile
-from shabanipy.utils import ConfArgParser, get_output_dir, plot2d
+from shabanipy.utils import ConfArgParser, get_output_dir, git_hash, plot2d
 
 p = ConfArgParser(description=__doc__)
 # required arguments
@@ -117,5 +119,9 @@ else:  # args.branch == "+-"
 data["datafiles"] = [Path(args.datapath).stem] * var.shape[0]
 data = DataFrame(data)
 data.to_csv(str(outprefix) + ".csv", index=False)
+
+metadata = {"git_commit": git_hash(), "command": " ".join(sys.argv), "args": vars(args)}
+with open(str(outprefix) + "_metadata.txt", "w") as f:
+    f.write(json.dumps(metadata, indent=4))
 
 plt.show()
