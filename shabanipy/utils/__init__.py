@@ -10,6 +10,7 @@
 
 from .argparse import ConfArgParser
 from .configparser import load_config
+from .git import git_hash
 from .io import get_output_dir
 from .lmfit_utils import to_dataframe
 from .logging import ConsoleFormatter, InformativeFormatter, configure_logging
