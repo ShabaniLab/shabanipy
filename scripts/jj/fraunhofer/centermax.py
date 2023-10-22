@@ -211,12 +211,7 @@ if database_path.exists():
 else:
     write = True
 if write:
-    df = DataFrame(
-        {
-            "datafile": datafiles,
-            config["CH_VARIABLE"]: variable,
-        },
-    )
+    df = DataFrame({config["CH_VARIABLE"]: variable})
     if args.branch == "+-":
         df["ic-"] = fraun_max[:, 0]
         df["ic+"] = fraun_max[:, 1]
@@ -225,5 +220,6 @@ if write:
     else:
         df[f"ic{args.branch}"] = fraun_max
         df[f"center{args.branch}"] = fraun_center
+    df["datafile"] = datafiles
     df.to_csv(database_path, index=False)
 print(f"Wrote {database_path}")
