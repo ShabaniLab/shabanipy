@@ -22,6 +22,8 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     "csv_path", help="path to .csv file output by centermax.py, relative to this script"
 )
+parser.add_argument("--xmin", help="minimum value of x axis", type=float)
+parser.add_argument("--xmax", help="maximum value of x axis", type=float)
 args = parser.parse_args()
 
 outdir = Path(args.csv_path).parent
@@ -34,6 +36,12 @@ branch = ""
 branch += "+" if "ic+" in csv.columns else ""
 branch += "-" if "ic-" in csv.columns else ""
 variable_name = csv.columns[0]
+if args.xmin:
+    csv = csv.loc[csv[variable_name] >= args.xmin]
+if args.xmax:
+    csv = csv.loc[csv[variable_name] <= args.xmax]
+if args.xmin or args.xmax:
+    outprefix = Path(str(outprefix) + f"_{args.xmin}-{args.xmax}")
 variable = csv[variable_name].to_numpy()
 ic = csv[[f"ic{sign}" for sign in branch]].to_numpy()
 
