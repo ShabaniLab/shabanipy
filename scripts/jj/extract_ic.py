@@ -104,6 +104,7 @@ fig, ax = plot2d(
     zlabel="|dV/dI| (Ω)" if args.resistor_ac else args.ch_measured,
     vmin=args.vmin,
     vmax=args.vmax,
+    stamp=Path(args.datapath).name,
 )
 fig.savefig(str(outprefix) + "_rawdata.png")
 
