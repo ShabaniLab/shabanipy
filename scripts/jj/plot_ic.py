@@ -35,53 +35,53 @@ csv = read_csv(args.csv_path)
 branch = ""
 branch += "+" if "ic+" in csv.columns else ""
 branch += "-" if "ic-" in csv.columns else ""
-variable_name = csv.columns[0]
+xname = csv.columns[0]
 if args.xmin:
-    csv = csv.loc[csv[variable_name] >= args.xmin]
+    csv = csv.loc[csv[xname] >= args.xmin]
 if args.xmax:
-    csv = csv.loc[csv[variable_name] <= args.xmax]
+    csv = csv.loc[csv[xname] <= args.xmax]
 if args.xmin or args.xmax:
     outprefix = Path(str(outprefix) + f"_{args.xmin}-{args.xmax}")
-variable = csv[variable_name].to_numpy()
+x = csv[xname].to_numpy()
 ic = csv[[f"ic{sign}" for sign in branch]].to_numpy()
 
 stamp = Path(args.csv_path).name
 fig, ax = plot(
-    variable,
+    x,
     ic / 1e-6,
     ".-",
     color="tab:blue",
-    xlabel=variable_name,
+    xlabel=xname,
     ylabel="critical current (μA)",
     stamp=stamp,
 )
 for i in ic.T:
-    ax.fill_between(variable, i / 1e-6, color="tab:blue", alpha=0.5)
-ax.set_xlim((variable.min(), variable.max()))
+    ax.fill_between(x, i / 1e-6, color="tab:blue", alpha=0.5)
+ax.set_xlim((x.min(), x.max()))
 fig.savefig(str(outprefix) + "_ic.png")
 
 if branch == "+-":
     label = ("$I_{c+}$", "$I_{c-}$")
     fig, ax = plot(
-        variable,
+        x,
         np.abs(ic) / 1e-6,
         ".-",
-        xlabel=variable_name,
+        xlabel=xname,
         ylabel="critical current (μA)",
         label=label,
         stamp=stamp,
     )
-    ax.fill_between(variable, *np.abs(ic.T / 1e-6), color="tab:gray", alpha=0.5)
+    ax.fill_between(x, *np.abs(ic.T / 1e-6), color="tab:gray", alpha=0.5)
     fig.savefig(str(outprefix) + "_ic-mag.png")
 
     fig, ax = plt.subplots()
     ax.axhline(0, color="k")
     ax.axvline(0, color="k")
     plot(
-        variable,
+        x,
         -np.diff(np.abs(ic)).squeeze() / 1e-9,
         ".-",
-        xlabel=variable_name,
+        xlabel=xname,
         ylabel="$\Delta I_c$ (nA)",
         ax=ax,
         stamp=stamp,
@@ -92,10 +92,10 @@ if branch == "+-":
     ax.axhline(0, color="k")
     ax.axvline(0, color="k")
     plot(
-        variable,
+        x,
         -np.diff(np.abs(ic)).squeeze() / np.sum(np.abs(ic), axis=-1),
         ".-",
-        xlabel=variable_name,
+        xlabel=xname,
         ylabel="$\Delta I_c / \Sigma I_c$",
         ax=ax,
         stamp=stamp,
