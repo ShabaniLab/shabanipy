@@ -85,9 +85,10 @@ model.set_param_hint("bstar", value=0)
 params = model.make_params()
 
 # set up output
-outpath = Path(args.datapath)
-print(f"Output directory: {outpath.parent}")
-outpath = str(outpath.parent / outpath.stem) + f"_fit-{args.bmax}"
+outdir = Path(args.datapath).parent / Path(__file__).stem
+outdir.mkdir(exist_ok=True, parents=True)
+print(f"Output directory: {outdir}")
+outpath = str(outdir / Path(args.datapath).stem) + f"_fit-{args.bmax}"
 
 # fit and plot
 result = model.fit(np.concatenate((icp, icm)), x=bfield)
