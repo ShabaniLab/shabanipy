@@ -6,7 +6,7 @@
 # The full license is in the file LICENCE, distributed with this software.
 # -----------------------------------------------------------------------------
 """Analysis of differential resistance and IV curves of superconducting devices."""
-from typing import Literal, Optional
+from typing import Literal, Optional, Tuple
 
 import numpy as np
 
@@ -34,7 +34,6 @@ def extract_switching_current(
         values; same shape as `bias`.
     side : optional
         Which branch of the switching current to extract (positive, negative, or both).
-        If "both", a tuple of (negative, positive) switching currents is returned.
     threshold : optional
         The switching current is determined as the first `bias` value for which `dvdi`
         rises above `threshold`.
@@ -106,3 +105,79 @@ def find_rising_edge(x, y, *, threshold=None, interp=False):
         return x0 + (np.squeeze(threshold) - y0) / dydx
     else:
         return x1
+
+
+def extract_iexrn(
+    bias: np.ndarray,
+    volt: np.ndarray,
+    bias_min: float,
+    *,
+    side: Literal["positive", "negative", "both"] = "positive",
+    offset: float = 0,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Extract excess current and normal resistance from a V(I) curve.
+
+    Parameters
+    ----------
+    bias
+        N-dimensional array of d.c. bias current, assumed to be swept along the last
+        axis.
+    volt
+        N-dimensional array of d.c. voltage measured at the corresponding `bias` values;
+        same shape as `bias`.
+    bias_min
+        Current bias threshold above which the V(I) curve is considered ohmic/linear.
+        The linear fit is limited to where |bias| > bias_min.
+    side : optional
+        Which side of the V(I) curve to analyze (positive, negative, or both).
+
+    Returns
+    -------
+    (iex, rn)
+        The excess current and normal resistance obtained from the positive or negative
+        side of the V(I) curve. If `side` is "both", iex[0] = iex- and iex[1] = iex+
+        (likewise for rn).  The returned arrays have the same shape as the input arrays
+        without the last axis.
+    """
+    if side == "both":
+        dim0 = (2,)
+    else:
+        dim0 = ()
+    iex = np.empty(dim0 + bias.shape[:-1])
+    rn = np.empty(dim0 + bias.shape[:-1])
+    iex[:] = rn[:] = np.nan
+
+    it = np.nditer(bias[..., 0], flags=["multi_index"])
+    for _ in it:
+        index = it.multi_index
+        i, v = bias[index], volt[index]
+        if side != "negative":
+            mask = i >= bias_min
+            iex_p, rn_p = _fit_extrap(i[mask], v[mask])
+        if side != "positive":
+            mask = i <= -bias_min
+            iex_n, rn_n = _fit_extrap(i[mask], v[mask])
+
+        if side == "negative":
+            iex[index] = iex_n
+            rn[index] = rn_n
+        elif side == "positive":
+            iex[index] = iex_p
+            rn[index] = rn_p
+        else:  # side == "both"
+            iex[:, index] = np.array([[iex_n, iex_p]]).T
+            rn[:, index] = np.array([[rn_n, rn_p]]).T
+
+    return iex.squeeze(), rn.squeeze()
+
+
+def _fit_extrap(x: np.ndarray, y: np.ndarray) -> (float, float):
+    """Fit a line and extrapolate to y=0.
+
+    Inputs must be 1d.  Returns (x_intercept, slope), i.e. (excess_current,
+    normal_resistance) if x is current bias and y is d.c. voltage.
+    """
+    poly = np.polynomial.Polynomial.fit(x, y, 1)
+    y_int, slope = poly.convert().coef
+    x_int = -y_int / slope
+    return x_int, slope

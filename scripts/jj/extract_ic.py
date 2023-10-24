@@ -22,7 +22,7 @@ p.add_argument(
 p.add_argument("--ch_source_dc", help="channel name for the d.c. source", required=True)
 p.add_argument(
     "--ch_variable",
-    help="channel name for the independent variable (e.g. field)",
+    help="channel name for the independent variable (e.g. gate or field)",
     required=True,
 )
 # optional arguments
