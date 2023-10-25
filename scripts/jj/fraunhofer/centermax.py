@@ -7,6 +7,7 @@ This can be used e.g. for field alignment or diode analysis.
 """
 import argparse
 import json
+import sys
 from pathlib import Path
 from warnings import warn
 
@@ -18,7 +19,7 @@ from scipy.signal import savgol_filter
 from shabanipy.dvdi import extract_switching_current
 from shabanipy.jj import find_fraunhofer_center
 from shabanipy.labber import ShaBlabberFile
-from shabanipy.utils import get_output_dir, jy_pink, load_config, plot2d
+from shabanipy.utils import get_output_dir, git_hash, jy_pink, load_config, plot2d
 
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -231,4 +232,15 @@ if write:
         df[f"center{args.branch}"] = fraun_center
     df["datafile"] = datafiles
     df.to_csv(database_path, index=False)
-print(f"Wrote {database_path}")
+    print(f"Wrote {database_path}")
+
+    metadata_path = (
+        outdir / f"{Path(args.config_path).stem}_{args.config_section}_metadata.txt"
+    )
+    metadata = {
+        "git_commit": git_hash(),
+        "command": " ".join(sys.argv),
+        "args": vars(args),
+    }
+    with open(metadata_path, "w") as f:
+        f.write(json.dumps(metadata, indent=4))
