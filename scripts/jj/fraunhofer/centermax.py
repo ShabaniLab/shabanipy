@@ -36,6 +36,14 @@ parser.add_argument(
     help="which branch of critical current to analyze",
 )
 parser.add_argument(
+    "--offset_npoints",
+    type=int,
+    help=(
+        "number of points around 0 bias to average when correcting d.c. offset;"
+        "this assumes the current bias is swept symmetrically about 0"
+    ),
+)
+parser.add_argument(
     "--debug",
     "-d",
     default=False,
@@ -74,6 +82,7 @@ def plot_data(b_perp, ibias, dvdi, ax=None, cb=True):
 variable = []
 fraun_center = []
 fraun_max = []
+offsets = []
 datafiles = []
 i = 1
 while config.get(f"DATAPATH{i}"):
@@ -146,12 +155,23 @@ while config.get(f"DATAPATH{i}"):
     else:
         ic_signal = dvdi
     side = {"+": "positive", "-": "negative", "+-": "both"}
+    offset_npoints = config.getint(
+        "OFFSET_NPOINTS{i}", config.getint("OFFSET_NPOINTS", args.offset_npoints)
+    )
+    if offset_npoints:
+        n = ic_signal.shape[-1]
+        offset = np.mean(
+            ic_signal[:, (n - offset_npoints) // 2 : (n + offset_npoints) // 2]
+        )
+        offsets.append(offset)
+    else:
+        offset = config.getfloat("OFFSET{i}", config.getfloat("OFFSET", 0))
     ic = extract_switching_current(
         ibias,
         ic_signal,
         side=side[args.branch],
         threshold=threshold,
-        offset=config.getfloat("OFFSET", 0),
+        offset=offset,
     )
     if args.branch != "+-":
         ic = [ic]
@@ -223,6 +243,8 @@ if write:
     else:
         df[f"ic{args.branch}"] = fraun_max
         df[f"center{args.branch}"] = fraun_center
+    if offsets:
+        df["dc_offset"] = offsets
     df["datafile"] = datafiles
     df.to_csv(database_path, index=False)
     print(f"Wrote {database_path}")
