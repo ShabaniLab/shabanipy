@@ -36,18 +36,11 @@ parser.add_argument(
     help="which branch of critical current to analyze",
 )
 parser.add_argument(
-    "--show",
-    "-s",
-    default=False,
-    action="store_true",
-    help="show fraunhofer plots before saving them",
-)
-parser.add_argument(
     "--debug",
     "-d",
     default=False,
     action="store_true",
-    help="show additional plots for debugging purposes",
+    help="show plots for debugging purposes",
 )
 args = parser.parse_args()
 _, config = load_config(Path(__file__).parent / args.config_path, args.config_section)
@@ -202,7 +195,7 @@ while config.get(f"DATAPATH{i}"):
     [ax.axhline(m / 1e-6, color="k", lw=1) for m in max_]
     fig.savefig(str(outdirvv / f"{Path(config[f'DATAPATH{i}']).stem}_{var}.png"))
 
-    if args.show:
+    if args.debug:
         plt.show()
     plt.close()
     i += 1
