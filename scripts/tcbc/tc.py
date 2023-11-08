@@ -21,6 +21,12 @@ parser.add_argument("config_path", help="path to .ini config file")
 parser.add_argument("config_section", help="section of the .ini config file to use")
 parser.add_argument("--minT", type=float, default=None, help="minimum temperature")
 parser.add_argument("--maxT", type=float, default=None, help="maximum temperature")
+parser.add_argument(
+    "--makereal",
+    choices=["real", "abs"],
+    default="real",
+    help="use the real part or magnitude (abs) of complex lock-in data",
+)
 args = parser.parse_args()
 _, config = load_config(args.config_path, args.config_section)
 
@@ -32,9 +38,10 @@ outprefix = (
     / f"{Path(args.config_path).stem}_{args.config_section}_Tc_{args.minT}-{args.maxT}"
 )
 
+makereal = {"real": np.real, "abs": np.abs}
 with ShaBlabberFile(config["DATAPATH"]) as f:
     temp, volt = f.get_data(config["CH_TEMP"], config["CH_VOLT"])
-    volt = volt.real
+    volt = makereal[args.makereal](volt)
 
 if temp.ndim > 1:
     # assume temperature is swept along last axis (i.e. Labber outer-most loop)
@@ -79,7 +86,7 @@ fig, ax = plt.subplots()
 ax.plot(temp, volt, ".", label="stale")
 ax.plot(temp_fresh, volt_fresh, label="fresh")
 ax.set_xlabel(config["CH_TEMP"])
-ax.set_ylabel(config["CH_VOLT"])
+ax.set_ylabel(config["CH_VOLT"] + f" ({args.makereal})")
 ax.set_title(args.config_section)
 ax.legend()
 
@@ -88,7 +95,9 @@ tc = find_rising_edge(temp_fresh, volt_fresh, interp=True)
 fig, ax = plt.subplots()
 ax.plot(temp_fresh, volt_fresh / config.getfloat("IBIAS", 1), marker=".")
 ax.set_xlabel("MXC temperature (K)")
-ax.set_ylabel("resistance (Ω)" if config.get("IBIAS") else "voltage (V)")
+ax.set_ylabel(
+    ("resistance (Ω)" if config.get("IBIAS") else "voltage (V)") + f" ({args.makereal})"
+)
 ax.set_title(args.config_section)
 ax.axvline(tc, color="k", ls=":")
 ax.text(
