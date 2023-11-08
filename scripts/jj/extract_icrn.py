@@ -4,6 +4,7 @@ At the moment, only 2D data is supported, i.e. V(I,x) where x is some other vari
 import json
 import sys
 from pathlib import Path
+from pprint import pformat
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -74,6 +75,7 @@ g.add_argument(
     "--vmax", help="max value of colorbar scale [ohms]", type=float, default=None
 )
 args = p.parse_args()
+print(f"Running {__file__} with arguments:\n{pformat(vars(args))}")
 
 plt.style.use(["fullscreen13"])
 
