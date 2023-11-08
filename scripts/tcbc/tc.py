@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 
 from shabanipy.dvdi import find_rising_edge
 from shabanipy.labber import ShaBlabberFile
-from shabanipy.utils import get_output_dir, load_config, stamp
+from shabanipy.utils import get_output_dir, load_config, stamp, write_metadata
 
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -27,6 +27,10 @@ _, config = load_config(args.config_path, args.config_section)
 outdir = get_output_dir() / "tcbc"
 outdir.mkdir(exist_ok=True, parents=True)
 print(f"Output directory: {outdir}")
+outprefix = (
+    outdir
+    / f"{Path(args.config_path).stem}_{args.config_section}_Tc_{args.minT}-{args.maxT}"
+)
 
 with ShaBlabberFile(config["DATAPATH"]) as f:
     temp, volt = f.get_data(config["CH_TEMP"], config["CH_VOLT"])
@@ -91,9 +95,8 @@ ax.text(
     tc, volt_fresh.min() / config.getfloat("IBIAS", 1), f"$T_c \\approx {round(tc, 2)}$"
 )
 stamp(ax, config["DATAPATH"])
-fig.savefig(
-    outdir
-    / f"{Path(args.config_path).stem}_{args.config_section}_Tc_{args.minT}-{args.maxT}.png"
-)
+fig.savefig(str(outprefix) + ".png")
+
+write_metadata(str(outprefix) + "_metadata.txt", args=args)
 
 plt.show()
