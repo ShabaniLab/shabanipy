@@ -8,7 +8,7 @@
 # -----------------------------------------------------------------------------
 """Utility tools used throughout the project."""
 
-from .argparse import ConfArgParser
+from .argparse import ConfArgParser, write_metadata
 from .configparser import load_config
 from .git import git_hash
 from .io import get_output_dir

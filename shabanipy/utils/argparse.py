@@ -12,9 +12,13 @@ do everything/exactly what we want.  For now the below is a lightweight solution
 external dependencies.
 """
 import argparse
+import json
 import sys
+from pathlib import Path
+from typing import Optional, Union
 
 from .configparser import load_config
+from .git import git_hash
 
 
 class ConfArgParser(argparse.ArgumentParser):
@@ -57,3 +61,12 @@ class ConfArgParser(argparse.ArgumentParser):
                         )
         # redundant arguments override earlier ones
         return super().parse_args(configargs + sys.argv[1:], namespace=self.args)
+
+
+def write_metadata(path: Union[str, Path], args: Optional[argparse.Namespace] = None):
+    """Write metadata about a script invocation to `path` with script arguments `args`."""
+    metadata = {"git_commit": git_hash(), "command": " ".join(sys.argv)}
+    if args is not None:
+        metadata["args"] = vars(args)
+    with open(path, "w") as f:
+        f.write(json.dumps(metadata, indent=4))
