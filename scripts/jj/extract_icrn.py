@@ -27,7 +27,7 @@ p.add_argument(
     type=float,
 )
 p.add_argument(
-    "--offset-npoints",
+    "--offset_npoints",
     help="number of points near 0 bias to average to compute d.c. voltage offset; "
     "not used if --offset is given",
     type=int,
