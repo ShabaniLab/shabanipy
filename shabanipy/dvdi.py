@@ -19,6 +19,7 @@ def extract_switching_current(
     threshold: Optional[float] = None,
     interp: bool = False,
     offset: float = 0,
+    offset_npoints: Optional[int] = None,
 ) -> np.ndarray:
     """Extract the switching currents from a set of differential resistance curves.
 
@@ -43,7 +44,10 @@ def extract_switching_current(
         If true, linearly interpolate `dvdi` vs `bias` to more accurately detect the
         switching current.
     offset : optional
-        A constant value to subtract from `dvdi`.
+        A constant value to subtract from `dvdi`.  Overrides `offset_npoints`.
+    offset_npoints : optional
+        The number of points around 0 bias that are averaged to compute the offset.
+        Ignored if nonzero `offset` is given.
 
     Returns
     -------
@@ -55,6 +59,10 @@ def extract_switching_current(
     if side not in ("positive", "negative", "both"):
         raise ValueError("`side` should be one of: 'positive', 'negative', 'both'")
 
+    if offset:
+        pass
+    elif offset_npoints:
+        offset = _compute_offset(bias, dvdi, offset_npoints)
     dvdi -= offset
 
     if side != "negative":
@@ -181,3 +189,21 @@ def _fit_extrap(x: np.ndarray, y: np.ndarray) -> (float, float):
     y_int, slope = poly.convert().coef
     x_int = -y_int / slope
     return x_int, slope
+
+
+def _compute_offset(x: np.ndarray, y: np.ndarray, n: int) -> np.ndarray:
+    """Compute the average of the n points in y closest to x=0.
+
+    Points along the last axis in x are assumed to be evenly spaced.  If n is even, n+1
+    points are used (including the central point near x=0).
+
+    If x and y are N-dimensional (N > 1), the offset is computed for each slice along
+    the last axis.  The returned array has the same shape as x and y except the
+    dimension of the last axis is collapsed to 1.
+    """
+    x0_index = np.atleast_1d(np.argmin(np.abs(x), axis=-1))
+    indexes_to_average = np.concatenate(
+        [np.arange(i0 - n // 2, i0 + n // 2 + 1) for i0 in x0_index.flatten()]
+    ).reshape(y.shape[:-1] + (-1,))
+    yvalues_to_average = np.take_along_axis(y, indexes_to_average, axis=-1)
+    return np.mean(yvalues_to_average, axis=-1, keepdims=True)

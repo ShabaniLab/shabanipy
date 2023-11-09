@@ -11,7 +11,7 @@ import unittest
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from shabanipy.dvdi import extract_switching_current
+from shabanipy.dvdi import _compute_offset, extract_switching_current
 
 
 class TestExtractSwitchingCurrent(unittest.TestCase):
@@ -114,6 +114,46 @@ class TestExtractSwitchingCurrent(unittest.TestCase):
                 bias, dvdi, threshold=None, side="both", interp=True
             ),
             [[-1, -2], [1, 2]],
+        )
+
+
+class TestComputeOffset(unittest.TestCase):
+    """Unit tests for _compute_offset function."""
+
+    def test_compute_offset_1d(self):
+        x = np.array([-2, -1, 0, 1, 2])
+        y = np.array([0, 1, 2, 1, 0])
+        assert_array_equal(_compute_offset(x, y, 1), [2])
+        assert_array_equal(_compute_offset(x, y, 2), [4 / 3])
+        assert_array_equal(_compute_offset(x, y, 3), [4 / 3])
+        assert_array_equal(_compute_offset(x, y, 4), [4 / 5])
+        assert_array_equal(_compute_offset(x, y, 5), [4 / 5])
+
+    def test_compute_offset_2d(self):
+        # x=0 at different positions in each slice
+        x = np.array([[-3, -2, -1, 0, 1, 2, 3], [-2, -1, 0, 1, 2, 3, 4]])
+        y = np.array([[0, 1, 2, 3, 2, 1, 0], [-1, 5, 10, 20, 15, 4, 0]])
+        assert_array_equal(_compute_offset(x, y, 1), [[3], [10]])
+        assert_array_equal(_compute_offset(x, y, 2), [[7 / 3], [35 / 3]])
+        assert_array_equal(_compute_offset(x, y, 3), [[7 / 3], [35 / 3]])
+        assert_array_equal(_compute_offset(x, y, 4), [[9 / 5], [49 / 5]])
+        assert_array_equal(_compute_offset(x, y, 5), [[9 / 5], [49 / 5]])
+
+    def test_compute_offset_3d(self):
+        x = np.broadcast_to([-2, -1, 0, 1, 2], (2, 2, 5))
+        y = np.abs(x)
+        assert_array_equal(_compute_offset(x, y, 1), [[[0], [0]], [[0], [0]]])
+        assert_array_equal(
+            _compute_offset(x, y, 2), [[[2 / 3], [2 / 3]], [[2 / 3], [2 / 3]]]
+        )
+        assert_array_equal(
+            _compute_offset(x, y, 3), [[[2 / 3], [2 / 3]], [[2 / 3], [2 / 3]]]
+        )
+        assert_array_equal(
+            _compute_offset(x, y, 4), [[[6 / 5], [6 / 5]], [[6 / 5], [6 / 5]]]
+        )
+        assert_array_equal(
+            _compute_offset(x, y, 5), [[[6 / 5], [6 / 5]], [[6 / 5], [6 / 5]]]
         )
 
 

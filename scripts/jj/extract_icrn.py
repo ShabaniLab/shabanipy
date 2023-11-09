@@ -23,9 +23,15 @@ p.add_argument(
 )
 p.add_argument(
     "--offset",
-    help="d.c. voltage offset [raw units] of V(I) curve from 0 V",
+    help="d.c. voltage offset [raw units] of V(I) curve from 0 V; overrides --offset-npoints",
     type=float,
-    default=1.88e-3,
+)
+p.add_argument(
+    "--offset-npoints",
+    help="number of points near 0 bias to average to compute d.c. voltage offset; "
+    "not used if --offset is given",
+    type=int,
+    default=10,
 )
 p.add_argument(
     "--threshold",
@@ -116,7 +122,8 @@ ic = extract_switching_current(
     meas,
     side=sides[args.branch],
     threshold=args.threshold,
-    offset=args.offset,
+    offset=args.offset if args.offset else 0,
+    offset_npoints=args.offset_npoints,
 )
 
 stamp = Path(args.datapath).name
