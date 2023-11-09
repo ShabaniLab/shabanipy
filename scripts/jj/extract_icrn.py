@@ -124,6 +124,7 @@ ic = extract_switching_current(
     threshold=args.threshold,
     offset=args.offset if args.offset else 0,
     offset_npoints=args.offset_npoints,
+    interp=True,
 )
 
 stamp = Path(args.datapath).name
