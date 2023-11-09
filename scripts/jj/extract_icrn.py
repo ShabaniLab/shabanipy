@@ -48,6 +48,7 @@ p.add_argument(
     "-r_dc",
     help="resistor [ohms] at d.c. source output, used to convert bias from volts to amps",
     type=float,
+    default=1e6,
 )
 p.add_argument(
     "--bias_min",
