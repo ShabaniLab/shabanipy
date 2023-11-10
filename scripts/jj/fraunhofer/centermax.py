@@ -80,6 +80,7 @@ def plot_data(b_perp, ibias, dvdi, ax=None, cb=True):
 
 variable = []
 fraun_center = []
+fraun_maxfit = []
 fraun_max = []
 datafiles = []
 i = 1
@@ -182,17 +183,26 @@ while config.get(f"DATAPATH{i}"):
         field_lim = (-np.inf, np.inf)
 
     center = []
+    maxfit = []
     for ii in np.abs(ic):
         try:
-            center.append(
-                find_fraunhofer_center(
-                    b_perp, ii, field_lim=field_lim, debug=args.debug
-                )
+            c, m = find_fraunhofer_center(
+                b_perp,
+                ii,
+                field_lim=field_lim,
+                debug=args.debug,
+                return_max=True,
             )
+            center.append(c)
+            maxfit.append(m)
         except TypeError as e:
-            warn(f"Failed to find fraunhofer center.")
+            warn(f"Failed to fit fraunhofer.")
             center.append(np.nan)
+            maxfit.append(np.nan)
+    if "-" in args.branch:
+        maxfit[0] *= -1
     fraun_center.append(center)
+    fraun_maxfit.append(maxfit)
     for c in center:
         if b_perp.min() < c and c < b_perp.max():
             ax.axvline(c / 1e-3, color="k", lw=1)
@@ -214,6 +224,7 @@ while config.get(f"DATAPATH{i}"):
 sort_idx = np.argsort(variable)
 variable = np.array(variable)[sort_idx]
 fraun_center = np.array(fraun_center)[sort_idx]
+fraun_maxfit = np.array(fraun_maxfit)[sort_idx]
 fraun_max = np.array(fraun_max)[sort_idx]
 datafiles = np.array(datafiles)[sort_idx]
 
@@ -232,9 +243,12 @@ if write:
         df["ic+"] = fraun_max[:, 1]
         df["center-"] = fraun_center[:, 0]
         df["center+"] = fraun_center[:, 1]
+        df["ic- from fit"] = fraun_maxfit[:, 0]
+        df["ic+ from fit"] = fraun_maxfit[:, 1]
     else:
         df[f"ic{args.branch}"] = fraun_max
         df[f"center{args.branch}"] = fraun_center
+        df[f"ic{args.branch} from fit"] = fraun_maxfit
     df["datafile"] = datafiles
     df.to_csv(database_path, index=False)
     print(f"Wrote {database_path}")

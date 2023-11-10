@@ -9,7 +9,7 @@
 """Routines to analyse data taken on JJ.
 
 """
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,9 +27,12 @@ def find_fraunhofer_center(
     ic: np.ndarray,
     *,
     field_lim: Optional[Tuple[float, float]] = None,
+    return_max: bool = False,
     debug: bool = False,
-) -> float:
+) -> Union[float, Tuple[float, float]]:
     """Extract the field at which the Fraunhofer is centered.
+
+    The center is found by fitting the largest peak.
 
     Parameters
     ----------
@@ -39,12 +42,16 @@ def find_fraunhofer_center(
         1D array of the JJ critical current.
     field_lim : optional (float, float)
         Limit search to within field_lim (min, max).
+    return_max: bool
+        Return the maximum of the fit as well as the center.
 
     Returns
     -------
-    float
+    center: float
         Field at which the center of the pattern is located.
-
+    max: float
+        Critical current value at the maximum of the fit.
+        Only returned if `return_max` is True.
     """
     if field_lim is not None:
         max_loc = np.argmax(
@@ -67,7 +74,15 @@ def find_fraunhofer_center(
         plt.plot(subset_field, out.best_fit)
         plt.show()
 
-    return out.best_values["center"]
+    if return_max:
+        return (
+            out.best_values["center"],
+            out.best_values["amplitude"]
+            / np.sqrt(2 * np.pi)
+            / out.best_values["sigma"],
+        )
+    else:
+        return out.best_values["center"]
 
 
 def recenter_fraunhofer(
