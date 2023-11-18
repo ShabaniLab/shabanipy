@@ -148,7 +148,10 @@ while config.get(f"DATAPATH{i}"):
 
     b_perp = np.unique(b_perp)
 
-    threshold = config.getfloat(f"THRESHOLD{i}", config.getfloat("THRESHOLD"))
+    try:
+        threshold = config.getfloat(f"THRESHOLD{i}", config.getfloat("THRESHOLD"))
+    except ValueError:
+        threshold = None
     if config.getboolean(f"THRESHOLD_DC{i}", config.getboolean(f"THRESHOLD_DC")):
         ic_signal = volts
     else:
