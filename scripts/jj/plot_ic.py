@@ -43,7 +43,7 @@ if args.xmax:
 if args.xmin or args.xmax:
     outprefix = Path(str(outprefix) + f"_{args.xmin}-{args.xmax}")
 x = csv[xname].to_numpy()
-ic = csv[[f"ic{sign}" for sign in branch]].to_numpy()
+ic = csv[[f"ic{sign} from fit" for sign in branch]].to_numpy()
 
 stamp = Path(args.csv_path).name
 fig, ax = plot(
