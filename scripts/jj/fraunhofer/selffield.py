@@ -29,7 +29,13 @@ field_col = [
     if "field" in c.lower()
 ]
 (field_col,) = field_col
-im, ip, cm, cp, b = df["ic-"], df["ic+"], df["center-"], df["center+"], df[field_col]
+im, ip, cm, cp, b = (
+    df["ic- from fit"],
+    df["ic+ from fit"],
+    df["center-"],
+    df["center+"],
+    df[field_col],
+)
 iavg = np.mean([np.abs(im), ip], axis=0)
 cdiff = cp - cm
 tilt = (ip - im) / (cp - cm)
