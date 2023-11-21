@@ -13,6 +13,8 @@ import numpy as np
 from lmfit import Model
 from pandas import read_csv
 
+from shabanipy.utils import write_metadata
+
 # set up command-line interface
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -33,8 +35,8 @@ args = parser.parse_args()
 
 # extract data
 df = read_csv(args.datapath)
-icp = np.abs(df["ic+"].values)
-icm = np.abs(df["ic-"].values)
+icp = np.abs(df["ic+ from fit"].values)
+icm = np.abs(df["ic- from fit"].values)
 # field column name might vary
 colname = [c for c in df.columns if "field" in c.lower()]
 if len(colname) == 1:
@@ -113,4 +115,5 @@ plt.xlabel("in-plane field (mT)")
 plt.ylabel("critical current (μA)")
 plt.legend()
 plt.savefig(outpath + ".png")
+write_metadata(outpath + "_metadata.txt", args=args)
 plt.show()
