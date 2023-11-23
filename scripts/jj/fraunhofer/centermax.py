@@ -202,19 +202,13 @@ while config.get(f"DATAPATH{i}"):
             )
             ax2.plot(result.xdata, result.best_fit, label="fit")
             center.append(result.best_values["center"])
-            maxfit.append(
-                result.best_values["amplitude"]
-                / np.sqrt(2 * np.pi)
-                / result.best_values["sigma"]
-            )
+            maxfit.append(int(f"{branch}1") * result.params["height"])
             rmse.append(np.sqrt(np.mean(result.residual**2)))
         except TypeError as e:
             warn(f"Failed to fit fraunhofer.")
             center.append(np.nan)
             maxfit.append(np.nan)
             rmse.append(np.nan)
-    if "-" in args.branch:
-        maxfit[0] *= -1
         ax2.legend()
     fraun_center.append(center)
     fraun_maxfit.append(maxfit)
