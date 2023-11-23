@@ -26,7 +26,8 @@ parser.add_argument("--xmin", help="minimum value of x axis", type=float)
 parser.add_argument("--xmax", help="maximum value of x axis", type=float)
 args = parser.parse_args()
 
-outdir = Path(args.csv_path).parent
+outdir = Path(args.csv_path).parent / Path(__file__).stem
+outdir.mkdir(exist_ok=True)
 print(f"Output directory: {outdir}")
 outprefix = outdir / Path(args.csv_path).stem
 plt.style.use("fullscreen13")
