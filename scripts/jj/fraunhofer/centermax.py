@@ -247,7 +247,7 @@ fraun_rmse = np.array(fraun_rmse)[sort_idx]
 fraun_max = np.array(fraun_max)[sort_idx]
 datafiles = np.array(datafiles)[sort_idx]
 
-database_path = outdir / f"{Path(args.config_path).stem}_{args.config_section}.csv"
+database_path = outdir / f"data.csv"
 if database_path.exists():
     write = None
     while write not in ("y", "n"):
@@ -275,7 +275,4 @@ if write:
     df.to_csv(database_path, index=False)
     print(f"Wrote {database_path}")
 
-    write_metadata(
-        outdir / f"{Path(args.config_path).stem}_{args.config_section}_metadata.txt",
-        args=args,
-    )
+    write_metadata(outdir / f"metadata.txt", args=args)
