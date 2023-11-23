@@ -177,9 +177,6 @@ while config.get(f"DATAPATH{i}"):
         ic = [savgol_filter(i, savgol_wlen, 2) for i in ic]
     [ax.plot(b_perp / 1e-3, i / 1e-6, "k-", lw=1) for i in ic]
 
-    if args.debug:
-        plt.show()
-
     field_lim = config.get(f"FIELD_LIM{i}")
     if field_lim is not None:
         field_lim = tuple(json.loads(field_lim))
@@ -188,15 +185,20 @@ while config.get(f"DATAPATH{i}"):
 
     center = []
     maxfit = []
-    for ii in np.abs(ic):
+    fitfigs = []
+    for ii, branch in zip(np.abs(ic), reversed(args.branch)):
+        fig2, ax2 = plt.subplots()
+        fitfigs.append(fig2)
+        ax2.set_title(f"{config['CH_VARIABLE']} = {var}, branch=${branch}$")
+        ax2.plot(b_perp, ii, "o", label="data")
         try:
             result = find_fraunhofer_center(
                 b_perp,
                 ii,
                 field_lim=field_lim,
-                debug=args.debug,
                 return_fit=True,
             )
+            ax2.plot(result.xdata, result.best_fit, label="fit")
             center.append(result.best_values["center"])
             maxfit.append(
                 result.best_values["amplitude"]
@@ -209,6 +211,7 @@ while config.get(f"DATAPATH{i}"):
             maxfit.append(np.nan)
     if "-" in args.branch:
         maxfit[0] *= -1
+        ax2.legend()
     fraun_center.append(center)
     fraun_maxfit.append(maxfit)
     for c in center:
@@ -223,11 +226,18 @@ while config.get(f"DATAPATH{i}"):
         max_[0] *= -1
     fraun_max.append(max_)
     [ax.axhline(m / 1e-6, color="k", lw=1) for m in max_]
-    fig.savefig(str(outdirvv / f"{Path(config[f'DATAPATH{i}']).stem}_{var}.png"))
+
+    pathprefix = f"{Path(config[f'DATAPATH{i}']).stem}"
+    if filter_val is not None:
+        pathprefix += f"_{filter_val}"
+    fig.savefig(str(outdirvv / pathprefix) + ".png")
+    for f, branch in zip(fitfigs, reversed(args.branch)):
+        f.savefig(str(outdirvv / pathprefix) + f"_fit{branch}.png")
 
     if args.debug:
         plt.show()
-    plt.close()
+    for f in (fig, *[f for f in fitfigs]):
+        plt.close(f)
     i += 1
 sort_idx = np.argsort(variable)
 variable = np.array(variable)[sort_idx]
