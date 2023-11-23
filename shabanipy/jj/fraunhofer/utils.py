@@ -9,6 +9,8 @@
 """Routines to analyse data taken on JJ.
 
 """
+from __future__ import annotations
+
 from typing import Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
@@ -27,9 +29,9 @@ def find_fraunhofer_center(
     ic: np.ndarray,
     *,
     field_lim: Optional[Tuple[float, float]] = None,
-    return_max: bool = False,
+    return_fit: bool = False,
     debug: bool = False,
-) -> Union[float, Tuple[float, float]]:
+) -> Union[float, lmfit.model.ModelResult]:
     """Extract the field at which the Fraunhofer is centered.
 
     The center is found by fitting the largest peak.
@@ -42,16 +44,20 @@ def find_fraunhofer_center(
         1D array of the JJ critical current.
     field_lim : optional (float, float)
         Limit search to within field_lim (min, max).
-    return_max: bool
-        Return the maximum of the fit as well as the center.
+    return_fit: bool
+        Return the ModelResult of the fitting.
 
     Returns
     -------
     center: float
         Field at which the center of the pattern is located.
-    max: float
-        Critical current value at the maximum of the fit.
-        Only returned if `return_max` is True.
+
+    OR
+
+    result: lmfit.model.ModelResult
+        If return_fit=True, the entire ModelResult from the fitting procedure is
+        returned.  The `field` values used in the fit can be accessed with
+        `result.xdata`.
     """
     if field_lim is not None:
         max_loc = np.argmax(
@@ -65,8 +71,10 @@ def find_fraunhofer_center(
     subset_field = field[start_index : max_loc + width_index + 1]
     subset_ic = ic[start_index : max_loc + width_index + 1]
     model = GaussianModel()
+
     params = model.guess(subset_ic, subset_field)
     out = model.fit(subset_ic, params, x=subset_field)
+    out.xdata = subset_field
 
     if debug:
         plt.figure()
@@ -74,13 +82,8 @@ def find_fraunhofer_center(
         plt.plot(subset_field, out.best_fit)
         plt.show()
 
-    if return_max:
-        return (
-            out.best_values["center"],
-            out.best_values["amplitude"]
-            / np.sqrt(2 * np.pi)
-            / out.best_values["sigma"],
-        )
+    if return_fit:
+        return out
     else:
         return out.best_values["center"]
 

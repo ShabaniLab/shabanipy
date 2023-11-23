@@ -190,15 +190,19 @@ while config.get(f"DATAPATH{i}"):
     maxfit = []
     for ii in np.abs(ic):
         try:
-            c, m = find_fraunhofer_center(
+            result = find_fraunhofer_center(
                 b_perp,
                 ii,
                 field_lim=field_lim,
                 debug=args.debug,
-                return_max=True,
+                return_fit=True,
             )
-            center.append(c)
-            maxfit.append(m)
+            center.append(result.best_values["center"])
+            maxfit.append(
+                result.best_values["amplitude"]
+                / np.sqrt(2 * np.pi)
+                / result.best_values["sigma"]
+            )
         except TypeError as e:
             warn(f"Failed to fit fraunhofer.")
             center.append(np.nan)
