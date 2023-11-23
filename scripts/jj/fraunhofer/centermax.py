@@ -84,6 +84,7 @@ variable = []
 fraun_center = []
 fraun_maxfit = []
 fraun_max = []
+fraun_rmse = []
 datafiles = []
 i = 1
 while config.get(f"DATAPATH{i}"):
@@ -185,6 +186,7 @@ while config.get(f"DATAPATH{i}"):
 
     center = []
     maxfit = []
+    rmse = []
     fitfigs = []
     for ii, branch in zip(np.abs(ic), reversed(args.branch)):
         fig2, ax2 = plt.subplots()
@@ -205,15 +207,19 @@ while config.get(f"DATAPATH{i}"):
                 / np.sqrt(2 * np.pi)
                 / result.best_values["sigma"]
             )
+            rmse.append(np.sqrt(np.mean(result.residual**2)))
         except TypeError as e:
             warn(f"Failed to fit fraunhofer.")
             center.append(np.nan)
             maxfit.append(np.nan)
+            rmse.append(np.nan)
     if "-" in args.branch:
         maxfit[0] *= -1
         ax2.legend()
     fraun_center.append(center)
     fraun_maxfit.append(maxfit)
+    fraun_rmse.append(rmse)
+
     for c in center:
         if b_perp.min() < c and c < b_perp.max():
             ax.axvline(c / 1e-3, color="k", lw=1)
@@ -243,6 +249,7 @@ sort_idx = np.argsort(variable)
 variable = np.array(variable)[sort_idx]
 fraun_center = np.array(fraun_center)[sort_idx]
 fraun_maxfit = np.array(fraun_maxfit)[sort_idx]
+fraun_rmse = np.array(fraun_rmse)[sort_idx]
 fraun_max = np.array(fraun_max)[sort_idx]
 datafiles = np.array(datafiles)[sort_idx]
 
@@ -263,10 +270,13 @@ if write:
         df["center+"] = fraun_center[:, 1]
         df["ic- from fit"] = fraun_maxfit[:, 0]
         df["ic+ from fit"] = fraun_maxfit[:, 1]
+        df["rmse-"] = fraun_rmse[:, 0]
+        df["rmse+"] = fraun_rmse[:, 1]
     else:
         df[f"ic{args.branch}"] = fraun_max
         df[f"center{args.branch}"] = fraun_center
         df[f"ic{args.branch} from fit"] = fraun_maxfit
+        df[f"rmse{args.branch}"] = fraun_rmse
     df["datafile"] = datafiles
     df.to_csv(database_path, index=False)
     print(f"Wrote {database_path}")
