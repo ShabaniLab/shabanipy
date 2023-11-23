@@ -95,16 +95,15 @@ while config.get(f"DATAPATH{i}"):
     with ShaBlabberFile(config[f"DATAPATH{i}"]) as f:
         filter_val = config.getfloat(f"FILTER_VAL{i}")
         if filter_val is not None:
-            filters = [
-                (
-                    config.get(f"FILTER_CH{i}", config["CH_VARIABLE"]),
-                    np.isclose,
-                    filter_val,
-                )
-            ]
+            filter_ch = config.get(f"FILTER_CH{i}", config.get("FILTER_CH"))
+            filters = [(filter_ch, np.isclose, filter_val)]
+        else:
+            filter_ch = None
+            filters = []
+
+        if filter_val is not None and filter_ch == config["CH_VARIABLE"]:
             var = filter_val
         else:
-            filters = []
             var = f.get_fixed_value(config["CH_VARIABLE"])
         variable.append(var)
         print(f"Processing {var}")
