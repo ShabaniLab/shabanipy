@@ -52,9 +52,11 @@ parser.add_argument(
 args = parser.parse_args()
 _, config = load_config(Path(__file__).parent / args.config_path, args.config_section)
 
-outdir = get_output_dir() / "centermax" / Path(args.config_path).stem
+outdir = (
+    get_output_dir() / "centermax" / Path(args.config_path).stem / args.config_section
+)
 print(f"Output directory: {outdir}")
-outdirvv = outdir / "fraunhofers"
+outdirvv = outdir / "centermax-vv"
 outdirvv.mkdir(parents=True, exist_ok=True)
 jy_pink.register()
 plt.style.use(["fullscreen13", "jy_pink"])
