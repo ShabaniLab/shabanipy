@@ -89,9 +89,9 @@ i = 1
 while config.get(f"DATAPATH{i}"):
     fig, ax = plt.subplots()
     datafiles.append(config.get(f"DATAPATH{i}"))
-    ch_bias = config.get(f"CH_BIAS{i}", config["CH_BIAS"])
-    ch_field = config.get(f"CH_FIELD_PERP{i}", config["CH_FIELD_PERP"])
-    ch_meas = config.get(f"CH_MEAS{i}", config["CH_MEAS"])
+    ch_bias = config.get(f"CH_BIAS{i}", config.get("CH_BIAS"))
+    ch_field = config.get(f"CH_FIELD_PERP{i}", config.get("CH_FIELD_PERP"))
+    ch_meas = config.get(f"CH_MEAS{i}", config.get("CH_MEAS"))
     with ShaBlabberFile(config[f"DATAPATH{i}"]) as f:
         filter_val = config.getfloat(f"FILTER_VAL{i}")
         if filter_val is not None:
