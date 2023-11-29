@@ -168,6 +168,7 @@ while config.get(f"DATAPATH{i}"):
         ic_signal,
         side=side[args.branch],
         threshold=threshold,
+        interp=True,
         offset=offset,
         offset_npoints=offset_npoints,
     )
