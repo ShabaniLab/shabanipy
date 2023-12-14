@@ -101,7 +101,9 @@ ax.set_ylabel(
 ax.set_title(args.config_section)
 ax.axvline(tc, color="k", ls=":")
 ax.text(
-    tc, volt_fresh.min() / config.getfloat("IBIAS", 1), f"$T_c \\approx {round(tc, 2)}$"
+    tc,
+    np.nanmin(volt_fresh) / config.getfloat("IBIAS", 1),
+    f"$T_c \\approx {round(tc, 2)}$",
 )
 stamp(ax, config["DATAPATH"])
 fig.savefig(str(outprefix) + ".png")
