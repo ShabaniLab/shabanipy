@@ -30,7 +30,7 @@ parser.add_argument("config_section", help="section of the .ini config file to u
 parser.add_argument(
     "--branch",
     "-b",
-    default="+",
+    default="+-",
     choices=["+", "-", "+-"],
     help="which branch of critical current to analyze",
 )
