@@ -52,7 +52,7 @@ fig, ax = plot(
     xlabel=variable_name,
     ylabel="fraunhofer center (mT)",
     label=label,
-    stamp=Path(args.csv_path).name,
+    stamp=Path(*Path(args.csv_path).parts[-4:]),
 )
 if args.align:
     for c in center.T:

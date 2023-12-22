@@ -25,16 +25,22 @@ parser.add_argument(
 parser.add_argument("config_section", help="section of the .ini config file to use")
 args = parser.parse_args()
 _, config = load_config(args.config_path, args.config_section)
-plt.style.use("fullscreen13")
-OUTDIR = get_output_dir() / "density-mobility"
-OUTDIR.mkdir(exist_ok=True)
+
+OUTDIR = (
+    get_output_dir()
+    / "density-mobility"
+    / Path(args.config_path).stem
+    / args.config_section
+)
 print(f"Output directory: {OUTDIR}")
 OUTPATH = OUTDIR / f"{Path(args.config_path).stem}"
-OUTDIRVV = OUTDIR / f"{Path(args.config_path).stem}_fits"
-OUTDIRVV.mkdir(exist_ok=True)
+OUTDIRVV = OUTDIR / "fits"
+OUTDIRVV.mkdir(parents=True, exist_ok=True)
+
+plt.style.use("fullscreen13")
+
 CH_GATE = config.get("CH_GATE", "gate - Source voltage")
 STAMP = f"{config['FRIDGE']}/{config[f'DATAPATH_RXY']}"
-
 
 filters = []
 if config.get("EXCLUDE_GATES"):

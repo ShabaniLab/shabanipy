@@ -46,7 +46,7 @@ if args.xmin or args.xmax:
 x = csv[xname].to_numpy()
 ic = csv[[f"ic{sign} from fit" for sign in branch]].to_numpy()
 
-stamp = Path(args.csv_path).name
+stamp = Path(*Path(args.csv_path).parts[-4:])
 fig, ax = plot(
     x,
     ic / 1e-6,
