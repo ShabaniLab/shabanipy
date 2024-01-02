@@ -85,14 +85,17 @@ fraun_center = []
 fraun_maxfit = []
 fraun_max = []
 fraun_rmse = []
+fixed_values = []
 datafiles = []
 i = 1
 while config.get(f"DATAPATH{i}"):
     fig, ax = plt.subplots()
     datafiles.append(config.get(f"DATAPATH{i}"))
+    # get channel names
     ch_bias = config.get(f"CH_BIAS{i}", config.get("CH_BIAS"))
     ch_field = config.get(f"CH_FIELD_PERP{i}", config.get("CH_FIELD_PERP"))
     ch_meas = config.get(f"CH_MEAS{i}", config.get("CH_MEAS"))
+    ch_fixed = config.get(f"CH_FIXED{i}", config.get("CH_FIXED"))
     with ShaBlabberFile(config[f"DATAPATH{i}"]) as f:
         filter_val = config.getfloat(f"FILTER_VAL{i}")
         if filter_val is not None:
@@ -139,6 +142,14 @@ while config.get(f"DATAPATH{i}"):
                 ] / config.getfloat("R_AC_OUT")
                 dvdi /= ibias_ac
                 ibias /= config.getfloat("R_DC_OUT")
+
+        # propagate the value of a fixed channel to the output csv
+        if ch_fixed:
+            try:
+                fixed_values.append(f.get_fixed_value(ch_fixed))
+            except:
+                warn(f"Couldn't get fixed value of channel '{ch_fixed}'")
+                fixed_values.append(np.nan)
 
     # in case bias sweep was done in disjoint sections about Ic+ and Ic-,
     # plot +ve and -ve bias separately
@@ -272,6 +283,8 @@ if write:
         df[f"center{args.branch}"] = fraun_center
         df[f"ic{args.branch} from fit"] = fraun_maxfit
         df[f"rmse{args.branch}"] = fraun_rmse
+    if ch_fixed:
+        df[ch_fixed] = fixed_values
     df["datafile"] = datafiles
     df.to_csv(database_path, index=False)
     print(f"Wrote {database_path}")
