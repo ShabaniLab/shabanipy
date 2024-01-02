@@ -70,6 +70,8 @@ gate_yy, bfield_yy, ryy = get_hall_data(
 gate_xy, bfield_xy, rxy = get_hall_data(
     config["DATAPATH_RXY"], config.get("CH_LOCKIN_XY", "Rxy - Value")
 )
+if config.getboolean("INVERT_RXY"):
+    rxy *= -1
 
 # calculate density
 if "FIELD_CUTOFFS" in config:
