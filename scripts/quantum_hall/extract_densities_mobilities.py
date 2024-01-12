@@ -113,7 +113,7 @@ for g, b, r, n, n_std, fit in zip(gate_xy, bfield_xy, rxy, density, density_std,
         ha="center",
         va="top",
     )
-    ax.plot(b, fit.best_fit, label="fit")
+    ax.plot(fit.xdata, fit.best_fit, label="fit")
     ax.legend()
     fig.savefig(OUTDIRVV / f"rxy_{g:+.3f}V.png")
     plt.cla()

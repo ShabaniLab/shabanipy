@@ -46,7 +46,8 @@ def extract_density(field, rxy, field_cutoffs):
         Will be a float if a single value was extracted from the provided data.
 
     fits : lmfit.model.ModelResult | np.ndarray
-        Object containing the result of the fit.
+        Object containing the result of the fit.  The field values used in the fit are
+        saved to the `xdata` attribute of each ModelResult.
 
     """
     # Identify the shape of the data and make them suitable for the following
@@ -90,6 +91,7 @@ def extract_density(field, rxy, field_cutoffs):
         results[1, i] = results[0, i] * (
             res.params["slope"].stderr / res.best_values["slope"]
         )
+        res.xdata = f
         fits.append(res)
 
     if input_is_1d:
