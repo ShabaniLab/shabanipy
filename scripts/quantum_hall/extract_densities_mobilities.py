@@ -12,7 +12,7 @@ from scipy.constants import e, hbar, m_e
 
 from shabanipy.labber import ShaBlabberFile
 from shabanipy.quantum_hall import extract_density, extract_mobility
-from shabanipy.utils import get_output_dir, load_config, plot
+from shabanipy.utils import get_output_dir, load_config, plot, write_metadata
 
 print = partial(print, flush=True)
 
@@ -209,5 +209,7 @@ df = DataFrame(
 )
 with open(str(OUTPATH) + "_transport-params.csv", "w") as f:
     df.to_csv(f, index=False)
+
+write_metadata(str(OUTPATH) + f"_metadata.txt", args=args)
 
 plt.show()
