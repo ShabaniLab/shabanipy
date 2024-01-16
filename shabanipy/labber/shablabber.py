@@ -290,9 +290,9 @@ class ShaBlabberFile(File):
             )
         if len(channel_names) == 0:
             channel_names = self._sweep_channel_names + self._log_channel_names
-        data = tuple(self.get_channel(name).get_data() for name in channel_names)
+        data = tuple(self.get_channel(name).data for name in channel_names)
         if sort:
-            sweep_data = tuple(c.get_data() for c in self._sweep_channels)
+            sweep_data = tuple(c.data for c in self._sweep_channels)
             sweep_axes = tuple(c.axis for c in self._sweep_channels)
             sort_idxs = tuple(
                 np.argsort(d, axis=ax) for d, ax in zip(sweep_data, sweep_axes)
@@ -305,7 +305,7 @@ class ShaBlabberFile(File):
             for filt in filters:
                 channel = self.get_channel(filt[0])
                 axis = channel.axis
-                mask = filt[1](sort(channel.get_data(), axis), filt[2])
+                mask = filt[1](sort(channel.data, axis), filt[2])
                 shape = list(data[0].shape)
                 shape[axis] = -1
                 for m, s in zip(masks, shapes):
@@ -391,7 +391,8 @@ class Channel(_DatasetRow):
         else:
             return len(self._file._trace_dims) + self._step_config.axis
 
-    def get_data(self) -> np.ndarray:
+    @cached_property
+    def data(self) -> np.ndarray:
         if self.name not in self._file._data_channel_names:
             raise ValueError(
                 f"'{self.name}' is not a data channel in {Path(self._file.filename).name}.\n"
@@ -403,9 +404,23 @@ class Channel(_DatasetRow):
             data = self._get_step_data()
         data = data.squeeze()
         if self._file._x_channels and not self._is_trace_channel:
+            # prepend trace axes
             expand = (np.newaxis,) * len(self._file._trace_dims) + (...,)
             data = np.broadcast_to(data[expand], self._file._trace_dims + data.shape)
-        return _pad_and_reshape(data, self._file._shape)
+
+        data = _pad_and_reshape(data, self._file._shape)
+
+        if (
+            self._file._x_channels
+            and not self._is_trace_channel
+            and not self._file._completed
+        ):
+            # truncate last axis of step data (which is prefilled by labber) to be
+            # compatible with interrupted trace data (which is simply not recorded)
+            xdata = self._file._x_channels[0].data  # assumes 1 trace channel
+            data = data[..., : xdata.shape[-1]]
+
+        return data
 
     def _get_step_data(self) -> np.ndarray:
         def _data_column(info):
@@ -456,7 +471,8 @@ class XChannel:
     def axis(self) -> int:
         return self._channel.axis
 
-    def get_data(self) -> np.ndarray:
+    @cached_property
+    def data(self) -> np.ndarray:
         data = self._channel._file[f"Traces/{self._channel.name}"][:, -1, ...]
         return _pad_and_reshape(data, self._channel._file._shape)
 
