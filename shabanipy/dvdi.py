@@ -199,8 +199,13 @@ def _fit_extrap(x: np.ndarray, y: np.ndarray) -> (float, float):
 def _compute_offset(x: np.ndarray, y: np.ndarray, n: int) -> np.ndarray:
     """Compute the average of the n points in y closest to x=0.
 
-    Points along the last axis in x are assumed to be evenly spaced.  If n is even, n+1
-    points are used (including the central point near x=0).
+    Points along the last axis in x are assumed to be sorted.  The point closest to x=0
+    and the n//2 points on either side are used in the average.  Hence n+1 points are
+    actually used if n is even, and the points are "closest to x=0" in terms of index
+    distance.
+
+    If there are less than n//2 points on either side of x=0, the remaining points are
+    taken from the other side.
 
     If x and y are N-dimensional (N > 1), the offset is computed for each slice along
     the last axis.  The returned array has the same shape as x and y except the
@@ -208,7 +213,10 @@ def _compute_offset(x: np.ndarray, y: np.ndarray, n: int) -> np.ndarray:
     """
     x0_index = np.atleast_1d(np.argmin(np.abs(x), axis=-1))
     indexes_to_average = np.concatenate(
-        [np.arange(i0 - n // 2, i0 + n // 2 + 1) for i0 in x0_index.flatten()]
+        [
+            np.arange(i0 - n // 2, i0 + n // 2 + 1) - min(i0 - n // 2, 0)
+            for i0 in x0_index.flatten()
+        ]
     ).reshape(y.shape[:-1] + (-1,))
     yvalues_to_average = np.take_along_axis(y, indexes_to_average, axis=-1)
     return np.mean(yvalues_to_average, axis=-1, keepdims=True)
