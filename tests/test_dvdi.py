@@ -18,8 +18,8 @@ class TestExtractSwitchingCurrent(unittest.TestCase):
     """Unit tests for extract_switching_current function."""
 
     def test_threshold_with_1d_arrays(self):
-        bias = np.array([-2, -1, 0, 1, 2])
-        dvdi = np.array([1, 0, 0, 0, 1])
+        bias = np.array([-2.0, -1, 0, 1, 2])
+        dvdi = np.array([1.0, 0, 0, 0, 1])
         self.assertEqual(extract_switching_current(bias, dvdi, threshold=0.5), 2)
         self.assertEqual(
             extract_switching_current(bias, dvdi, threshold=0.5, side="negative"), -2
@@ -29,8 +29,8 @@ class TestExtractSwitchingCurrent(unittest.TestCase):
         )
 
     def test_threshold_with_2d_arrays(self):
-        bias = np.array([[-2, -1, 0, 1, 2], [-20, -10, 0, 10, 20]])
-        dvdi = np.array([[1, 0, 0, 0, 1], [1, 1, 0, 1, 1]])
+        bias = np.array([[-2.0, -1, 0, 1, 2], [-20, -10, 0, 10, 20]])
+        dvdi = np.array([[1.0, 0, 0, 0, 1], [1, 1, 0, 1, 1]])
         assert_array_equal(
             extract_switching_current(bias, dvdi, threshold=0.5), [2, 10]
         )
@@ -79,8 +79,8 @@ class TestExtractSwitchingCurrent(unittest.TestCase):
         )
 
     def test_auto_threshold_1d(self):
-        bias = np.array([-2, -1, 0, 1, 2])
-        dvdi = np.array([2, 1, 0, 4, 8])
+        bias = np.array([-2.0, -1, 0, 1, 2])
+        dvdi = np.array([2.0, 1, 0, 4, 8])
         self.assertEqual(
             extract_switching_current(bias, dvdi, threshold=None, interp=True), 1
         )

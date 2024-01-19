@@ -207,8 +207,8 @@ while config.get(f"DATAPATH{i}"):
         ax2.plot(b_perp, ii, "o", label="data")
         try:
             result = find_fraunhofer_center(
-                b_perp,
-                ii,
+                b_perp[~np.isnan(ii)],
+                ii[~np.isnan(ii)],
                 field_lim=field_lim,
                 return_fit=True,
             )

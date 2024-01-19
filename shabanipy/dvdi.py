@@ -54,7 +54,8 @@ def extract_switching_current(
     ic: ndarray
         The positive or negative branch of the switching current.  If `side` is "both",
         ic[0] = ic- and ic[1] = ic+.  The returned arrays have the same shape as the
-        input arrays without the last axis.
+        input arrays without the last axis.  `np.nan` is returned where no switching
+        current could be found.
     """
     if side not in ("positive", "negative", "both"):
         raise ValueError("`side` should be one of: 'positive', 'negative', 'both'")
@@ -69,7 +70,6 @@ def extract_switching_current(
         ic_p = find_rising_edge(
             bias, np.where(bias >= 0, dvdi, np.nan), threshold=threshold, interp=interp
         )
-        ic_p = np.nan_to_num(ic_p)
     if side != "positive":
         ic_n = find_rising_edge(
             bias[..., ::-1],
@@ -78,7 +78,6 @@ def extract_switching_current(
             threshold=threshold,
             interp=interp,
         )
-        ic_n = np.nan_to_num(ic_n)
 
     return (
         ic_p
@@ -98,6 +97,9 @@ def find_rising_edge(x, y, *, threshold=None, interp=False):
 
     If `interp` is True, linearly interpolate between the two points below and above
     `threshold` to get a more accurate value of `x` at the crossing.
+
+    If all values of `y` are below or above the threshold (i.e. there is no crossing),
+    return `np.nan`.
     """
     if threshold is None:
         threshold = ((np.nanmin(y, axis=-1) + np.nanmax(y, axis=-1)) / 2)[
@@ -110,9 +112,12 @@ def find_rising_edge(x, y, *, threshold=None, interp=False):
         y0 = np.take_along_axis(y, index[..., np.newaxis] - 1, axis=-1).squeeze(axis=-1)
         y1 = np.take_along_axis(y, index[..., np.newaxis], axis=-1).squeeze(axis=-1)
         dydx = (y1 - y0) / (x1 - x0)
-        return x0 + (np.squeeze(threshold) - y0) / dydx
+        rising_edge = x0 + (np.squeeze(threshold) - y0) / dydx
     else:
-        return x1
+        rising_edge = x1
+    rising_edge = np.atleast_1d(rising_edge)
+    rising_edge[..., index == 0] = np.nan  # all values were above or below threshold
+    return rising_edge.squeeze()
 
 
 def extract_iexrn(
