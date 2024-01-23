@@ -231,7 +231,9 @@ while config.get(f"DATAPATH{i}"):
             ax.axvline(c / 1e-3, color="k", lw=1)
 
     max_ = [
-        np.max(np.where((field_lim[0] < b_perp) & (b_perp < field_lim[1]), i, -np.inf))
+        np.nanmax(
+            np.where((field_lim[0] < b_perp) & (b_perp < field_lim[1]), i, -np.inf)
+        )
         for i in np.abs(ic)
     ]
     if "-" in args.branch:
