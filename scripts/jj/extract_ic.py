@@ -33,6 +33,11 @@ p.add_argument(
     type=float,
 )
 p.add_argument(
+    "--offset_npoints",
+    help="number of points around 0 bias that are averaged to compute and remove any offset",
+    type=int,
+)
+p.add_argument(
     "--branch",
     "-b",
     help="branch of critical current to extract",
@@ -92,7 +97,11 @@ with ShaBlabberFile(args.datapath) as f:
 
 sides = {"+": "positive", "-": "negative", "+-": "both"}
 ic = extract_switching_current(
-    bias, np.abs(meas), side=sides[args.branch], threshold=args.threshold
+    bias,
+    np.abs(meas),
+    side=sides[args.branch],
+    threshold=args.threshold,
+    offset_npoints=args.offset_npoints,
 )
 
 fig, ax = plot2d(
