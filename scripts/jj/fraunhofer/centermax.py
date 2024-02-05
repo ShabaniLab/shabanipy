@@ -110,7 +110,7 @@ while config.get(f"DATAPATH{i}"):
         else:
             var = f.get_fixed_value(config["CH_VARIABLE"])
         variable.append(var)
-        print(f"Processing {var}")
+        print(f"Processing {var} ({Path(config[f'DATAPATH{i}']).stem})")
 
         for ch, op, val in (
             (ch_field, np.greater, "FIELD_MIN"),
