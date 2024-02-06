@@ -37,10 +37,7 @@ parser.add_argument(
 parser.add_argument(
     "--offset_npoints",
     type=int,
-    help=(
-        "number of points around 0 bias to average when correcting d.c. offset;"
-        "this assumes the current bias is swept symmetrically about 0"
-    ),
+    help=("number of points around 0 bias to average when correcting d.c. offset"),
 )
 parser.add_argument(
     "--force-write",
