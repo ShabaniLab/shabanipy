@@ -43,6 +43,12 @@ parser.add_argument(
     ),
 )
 parser.add_argument(
+    "--force-write",
+    "-f",
+    help="force overwrite output data; otherwise you will be prompted",
+    action="store_true",
+)
+parser.add_argument(
     "--debug",
     "-d",
     default=False,
@@ -262,7 +268,9 @@ fraun_max = np.array(fraun_max)[sort_idx]
 datafiles = np.array(datafiles)[sort_idx]
 
 database_path = outdir / f"data.csv"
-if database_path.exists():
+if args.force_write:
+    write = True
+elif database_path.exists():
     write = None
     while write not in ("y", "n"):
         write = input(f"{database_path} already exists.  Overwrite? [y/n]: ").lower()

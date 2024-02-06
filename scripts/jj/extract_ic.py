@@ -63,6 +63,11 @@ p.add_argument(
 g = p.add_argument_group(title="Plotting")
 g.add_argument("--vmin", help="min value of colorbar scale", type=float, default=None)
 g.add_argument("--vmax", help="max value of colorbar scale", type=float, default=None)
+g.add_argument(
+    "--no-show",
+    help="do not plt.show() plots (e.g. for bulk processing)",
+    action="store_true",
+)
 args = p.parse_args()
 
 plt.style.use(["fullscreen13"])
@@ -134,4 +139,5 @@ metadata = {"git_commit": git_hash(), "command": " ".join(sys.argv), "args": var
 with open(str(outprefix) + "_metadata.txt", "w") as f:
     f.write(json.dumps(metadata, indent=4))
 
-plt.show()
+if not args.no_show:
+    plt.show()
