@@ -223,7 +223,9 @@ def _compute_offset(x: np.ndarray, y: np.ndarray, n: int) -> np.ndarray:
     x0_index = np.atleast_1d(np.argmin(np.abs(x), axis=-1))
     indexes_to_average = np.concatenate(
         [
-            np.arange(i0 - n // 2, i0 + n // 2 + 1) - min(i0 - n // 2, 0)
+            np.arange(i0 - n // 2, i0 + n // 2 + 1)
+            - min(i0 - n // 2, 0)
+            - max(i0 + n // 2 + 1 - x.shape[-1], 0)
             for i0 in x0_index.flatten()
         ]
     ).reshape(y.shape[:-1] + (-1,))

@@ -166,11 +166,11 @@ class TestComputeOffset(unittest.TestCase):
         assert_array_equal(_compute_offset(x, y, 5), [15 / 5])
 
     def test_compute_offset_negative_bias(self):
-        x = np.array([0, -1, -2, -3, -4])
+        x = np.array([-4, -3, -2, -1, 0])
         y = np.array([1, 2, 3, 4, 5])
-        assert_array_equal(_compute_offset(x, y, 1), [1])
-        assert_array_equal(_compute_offset(x, y, 2), [6 / 3])
-        assert_array_equal(_compute_offset(x, y, 3), [6 / 3])
+        assert_array_equal(_compute_offset(x, y, 1), [5])
+        assert_array_equal(_compute_offset(x, y, 2), [12 / 3])
+        assert_array_equal(_compute_offset(x, y, 3), [12 / 3])
         assert_array_equal(_compute_offset(x, y, 4), [15 / 5])
         assert_array_equal(_compute_offset(x, y, 5), [15 / 5])
 
