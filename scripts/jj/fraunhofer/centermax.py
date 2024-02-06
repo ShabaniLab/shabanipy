@@ -8,6 +8,7 @@ This can be used e.g. for field alignment or diode analysis.
 import argparse
 import json
 from pathlib import Path
+from traceback import print_exc
 from warnings import warn
 
 import numpy as np
@@ -150,8 +151,11 @@ while config.get(f"DATAPATH{i}"):
         if ch_fixed:
             try:
                 fixed_values.append(f.get_fixed_value(ch_fixed))
-            except:
-                warn(f"Couldn't get fixed value of channel '{ch_fixed}'")
+            except Exception as e:
+                print_exc()
+                warn(
+                    f"Couldn't get fixed value of channel '{ch_fixed}' in file {config.get(f'DATAPATH{i}')} ({var})"
+                )
                 fixed_values.append(np.nan)
 
     # in case bias sweep was done in disjoint sections about Ic+ and Ic-,
@@ -219,8 +223,11 @@ while config.get(f"DATAPATH{i}"):
             center.append(result.best_values["center"])
             maxfit.append(int(f"{branch}1") * result.params["height"])
             rmse.append(np.sqrt(np.mean(result.residual**2)))
-        except TypeError as e:
-            warn(f"Failed to fit fraunhofer.")
+        except Exception as e:
+            print_exc()
+            warn(
+                f"Failed to fit fraunhofer in file {config.get(f'DATAPATH{i}')} ({var})"
+            )
             center.append(np.nan)
             maxfit.append(np.nan)
             rmse.append(np.nan)
