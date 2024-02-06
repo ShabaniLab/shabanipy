@@ -17,6 +17,7 @@ def extract_switching_current(
     *,
     side: Literal["positive", "negative", "both"] = "positive",
     threshold: Optional[float] = None,
+    global_threshold: bool = False,
     interp: bool = False,
     offset: float = 0,
     offset_npoints: Optional[int] = None,
@@ -39,7 +40,12 @@ def extract_switching_current(
         The switching current is determined as the first `bias` value for which `dvdi`
         rises above `threshold`.
         If None, the threshold is inferred as half the rise from the minimum to the
-        maximum `dvdi` value in the direction of `side`.
+        maximum `dvdi` value in the direction of `side`.  A different threshold is
+        computed for each bias sweep in each direction, unless `global_threshold=True`.
+    global_threshold : optional
+        If true when `threshold` is None, a single threshold is computed for all bias
+        sweeps as half the difference from the global minimum to the global maxmium of
+        `dvdi`.
     interp : optional
         If true, linearly interpolate `dvdi` vs `bias` to more accurately detect the
         switching current.
@@ -65,6 +71,9 @@ def extract_switching_current(
     elif offset_npoints:
         offset = _compute_offset(bias, dvdi, offset_npoints)
     dvdi -= offset
+
+    if threshold is None and global_threshold:
+        threshold = (dvdi.max() - dvdi.min()) / 2
 
     if side != "negative":
         ic_p = find_rising_edge(
