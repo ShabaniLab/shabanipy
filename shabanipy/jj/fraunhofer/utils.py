@@ -29,6 +29,7 @@ def find_fraunhofer_center(
     ic: np.ndarray,
     *,
     field_lim: Optional[Tuple[float, float]] = None,
+    fit_npoints: Optional[int] = None,
     return_fit: bool = False,
     debug: bool = False,
 ) -> Union[float, lmfit.model.ModelResult]:
@@ -44,6 +45,9 @@ def find_fraunhofer_center(
         1D array of the JJ critical current.
     field_lim : optional (float, float)
         Limit search to within field_lim (min, max).
+    fit_npoints : optional
+        Fit 2*(fit_npoints//2) points about the maximum.
+        If None, fit 65% of the peak's width at half prominence.
     return_fit: bool
         Return the ModelResult of the fitting.
 
@@ -65,13 +69,20 @@ def find_fraunhofer_center(
         )
     else:
         max_loc = np.argmax(ic)
-    width, *_ = peak_widths(ic, [max_loc], rel_height=0.5)
-    width_index = int(round(width[0] * 0.65))
-    start_index = max(0, max_loc - width_index)
-    subset_field = field[start_index : max_loc + width_index + 1]
-    subset_ic = ic[start_index : max_loc + width_index + 1]
-    model = GaussianModel()
 
+    if fit_npoints:
+        start, stop = max_loc - fit_npoints // 2, max_loc + fit_npoints // 2
+        start, stop = np.array([start, stop]) - min(start, 0) - max(stop - len(x), 0)
+        subset_field = field[start:stop]
+        subset_ic = ic[start:stop]
+    else:
+        width, *_ = peak_widths(ic, [max_loc], rel_height=0.5)
+        width_index = int(round(width[0] * 0.65))
+        start_index = max(0, max_loc - width_index)
+        subset_field = field[start_index : max_loc + width_index + 1]
+        subset_ic = ic[start_index : max_loc + width_index + 1]
+
+    model = GaussianModel()
     params = model.guess(subset_ic, subset_field)
     out = model.fit(subset_ic, params, x=subset_field)
     out.xdata = subset_field

@@ -85,10 +85,11 @@ def plot_data(b_perp, ibias, dvdi, ax=None, cb=True):
 
 
 variable = []
+fraun_max = []
 fraun_center = []
 fraun_maxfit = []
-fraun_max = []
 fraun_rmse = []
+fraun_nfit = []
 fixed_values = []
 datafiles = []
 i = 1
@@ -206,7 +207,9 @@ while config.get(f"DATAPATH{i}"):
     center = []
     maxfit = []
     rmse = []
+    nfit = []
     fitfigs = []
+    fit_npoints = config.getint(f"FIT_NPOINTS{i}", config.getint(f"FIT_NPOINTS", None))
     for ii, branch in zip(np.abs(ic), reversed(args.branch)):
         fig2, ax2 = plt.subplots()
         fitfigs.append(fig2)
@@ -217,12 +220,14 @@ while config.get(f"DATAPATH{i}"):
                 b_perp[~np.isnan(ii)],
                 ii[~np.isnan(ii)],
                 field_lim=field_lim,
+                fit_npoints=fit_npoints,
                 return_fit=True,
             )
             ax2.plot(result.xdata, result.best_fit, label="fit")
             center.append(result.best_values["center"])
             maxfit.append(int(f"{branch}1") * result.params["height"])
             rmse.append(np.sqrt(np.mean(result.residual**2)))
+            nfit.append(len(result.xdata))
         except Exception as e:
             print_exc()
             warn(
@@ -231,10 +236,12 @@ while config.get(f"DATAPATH{i}"):
             center.append(np.nan)
             maxfit.append(np.nan)
             rmse.append(np.nan)
+            nfit.append(np.nan)
         ax2.legend()
     fraun_center.append(center)
     fraun_maxfit.append(maxfit)
     fraun_rmse.append(rmse)
+    fraun_nfit.append(nfit)
 
     for c in center:
         if b_perp.min() < c and c < b_perp.max():
@@ -265,10 +272,11 @@ while config.get(f"DATAPATH{i}"):
     i += 1
 sort_idx = np.argsort(variable)
 variable = np.array(variable)[sort_idx]
+fraun_max = np.array(fraun_max)[sort_idx]
 fraun_center = np.array(fraun_center)[sort_idx]
 fraun_maxfit = np.array(fraun_maxfit)[sort_idx]
 fraun_rmse = np.array(fraun_rmse)[sort_idx]
-fraun_max = np.array(fraun_max)[sort_idx]
+fraun_nfit = np.array(fraun_nfit)[sort_idx]
 datafiles = np.array(datafiles)[sort_idx]
 
 database_path = outdir / f"data.csv"
@@ -292,11 +300,14 @@ if write:
         df["ic+ from fit"] = fraun_maxfit[:, 1]
         df["rmse-"] = fraun_rmse[:, 0]
         df["rmse+"] = fraun_rmse[:, 1]
+        df["#points in -fit"] = fraun_nfit[:, 0]
+        df["#points in +fit"] = fraun_nfit[:, 1]
     else:
         df[f"ic{args.branch}"] = fraun_max
         df[f"center{args.branch}"] = fraun_center
         df[f"ic{args.branch} from fit"] = fraun_maxfit
         df[f"rmse{args.branch}"] = fraun_rmse
+        df[f"#points in {args.branch}fit"] = fraun_nfit
     if ch_fixed:
         df[ch_fixed] = fixed_values
     df["datafile"] = datafiles
