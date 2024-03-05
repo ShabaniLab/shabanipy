@@ -128,20 +128,20 @@ def plot2d(
             extend_min = (
                 "vmin" in pcm_kwargs
                 and pcm_kwargs["vmin"] is not None
-                and pcm_kwargs["vmin"] > np.min(z)
+                and pcm_kwargs["vmin"] > np.nanmin(z)
             ) or (
                 "clim" in pcm_kwargs
                 and pcm_kwargs["clim"][0] is not None
-                and pcm_kwargs["clim"][0] > np.min(z)
+                and pcm_kwargs["clim"][0] > np.nanmin(z)
             )
         extend_max = (
             "vmax" in pcm_kwargs
             and pcm_kwargs["vmax"] is not None
-            and pcm_kwargs["vmax"] < np.max(z)
+            and pcm_kwargs["vmax"] < np.nanmax(z)
         ) or (
             "clim" in pcm_kwargs
             and pcm_kwargs["clim"][1] is not None
-            and pcm_kwargs["clim"][1] < np.max(z)
+            and pcm_kwargs["clim"][1] < np.nanmax(z)
         )
         extend = (
             "both"
