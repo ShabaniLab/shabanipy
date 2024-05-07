@@ -134,10 +134,6 @@ while config.get(f"DATAPATH{i}"):
             order=(ch_field, ch_bias),
             filters=filters,
         )
-        if config.get("INVERT_CURRENT"):
-            ibias = -1 * ibias[..., ::-1]
-            b_perp = b_perp[..., ::-1]
-            meas = meas[..., ::-1]
         if ch_meas.endswith(("VI curve", "SingleValue")):  # DC volts from DMM
             volts = meas / config.getfloat("DC_AMP_GAIN")
             dvdi = np.gradient(volts, axis=-1) / np.gradient(ibias, axis=-1)
