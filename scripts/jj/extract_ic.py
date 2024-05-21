@@ -38,6 +38,11 @@ p.add_argument(
     type=int,
 )
 p.add_argument(
+    "--ignore_npoints",
+    help="number of points around 0 bias to ignore (e.g. when lock-in hasn't settled)",
+    type=int,
+)
+p.add_argument(
     "--branch",
     "-b",
     help="branch of critical current to extract",
@@ -107,6 +112,7 @@ ic = extract_switching_current(
     side=sides[args.branch],
     threshold=args.threshold,
     offset_npoints=args.offset_npoints,
+    ignore_npoints=args.ignore_npoints,
 )
 
 fig, ax = plot2d(

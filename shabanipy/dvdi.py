@@ -21,6 +21,7 @@ def extract_switching_current(
     interp: bool = False,
     offset: float = 0,
     offset_npoints: Optional[int] = None,
+    ignore_npoints: Optional[int] = None,
 ) -> np.ndarray:
     """Extract the switching currents from a set of differential resistance curves.
 
@@ -54,6 +55,10 @@ def extract_switching_current(
     offset_npoints : optional
         The number of points around 0 bias that are averaged to compute the offset.
         Ignored if nonzero `offset` is given.
+    ignore_npoints : optional
+        The number of points around 0 bias that are ignored, e.g. if lock-in wasn't
+        settled when starting a sweep from zero bias.
+        This option currently assumes the bias is swept symmetrically about zero.
 
     Returns
     -------
@@ -65,6 +70,9 @@ def extract_switching_current(
     """
     if side not in ("positive", "negative", "both"):
         raise ValueError("`side` should be one of: 'positive', 'negative', 'both'")
+
+    if ignore_npoints:
+        bias, dvdi = _ignore_points(bias, dvdi, ignore_npoints)
 
     if offset:
         pass
@@ -231,3 +239,15 @@ def _compute_offset(x: np.ndarray, y: np.ndarray, n: int) -> np.ndarray:
     ).reshape(y.shape[:-1] + (-1,))
     yvalues_to_average = np.take_along_axis(y, indexes_to_average, axis=-1)
     return np.mean(yvalues_to_average, axis=-1, keepdims=True)
+
+
+def _ignore_points(
+    x: np.ndarray, y: np.ndarray, n: int
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Remove n points at the center of x and y.
+
+    If x and y are N-dimensional (N > 1), the n points at the center w.r.t. the last
+    axis are removed.
+    """
+    indexes = np.arange(n) + (x.shape[-1] - n) // 2
+    return tuple(np.delete(a, indexes, axis=-1) for a in (x, y))
