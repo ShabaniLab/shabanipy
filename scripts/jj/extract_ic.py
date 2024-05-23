@@ -137,7 +137,7 @@ if args.branch == "+" or args.branch == "-":
 else:  # args.branch == "+-"
     data[f"ic-"] = ic[0]
     data[f"ic+"] = ic[1]
-data["datafiles"] = [Path(args.datapath).stem] * var.shape[0]
+data["datafile"] = [Path(args.datapath).stem] * var.shape[0]
 data = DataFrame(data)
 data.to_csv(str(outprefix) + ".csv", index=False)
 
