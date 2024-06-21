@@ -54,6 +54,8 @@ fig, ax = plot(
     label=label,
     stamp=Path(*Path(args.csv_path).parts[-4:]),
 )
+if branch == "+-":
+    ax.plot(variable, np.mean(center, axis=-1) / 1e-3, "k.-", label="average")
 if args.align:
     for c in center.T:
         mask = np.isfinite(c)
@@ -63,6 +65,17 @@ if args.align:
             (m * variable + b) / 1e-3,
             label=f"arcsin$(y/x)$ = {round(np.degrees(np.arcsin(m)), 3)} deg",
         )
+    if branch == "+-":
+        c = np.mean(center, axis=-1)
+        mask = np.isfinite(c)
+        m, b = np.polyfit(variable[mask], c[mask], 1)
+        ax.plot(
+            variable,
+            (m * variable + b) / 1e-3,
+            label=f"arcsin$(y/x)$ = {round(np.degrees(np.arcsin(m)), 3)} deg",
+            color="grey",
+        )
+
 ax.legend()
 fig.savefig(str(outpath) + "_center.png")
 
