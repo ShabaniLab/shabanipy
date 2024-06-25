@@ -85,7 +85,10 @@ def extract_switching_current(
 
     if side != "negative":
         ic_p = find_rising_edge(
-            bias, np.where(bias >= 0, dvdi, np.nan), threshold=threshold, interp=interp
+            bias,
+            np.where(bias >= 0, np.abs(dvdi), np.nan),
+            threshold=threshold,
+            interp=interp,
         )
     if side != "positive":
         ic_n = find_rising_edge(
