@@ -1,9 +1,10 @@
 # reasonable parameters for large plots on a 13" screen
 figure.constrained_layout.use : True
-figure.figsize      : 10, 6
+figure.figsize      : 10, 6.1803398875
 font.size           : 16
 pdf.fonttype        : 42
 lines.linewidth     : 2
+axes.titlesize      : 24
 axes.labelsize      : 24
 axes.linewidth      : 1.5
 xtick.direction     : in
