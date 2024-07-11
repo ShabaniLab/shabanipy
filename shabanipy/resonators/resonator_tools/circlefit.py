@@ -18,7 +18,7 @@ class circlefit(object):
     
     def _dist(self,x):
         np.absolute(x,x)
-        c = (x > np.pi).astype(np.int)
+        c = (x > np.pi).astype(int)
         return x+c*(-2.*x+2.*np.pi)  
         
     def _periodic_boundary(self,x,bound):
