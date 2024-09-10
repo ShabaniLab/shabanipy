@@ -72,7 +72,9 @@ def find_fraunhofer_center(
 
     if fit_npoints:
         start, stop = max_loc - fit_npoints // 2, max_loc + fit_npoints // 2
-        start, stop = np.array([start, stop]) - min(start, 0) - max(stop - len(x), 0)
+        start, stop = (
+            np.array([start, stop]) - min(start, 0) - max(stop - len(field), 0)
+        )
         subset_field = field[start:stop]
         subset_ic = ic[start:stop]
     else:
