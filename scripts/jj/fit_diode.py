@@ -30,6 +30,9 @@ parser.add_argument(
     type=float,
     help="limit the fit to magnetic fields within +-bmax",
 )
+parser.add_argument(
+    "--no-show", default=False, action="store_true", help="do not show plots"
+)
 # TODO add data symmetrization option as in Alex's jupyter notebook
 args = parser.parse_args()
 
@@ -112,4 +115,5 @@ plt.ylabel("critical current (μA)")
 plt.legend()
 plt.savefig(outpath + ".png")
 write_metadata(outpath + "_metadata.txt", args=args)
-plt.show()
+if not args.no_show:
+    plt.show()
