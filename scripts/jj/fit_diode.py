@@ -24,6 +24,13 @@ parser.add_argument(
     help="path to .csv file containing columns for Ic+, Ic-, and B//",
 )
 parser.add_argument(
+    "--bcol",
+    help=(
+        "name of column containing B-field data; "
+        "if None, the first column matching *[Ff]ield* is used"
+    ),
+)
+parser.add_argument(
     "--icp_col",
     default="ic+ from fit",
     help="name of column containing Ic+ data",
@@ -34,11 +41,12 @@ parser.add_argument(
     help="name of column containing Ic- data",
 )
 parser.add_argument(
-    "--bcol",
-    help=(
-        "name of column containing B-field data; "
-        "if None, the first column matching *[Ff]ield* is used"
-    ),
+    "--icp_err_col",
+    help="name of column containing Ic+ 1σ uncertainty",
+)
+parser.add_argument(
+    "--icm_err_col",
+    help="name of column containing Ic- 1σ uncertainty",
 )
 parser.add_argument(
     "--bmax",
@@ -63,37 +71,31 @@ parser.add_argument(
 # TODO add data symmetrization option as in Alex's jupyter notebook
 args = parser.parse_args()
 
-# extract data
 df = read_csv(args.datapath)
-icp = np.abs(df[args.icp_col].values)
-icm = np.abs(df[args.icm_col].values)
+# find bfield column name
 if args.bcol is not None:
-    bfield = df[args.bcol]
+    bcol = args.bcol
 else:
     try:
-        bfield = df[next(c for c in df.columns if "field" in c.lower())].values
+        bcol = next(c for c in df.columns if "field" in c.lower())
     except StopIteration:
         raise ValueError(
             "Can't find field column. Available columns are:\n"
             f"{pformat(list(df.columns))}"
         )
-
 # limit field range
 if args.bmax is not None:
-    mask = (-args.bmax <= bfield) & (bfield <= args.bmax)
-    icm = icm[mask]
-    icp = icp[mask]
-    bfield = bfield[mask]
-
+    mask = (-args.bmax <= df[bcol]) & (df[bcol] <= args.bmax)
+    df = df[mask]
 # mask zero-field anomalies
 if args.bmask is not None:
-    mask = (-args.bmask <= bfield) & (bfield <= args.bmask)
-    icm_masked = icm[mask]
-    icp_masked = icp[mask]
-    bfield_masked = bfield[mask]
-    icm = icm[~mask]
-    icp = icp[~mask]
-    bfield = bfield[~mask]
+    mask = (-args.bmask <= df[bcol]) & (df[bcol] <= args.bmask)
+    df_masked = df[mask]
+    df = df[~mask]
+# extract data
+bfield = df[bcol].values
+icp = np.abs(df[args.icp_col].values)
+icm = np.abs(df[args.icm_col].values)
 
 # swap Ic+ and Ic- to match sign convention that Ic+ > Ic- for B > 0
 # n.b. assume data is sorted by field
@@ -128,9 +130,10 @@ params = model.make_params()
 outdir = Path(args.datapath).parent / Path(__file__).stem
 outdir.mkdir(exist_ok=True, parents=True)
 print(f"Output directory: {outdir}")
-outpath = str(outdir / Path(args.datapath).stem) + f"_fit"
+outpath = str(outdir / Path(args.datapath).stem) + "_fit"
 
 # fit and plot
+# TODO use errorbars as weights in fit
 result = model.fit(np.concatenate((icp, icm)), x=bfield)
 if not args.quiet:
     print(result.fit_report())
@@ -142,24 +145,52 @@ n = 100
 bfield_smooth = np.linspace(bfield.min(), bfield.max(), n)
 fit = model.eval(result.params, x=bfield_smooth)
 plt.style.use(["fullscreen13"])
-plt.plot(bfield / 1e-3, icp / 1e-6, "o", label="$I_{c+}$ data", color="tab:blue")
-plt.plot(bfield / 1e-3, icm / 1e-6, "o", label="$I_{c-}$ data", color="tab:orange")
+plt.errorbar(
+    bfield / 1e-3,
+    icp / 1e-6,
+    yerr=df[args.icp_err_col] / 1e-6 if args.icp_err_col is not None else None,
+    label="$I_{c+}$ data",
+    marker="o",
+    color="tab:blue",
+    linewidth=0,
+    elinewidth=1,
+)
+plt.errorbar(
+    bfield / 1e-3,
+    icm / 1e-6,
+    yerr=df[args.icm_err_col] / 1e-6 if args.icm_err_col is not None else None,
+    label="$I_{c-}$ data",
+    marker="o",
+    color="tab:orange",
+    linewidth=0,
+    elinewidth=1,
+)
 if args.bmask is not None:
-    plt.plot(
-        bfield_masked / 1e-3,
-        icp_masked / 1e-6,
-        "o",
+    plt.errorbar(
+        df_masked[bcol] / 1e-3,
+        df_masked[args.icp_col].abs() / 1e-6,
+        yerr=df_masked[args.icp_err_col] / 1e-6
+        if args.icp_err_col is not None
+        else None,
         label="excluded from fit",
-        color="tab:blue",
+        marker="o",
+        markeredgecolor="tab:blue",
         markerfacecolor="white",
+        linewidth=0,
+        elinewidth=1,
     )
-    plt.plot(
-        bfield_masked / 1e-3,
-        icm_masked / 1e-6,
-        "o",
+    plt.errorbar(
+        df_masked[bcol] / 1e-3,
+        df_masked[args.icm_col].abs() / 1e-6,
+        yerr=df_masked[args.icm_err_col] / 1e-6
+        if args.icm_err_col is not None
+        else None,
         label="excluded from fit",
-        color="tab:orange",
+        marker="o",
+        markeredgecolor="tab:orange",
         markerfacecolor="white",
+        linewidth=0,
+        elinewidth=1,
     )
 plt.plot(bfield_smooth / 1e-3, fit[:n] / 1e-6, label="$I_{c+}$ fit", color="tab:blue")
 plt.plot(bfield_smooth / 1e-3, fit[n:] / 1e-6, label="$I_{c-}$ fit", color="tab:orange")
