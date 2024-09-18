@@ -11,7 +11,7 @@ from warnings import warn
 import matplotlib.pyplot as plt
 import numpy as np
 from lmfit import Model
-from pandas import read_csv
+from pandas import DataFrame, read_csv
 
 from shabanipy.utils import write_metadata
 
@@ -93,7 +93,7 @@ params = model.make_params()
 outdir = Path(args.datapath).parent / Path(__file__).stem
 outdir.mkdir(exist_ok=True, parents=True)
 print(f"Output directory: {outdir}")
-outpath = str(outdir / Path(args.datapath).stem) + f"_fit-{args.bmax}"
+outpath = str(outdir / Path(args.datapath).stem) + f"_fit"
 
 # fit and plot
 result = model.fit(np.concatenate((icp, icm)), x=bfield)
@@ -115,5 +115,14 @@ plt.ylabel("critical current (μA)")
 plt.legend()
 plt.savefig(outpath + ".png")
 write_metadata(outpath + "_metadata.txt", args=args)
+df = DataFrame(
+    {
+        **{k: [v] for k, v in result.best_values.items()},
+        **{f"{k}_err": [v.std_dev] for k, v in result.uvars.items()},
+        **{k: [result.summary()[k]] for k in ("ndata", "chisqr", "redchi", "rsquared")},
+        **{k: [v] for k, v in args.__dict__.items() if k not in ("no_show",)},
+    }
+)
+df.to_csv(outpath + ".csv")
 if not args.no_show:
     plt.show()
