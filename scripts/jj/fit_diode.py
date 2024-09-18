@@ -98,10 +98,6 @@ print(result.fit_report())
 print(result.fit_report(), file=open(outpath + ".txt", "w"))
 if result.params["b"].value < 0:
     warn("best fit b < 0 but b = (g* μ_B / 4 E_T)^2 > 0")
-if result.params["c"].value < 0:
-    warn("best fit c < 0 but c = k_so / k_F > 0 (k_so = αm*/hbar^2 > 0)")
-if result.params["bstar"].value < 0:
-    warn("best fit B* < 0 but B* > 0 by definition")
 
 n = 100
 bfield_smooth = np.linspace(bfield.min(), bfield.max(), n)
