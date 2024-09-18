@@ -47,7 +47,10 @@ parser.add_argument(
     help="limit the fit to magnetic fields within +-bmax",
 )
 parser.add_argument(
-    "--no-show", default=False, action="store_true", help="do not show plots"
+    "--quiet",
+    default=False,
+    action="store_true",
+    help="do not show plots and suppress console output",
 )
 # TODO add data symmetrization option as in Alex's jupyter notebook
 args = parser.parse_args()
@@ -111,7 +114,8 @@ outpath = str(outdir / Path(args.datapath).stem) + f"_fit"
 
 # fit and plot
 result = model.fit(np.concatenate((icp, icm)), x=bfield)
-print(result.fit_report())
+if not args.quiet:
+    print(result.fit_report())
 print(result.fit_report(), file=open(outpath + ".txt", "w"))
 if result.params["b"].value < 0:
     warn("best fit b < 0 but b = (g* μ_B / 4 E_T)^2 > 0")
@@ -138,5 +142,5 @@ df = DataFrame(
     }
 )
 df.to_csv(outpath + ".csv")
-if not args.no_show:
+if not args.quiet:
     plt.show()
