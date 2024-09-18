@@ -5,7 +5,7 @@ https://arxiv.org/abs/2303.01902v2.
 """
 import argparse
 from pathlib import Path
-from pprint import pprint
+from pprint import pformat
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -21,8 +21,24 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument(
     "datapath",
-    help="path to .csv file containing columns 'ic+', 'ic-', and '*[Ff]ield*'"
-    "for positive & negative critical current vs. field",
+    help="path to .csv file containing columns for Ic+, Ic-, and B//",
+)
+parser.add_argument(
+    "--icp_col",
+    default="ic+ from fit",
+    help="name of column containing Ic+ data",
+)
+parser.add_argument(
+    "--icm_col",
+    default="ic- from fit",
+    help="name of column containing Ic- data",
+)
+parser.add_argument(
+    "--bcol",
+    help=(
+        "name of column containing B-field data; "
+        "if None, the first column matching *[Ff]ield* is used"
+    ),
 )
 parser.add_argument(
     "--bmax",
@@ -38,20 +54,18 @@ args = parser.parse_args()
 
 # extract data
 df = read_csv(args.datapath)
-icp = np.abs(df["ic+ from fit"].values)
-icm = np.abs(df["ic- from fit"].values)
-# field column name might vary
-colname = [c for c in df.columns if "field" in c.lower()]
-if len(colname) == 1:
-    bfield = df[colname[0]].values
+icp = np.abs(df[args.icp_col].values)
+icm = np.abs(df[args.icm_col].values)
+if args.bcol is not None:
+    bfield = df[args.bcol]
 else:
-    pprint({i: colname for i, colname in enumerate(df.columns)})
-    colindex = int(
-        input(
-            f"Which column has the field data? [select index 0-{len(df.columns) - 1}]: "
+    try:
+        bfield = df[next(c for c in df.columns if "field" in c.lower())].values
+    except StopIteration:
+        raise ValueError(
+            "Can't find field column. Available columns are:\n"
+            f"{pformat(list(df.columns))}"
         )
-    )
-    bfield = df.iloc[:, colindex].values
 
 # limit field range
 if args.bmax is not None:
