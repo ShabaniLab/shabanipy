@@ -42,9 +42,17 @@ parser.add_argument(
 )
 parser.add_argument(
     "--bmax",
-    "-b",
+    default=0.15,
     type=float,
-    help="limit the fit to magnetic fields within +-bmax",
+    help="limit the fit to B-fields within +-bmax (T)",
+)
+parser.add_argument(
+    "--bmask",
+    type=float,
+    help=(
+        "mask points with B-fields within +-bmask (T), "
+        "e.g. to mask zero-field anomalies"
+    ),
 )
 parser.add_argument(
     "--quiet",
@@ -76,6 +84,16 @@ if args.bmax is not None:
     icm = icm[mask]
     icp = icp[mask]
     bfield = bfield[mask]
+
+# mask zero-field anomalies
+if args.bmask is not None:
+    mask = (-args.bmask <= bfield) & (bfield <= args.bmask)
+    icm_masked = icm[mask]
+    icp_masked = icp[mask]
+    bfield_masked = bfield[mask]
+    icm = icm[~mask]
+    icp = icp[~mask]
+    bfield = bfield[~mask]
 
 # swap Ic+ and Ic- to match sign convention that Ic+ > Ic- for B > 0
 # n.b. assume data is sorted by field
@@ -126,6 +144,23 @@ fit = model.eval(result.params, x=bfield_smooth)
 plt.style.use(["fullscreen13"])
 plt.plot(bfield / 1e-3, icp / 1e-6, "o", label="$I_{c+}$ data", color="tab:blue")
 plt.plot(bfield / 1e-3, icm / 1e-6, "o", label="$I_{c-}$ data", color="tab:orange")
+if args.bmask is not None:
+    plt.plot(
+        bfield_masked / 1e-3,
+        icp_masked / 1e-6,
+        "o",
+        label="excluded from fit",
+        color="tab:blue",
+        markerfacecolor="white",
+    )
+    plt.plot(
+        bfield_masked / 1e-3,
+        icm_masked / 1e-6,
+        "o",
+        label="excluded from fit",
+        color="tab:orange",
+        markerfacecolor="white",
+    )
 plt.plot(bfield_smooth / 1e-3, fit[:n] / 1e-6, label="$I_{c+}$ fit", color="tab:blue")
 plt.plot(bfield_smooth / 1e-3, fit[n:] / 1e-6, label="$I_{c-}$ fit", color="tab:orange")
 plt.xlabel("in-plane field (mT)")
