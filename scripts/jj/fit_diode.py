@@ -207,6 +207,6 @@ df = DataFrame(
         **{k: [v] for k, v in args.__dict__.items() if k not in ("no_show",)},
     }
 )
-df.to_csv(outpath + ".csv")
+df.to_csv(outpath + ".csv", index=False)
 if not args.quiet:
     plt.show()
