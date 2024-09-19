@@ -1,0 +1,37 @@
+# rcParams for paper figures
+
+# layout engine
+figure.constrained_layout.use : True
+
+# output format and resolution
+savefig.format : svg  # vector graphics (pdf, svg, eps, ...)
+savefig.transparent : True
+pdf.fonttype   : 42
+figure.dpi     : 500
+
+# text
+font.sans-serif  : Arial
+mathtext.fontset : cm
+font.size        : 10
+figure.titlesize : large
+figure.labelsize : large
+axes.titlesize   : medium
+axes.labelsize   : medium
+xtick.labelsize  : small
+ytick.labelsize  : small
+legend.fontsize  : x-small
+
+# lines
+lines.linewidth     : 1
+axes.linewidth      : 0.5
+xtick.major.width   : 0.5
+ytick.major.width   : 0.5
+grid.linewidth      : 0.25
+xtick.major.size    : 2
+ytick.major.size    : 2
+xtick.direction     : in
+ytick.direction     : in
+
+# markers
+lines.markersize : 3
+lines.markeredgewidth : 0.5
