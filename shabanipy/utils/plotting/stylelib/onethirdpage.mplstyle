@@ -1,0 +1,5 @@
+# 8.5in letter paper width
+# 1.5in margins = 2 * 0.75in (left/right)
+# 2.3in width = (8.5 - 1.5) / 3
+# golden aspect ratio 1.618...
+figure.figsize : 2.33333333333, 1.44207930708
