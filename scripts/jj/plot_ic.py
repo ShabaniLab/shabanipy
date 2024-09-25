@@ -27,6 +27,12 @@ parser.add_argument(
 )
 parser.add_argument("--xmin", help="minimum value of x axis", type=float)
 parser.add_argument("--xmax", help="maximum value of x axis", type=float)
+parser.add_argument(
+    "--quiet",
+    default=False,
+    action="store_true",
+    help="do not show plots and suppress console output",
+)
 args = parser.parse_args()
 
 outdir = Path(args.csv_path).parent / Path(__file__).stem
@@ -142,4 +148,5 @@ if branch == "+-":
         )
     fig.savefig(str(outprefix) + "_ic-diff-norm.png")
 
-plt.show()
+if not args.quiet:
+    plt.show()
