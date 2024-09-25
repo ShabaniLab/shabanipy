@@ -143,9 +143,7 @@ if branch == "+-":
     )
     if len(rmse) > 0:
         sigma_err = delta_err
-        eta_err = np.abs(eta) * np.sqrt(
-            (delta_err / delta) ** 2 + (sigma_err / sigma) ** 2
-        )
+        eta_err = np.sqrt((delta_err / sigma) ** 2 + (eta * sigma_err / sigma) ** 2)
         ax.errorbar(
             x, eta * 100, yerr=eta_err * 100, color="tab:blue", lw=0, elinewidth=2
         )
