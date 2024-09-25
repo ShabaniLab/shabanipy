@@ -1,11 +1,6 @@
 """Plot critical current as a function of some variable.
 
-Expected column names: VARIABLE, ic+, ic-
-
-Note VARIABLE is the independent variable; the actual name of that column doesn't
-matter, but it must be the first column.
-
-Both + and - data need not be present; e.g. if ic- is missing, that's ok.
+The independent variable is assumed to be in the first column.
 """
 import argparse
 from pathlib import Path
@@ -22,8 +17,13 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     "csv_path", help="path to .csv file output by centermax.py, relative to this script"
 )
+parser.add_argument("--icp_col", help="Name of column containing Ic+ data")
+parser.add_argument("--icm_col", help="Name of column containing Ic- data")
 parser.add_argument(
-    "--no-errorbars", help="don't plot errorbars", default=False, action="store_true"
+    "--icp_err_col", help="Name of column containing Ic+ uncertainty (for errorbars)"
+)
+parser.add_argument(
+    "--icm_err_col", help="Name of column containing Ic- uncertainty (for errorbars)"
 )
 parser.add_argument("--xmin", help="minimum value of x axis", type=float)
 parser.add_argument("--xmax", help="maximum value of x axis", type=float)
@@ -43,8 +43,8 @@ plt.style.use("fullscreen13")
 
 csv = read_csv(args.csv_path)
 branch = ""
-branch += "+" if "ic+" in csv.columns else ""
-branch += "-" if "ic-" in csv.columns else ""
+branch += "+" if args.icp_col is not None else ""
+branch += "-" if args.icm_col is not None else ""
 xname = csv.columns[0]
 if args.xmin:
     csv = csv.loc[csv[xname] >= args.xmin]
@@ -53,12 +53,15 @@ if args.xmax:
 if args.xmin or args.xmax:
     outprefix = Path(str(outprefix) + f"_{args.xmin}-{args.xmax}")
 x = csv[xname].to_numpy()
-ic = csv[[f"ic{sign} from fit" for sign in branch]].to_numpy()
-if np.all(f"rmse{sign}" in csv for sign in branch) and not args.no_errorbars:
-    errorbars = True
-    rmse = csv[[f"rmse{sign}" for sign in branch]].to_numpy()
+ic_cols = list(filter(lambda _: _ is not None, [args.icp_col, args.icm_col]))
+if len(ic_cols) == 0:
+    raise ValueError("One of --icp_col or --icm_col must be specified")
+ic = csv[ic_cols].to_numpy()
+err_cols = list(filter(lambda _: _ is not None, [args.icp_err_col, args.icm_err_col]))
+if len(err_cols) > 0:
+    rmse = csv[err_cols].to_numpy()
 else:
-    errorbars = False
+    rmse = []
 
 stamp = Path(*Path(args.csv_path).parts[-4:])
 fig, ax = plot(
@@ -70,7 +73,7 @@ fig, ax = plot(
     ylabel="critical current (μA)",
     stamp=stamp,
 )
-if errorbars:
+if len(rmse) > 0:
     for ic_, rmse_ in zip(ic.T, rmse.T):
         ax.errorbar(
             x, ic_ / 1e-6, yerr=rmse_ / 1e-6, lw=0, elinewidth=2, color="tab:blue"
@@ -91,7 +94,7 @@ if branch == "+-":
         label=label,
         stamp=stamp,
     )
-    if errorbars:
+    if len(rmse) > 0:
         for ic_, rmse_, color in zip(ic.T, rmse.T, ("tab:blue", "tab:orange")):
             ax.errorbar(
                 x,
@@ -117,7 +120,7 @@ if branch == "+-":
         ax=ax,
         stamp=stamp,
     )
-    if errorbars:
+    if len(rmse) > 0:
         delta_err = np.sqrt(np.sum(rmse**2, axis=-1))
         ax.errorbar(
             x, delta / 1e-9, yerr=delta_err / 1e-9, color="tab:blue", lw=0, elinewidth=2
@@ -138,7 +141,7 @@ if branch == "+-":
         ax=ax,
         stamp=stamp,
     )
-    if errorbars:
+    if len(rmse) > 0:
         sigma_err = delta_err
         eta_err = np.abs(eta) * np.sqrt(
             (delta_err / delta) ** 2 + (sigma_err / sigma) ** 2
