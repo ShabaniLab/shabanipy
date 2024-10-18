@@ -5,7 +5,6 @@ https://arxiv.org/abs/2303.01902v2.
 """
 import argparse
 from pathlib import Path
-from pprint import pformat
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -27,7 +26,8 @@ parser.add_argument(
     "--bcol",
     help=(
         "name of column containing B-field data; "
-        "if None, the first column matching *[Ff]ield* is used"
+        "if None, the first column matching *[Ff]ield* is used; "
+        "if no match found, the first column is used"
     ),
 )
 parser.add_argument(
@@ -79,10 +79,8 @@ else:
     try:
         bcol = next(c for c in df.columns if "field" in c.lower())
     except StopIteration:
-        raise ValueError(
-            "Can't find field column. Available columns are:\n"
-            f"{pformat(list(df.columns))}"
-        )
+        bcol = df.columns[0]
+        warn(f"Can't find field column. Assuming the first column ({bcol}) is field.")
 # limit field range
 if args.bmax is not None:
     mask = (-args.bmax <= df[bcol]) & (df[bcol] <= args.bmax)
