@@ -63,12 +63,17 @@ parser.add_argument(
     ),
 )
 parser.add_argument(
+    "--remove-zero-field-offset",
+    action="store_true",
+    help="Symmetrically shift Ic±(B∥) so that Ic+(0) = |Ic-(0)|",
+)
+# TODO alternative is to symmetrize data as in Alex's jupyter notebook
+parser.add_argument(
     "--quiet",
     default=False,
     action="store_true",
     help="do not show plots and suppress console output",
 )
-# TODO add data symmetrization option as in Alex's jupyter notebook
 args = parser.parse_args()
 
 df = read_csv(args.datapath)
@@ -81,6 +86,12 @@ else:
     except StopIteration:
         bcol = df.columns[0]
         warn(f"Can't find field column. Assuming the first column ({bcol}) is field.")
+# remove zero-field offset
+if args.remove_zero_field_offset:
+    (offset,) = (
+        df[df[bcol] == 0][[args.icm_col, args.icp_col]].abs().diff(axis=1).iloc[:, -1]
+    )
+    df[[args.icp_col, args.icm_col]] -= offset / 2
 # limit field range
 if args.bmax is not None:
     mask = (-args.bmax <= df[bcol]) & (df[bcol] <= args.bmax)
