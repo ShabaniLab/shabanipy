@@ -63,6 +63,11 @@ parser.add_argument(
     ),
 )
 parser.add_argument(
+    "--invert_current",
+    action="store_true",
+    help="invert current polarity to conform to sign convention (Î x B∥)·growth > 0",
+)
+parser.add_argument(
     "--remove-zero-field-offset",
     action="store_true",
     help="Symmetrically shift Ic±(B∥) so that Ic+(0) = |Ic-(0)|",
@@ -86,6 +91,10 @@ else:
     except StopIteration:
         bcol = df.columns[0]
         warn(f"Can't find field column. Assuming the first column ({bcol}) is field.")
+# conform to sign convention (Î x B∥)·growth > 0
+if args.invert_current:
+    df[[args.icp_col, args.icm_col]] = df[[args.icm_col, args.icp_col]]
+    df[[args.icp_err_col, args.icm_err_col]] = df[[args.icm_err_col, args.icp_err_col]]
 # remove zero-field offset
 if args.remove_zero_field_offset:
     (offset,) = (
@@ -105,11 +114,6 @@ if args.bmask is not None:
 bfield = df[bcol].values
 icp = np.abs(df[args.icp_col].values)
 icm = np.abs(df[args.icm_col].values)
-
-# swap Ic+ and Ic- to match sign convention that Ic+ > Ic- for B > 0
-# n.b. assume data is sorted by field
-if icp[-1] < icm[-1]:
-    icp, icm = icm, icp
 
 
 # build model from https://arxiv.org/abs/2303.01902v2 Eq. (1)
