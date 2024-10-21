@@ -125,3 +125,6 @@ pyproject.toml
 # output figures 
 *.png
 *.pdf
+
+# matplotlib
+fontlist-v330.json
