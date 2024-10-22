@@ -142,7 +142,6 @@ params = model.make_params()
 # set up output
 outdir = Path(args.datapath).parent / Path(__file__).stem
 outdir.mkdir(exist_ok=True, parents=True)
-print(f"Output directory: {outdir}")
 outpath = str(outdir / Path(args.datapath).stem) + "_fit"
 
 # fit and plot
@@ -221,5 +220,6 @@ df = DataFrame(
     }
 )
 df.to_csv(outpath + ".csv", index=False)
+print(f"Fit diode: {outdir}")
 if not args.quiet:
     plt.show()

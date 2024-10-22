@@ -37,7 +37,6 @@ args = parser.parse_args()
 
 outdir = Path(args.csv_path).parent / Path(__file__).stem
 outdir.mkdir(exist_ok=True)
-print(f"Output directory: {outdir}")
 outprefix = outdir / Path(args.csv_path).stem
 plt.style.use("fullscreen13")
 
@@ -149,5 +148,6 @@ if branch == "+-":
         )
     fig.savefig(str(outprefix) + "_ic-diff-norm.png")
 
+print(f"Plotted Ic: {outdir}")
 if not args.quiet:
     plt.show()
