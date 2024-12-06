@@ -32,6 +32,12 @@ ytick.major.size    : 2
 xtick.direction     : in
 ytick.direction     : in
 
+# ticks
+ytick.left   : True
+ytick.right  : True
+xtick.top    : True
+xtick.bottom : True
+
 # markers
 lines.markersize : 3
 lines.markeredgewidth : 0.5
