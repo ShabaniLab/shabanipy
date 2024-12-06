@@ -13,8 +13,8 @@ figure.dpi     : 500
 font.sans-serif  : Arial
 mathtext.fontset : cm
 font.size        : 10
-figure.titlesize : large
-figure.labelsize : large
+figure.titlesize : medium
+figure.labelsize : medium
 axes.titlesize   : medium
 axes.labelsize   : medium
 xtick.labelsize  : small
