@@ -2,6 +2,7 @@
 
 This module must but imported before the 'jy_pink' colormap can be used.
 """
+from matplotlib import colormaps
 from matplotlib import pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 
@@ -32,7 +33,7 @@ def register_color_map(cmap_name, colors):
         return
     cdict = make_color_dict(colors)
     cmap = LinearSegmentedColormap(cmap_name, cdict)
-    plt.register_cmap(cmap=cmap)
+    colormaps.register(cmap=cmap)
 
 
 color_pts = [
