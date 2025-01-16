@@ -2,23 +2,16 @@
 import argparse
 import json
 import warnings
-from pathlib import Path
 
 import numpy as np
-from lmfit.models import LinearModel
 from matplotlib import pyplot as plt
+from pandas import DataFrame
 from scipy import constants as cs
+from scipy.constants import e, hbar, m_e
 
 from shabanipy.labber import LabberData, get_data_dir
-from shabanipy.quantum_hall import extract_density, extract_mobility
-from shabanipy.quantum_hall.conversion import (
-    GEOMETRIC_FACTORS,
-    convert_lock_in_meas_to_diff_res,
-    diffusion_constant_from_mobility_density,
-    fermi_velocity_from_density,
-    mean_free_time_from_mobility,
-)
-from shabanipy.utils import load_config, plot
+from shabanipy.quantum_hall import extract_density
+from shabanipy.utils import get_output_dir, load_config, plot
 
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -35,8 +28,11 @@ args = parser.parse_args()
 _, config = load_config(args.config_path, args.config_section)
 
 plt.style.use("fullscreen13")
-OUTPATH = Path("output")
-OUTPATH.mkdir(exist_ok=True)
+OUTDIR = get_output_dir() / "density-mobility" / "JS703-NW2"
+print(f"Output directory: {OUTDIR}")
+OUTPATH = OUTDIR / f"JS703-NW2"
+OUTDIRVV = OUTDIR / "fits"
+OUTDIRVV.mkdir(parents=True, exist_ok=True)
 
 
 def get_hall_data(datapath):
@@ -98,7 +94,7 @@ for g, b, r, d, d_std, fit in zip(
     )
     ax.plot(b / 1e-3, fit.best_fit, label="fit")
     ax.legend()
-    fig.savefig(OUTPATH / f"rxy_{round(g, 5)}V.png")
+    fig.savefig(OUTDIRVV / f"rxy_{round(g, 5)}V.png")
     plt.cla()
 
 # this is particular to the JS703-NW2 dataset;
@@ -136,7 +132,37 @@ lines2 = ax2.plot(gate_xx, mobility_xx / 1e-4, "o-", label="$\mu_\mathrm{xx}$")
 lines3 = ax2.plot(gate_yy, mobility_yy / 1e-4, "o-", label="$\mu_\mathrm{yy}$")
 lines = lines1 + lines2 + lines3
 ax2.legend(lines, [l.get_label() for l in lines])
-fig.savefig(OUTPATH / "density-mobility-vs-gate.png")
+fig.savefig(str(OUTPATH) + "density-mobility-vs-gate.png")
 
-if not args.no_show:
-    plt.show()
+# if not args.no_show:
+#    plt.show()
+
+# compute and save transport parameters vs. gate
+mass = 0.03
+warnings.warn(f"Assuming effective mass: {mass} m_e")
+warnings.warn(f"Assuming gate voltage sweeps are the same for Rxx, Ryy, and Rxy")
+mass *= m_e
+kf = np.sqrt(2 * np.pi * density_filtered)
+vf = hbar * kf / mass
+txx = mobility_xx * mass / e
+tyy = mobility_yy * mass / e
+breakpoint()
+df = DataFrame(
+    {
+        "density (e12 cm^-2)": density_filtered / 1e4 / 1e12,
+        "Fermi wavenumber (nm^-1)": kf / 1e9,
+        "Fermi wavelength (nm)": 2 * np.pi / kf / 1e-9,
+        "Fermi velocity (e6 m/s)": vf / 1e6,
+        "Fermi energy (meV)": hbar**2 * kf**2 / (2 * mass) / 1e-3 / e,
+        "mobility xx (e3 cm^2/V.s)": mobility_xx / 1e-4 / 1e3,
+        "mobility yy (e3 cm^2/V.s)": mobility_yy / 1e-4 / 1e3,
+        "mean free time xx (fs)": txx / 1e-15,
+        "mean free time yy (fs)": tyy / 1e-15,
+        "mean free path xx (nm)": vf * txx / 1e-9,
+        "mean free path yy (nm)": vf * tyy / 1e-9,
+        "diffusion coefficient xx (m^2/s)": vf**2 * txx / 2,
+        "diffusion coefficient yy (m^2/s)": vf**2 * tyy / 2,
+    }
+)
+with open(str(OUTPATH) + "_transport-params.csv", "w") as f:
+    df.to_csv(f, index=False)
