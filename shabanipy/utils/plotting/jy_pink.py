@@ -47,3 +47,4 @@ color_pts = [
 
 def register():
     register_color_map("jy_pink", color_pts)
+    register_color_map("jy_pink_r", list(reversed(color_pts)))
