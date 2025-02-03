@@ -1,3 +1,4 @@
+
 import warnings
 import numpy as np
 import scipy.optimize as spopt
@@ -220,7 +221,6 @@ class reflection_port(circlefit, save_load, plotting, calibration):
             Ql_ann.set_text('Ql = %e +- %e' % (self.fitresults['Ql'],self.fitresults['Ql_err']))
             Qc_ann.set_text('Qc = %e +- %e' % (self.fitresults['Qc'],self.fitresults['Qc_err']))
             Qi_ann.set_text('Qi = %e +- %e' % (self.fitresults['Qi'],self.fitresults['Qi_err']))
-            self.autofit(electric_delay=sdelay.val*sscale*self.__delay,fcrop=(sf1.val*1e9,sf2.val*1e9))
             fig.canvas.draw_idle()
         def btnclicked(event):
             self.autofit(electric_delay=None,fcrop=(sf1.val*1e9,sf2.val*1e9))
@@ -461,6 +461,7 @@ class notch_port(circlefit, save_load, plotting, calibration):
         self.z_data_sim_norm = self._S21_notch(self.f_data,fr=self.fitresults["fr"],Ql=self.fitresults["Ql"],Qc=self.fitresults["absQc"],phi=self.fitresults["phi0"],a=1.0,alpha=0.,delay=0.)
         self._delay = delay
         
+##    def GUIfit(self,sl_delay_margin=(-1.,1.),refine_results=False):
     def GUIfit(self,sl_delay_margin=(-1.,1.),refine_results=False, live_result="", initial_delay=float):
         '''
         automatic fit with possible user interaction to crop the data and 
@@ -471,30 +472,19 @@ class notch_port(circlefit, save_load, plotting, calibration):
             sl_delay_margin = sl_delay_margin[::-1]
         #copy data
         fmin, fmax = self.f_data.min(), self.f_data.max()
-        self.autofit(refine_results=refine_results,
-                    electric_delay = initial_delay if initial_delay else None
-         )
-        self.__delay = initial_delay if initial_delay else self._delay
-        live_result.value = self.fitresults
+        self.autofit(refine_results=refine_results)
+        self.__delay = self._delay
         #prepare plot and slider
         import matplotlib.pyplot as plt
         from matplotlib.widgets import Slider, Button
-
-        plt.rc('font',size = 15)
-        plt.rc('xtick',labelsize = 15)
-        plt.rc('ytick',labelsize = 15)
-        plt.rc('ytick',labelsize = 15)
-        plt.rc('ytick.major', size=4)
-        plt.rc('ytick.major', size=4)
-        plt.rc('xtick.major', width=1.5)
-        plt.rc('ytick.major', width=1.5)
-
-        fig, ((ax2,ax0,ax1,ax3)) = plt.subplots(figsize = [15,4], nrows=1,ncols=4, constrained_layout = False, dpi = 90)
+        fig, ((ax2,ax0),(ax1,ax3)) = plt.subplots(nrows=2,ncols=2)
         plt.suptitle(
             'Normalized data. Use the silders to improve the fitting if '
             'necessary.'
         )
-        plt.subplots_adjust(left = 0.075, bottom=0.35, wspace=0.375)
+        plt.subplots_adjust(left=0.25, bottom=0.25)
+##        ax0.set_xlim(4, 7)
+        
         l0, = ax0.plot(self.f_data*1e-9,np.absolute(self.z_data))
         l1, = ax1.plot(self.f_data*1e-9,np.angle(self.z_data))
         l2, = ax2.plot(np.real(self.z_data),np.imag(self.z_data))
@@ -504,50 +494,44 @@ class notch_port(circlefit, save_load, plotting, calibration):
             np.real(self.z_data_sim_norm),
             np.imag(self.z_data_sim_norm)
         )
-        ax3.axis('off')
         ax0.set_xlabel('f (GHz)')
         ax1.set_xlabel('f (GHz)')
         ax2.set_xlabel('real')
         ax0.set_ylabel('amp')
         ax1.set_ylabel('phase (rad)')
         ax2.set_ylabel('imagl')
-        
-
         fr_ann = ax3.annotate(
-            'f$_{r}$ = %.3f GHz $\pm$ %.3f MHz' % (self.fitresults['fr']/1e9,
-            self.fitresults['fr_err']/1e6),
-            xy=(-0.3, 0.9),
+            'fr = %e Hz +- %e Hz' % (self.fitresults['fr'],
+            self.fitresults['fr_err']),
+            xy=(0.1, 0.8),
             xycoords='axes fraction'
         )
         Ql_ann = ax3.annotate(
-            'Q$_{l}$ = %.3f $\pm$ %.3f' % (self.fitresults['Ql'],
+            'Ql = %e +- %e' % (self.fitresults['Ql'],
             self.fitresults['Ql_err']),
-            xy=(-0.3, 0.6),
+            xy=(0.1, 0.6),
             xycoords='axes fraction'
         )
         Qc_ann = ax3.annotate(
-            'Q$_{c}$ = %.3f $\pm$ %.3f' % (
+            'Qc = %e +- %e' % (
                 self.fitresults['absQc'],
                 self.fitresults['absQc_err']
             ),
-            xy=(-0.3, 0.3),
+            xy=(0.1, 0.4),
             xycoords='axes fraction'
         )
         Qi_ann = ax3.annotate(
-            'Q$_{i}$ = %.3f $\pm$ %.3f' % (self.fitresults['Qi_dia_corr'],
+            'Qi = %e +- %e' % (self.fitresults['Qi_dia_corr'],
             self.fitresults['Qi_dia_corr_err']),
-            xy=(-0.3, 0.05),
+            xy=(0.1, 0.2),
             xycoords='axes fraction'
         )
         axcolor = 'lightgoldenrodyellow'
-        axdelay = plt.axes([0.05, 0.05, 0.625, 0.03], facecolor=axcolor)
-        axf2 = plt.axes([0.05, 0.1, 0.625, 0.03], facecolor=axcolor)
-        axf1 = plt.axes([0.05, 0.15, 0.625, 0.03], facecolor=axcolor)
+        axdelay = plt.axes([0.25, 0.05, 0.65, 0.03], facecolor=axcolor)
+        axf2 = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
+        axf1 = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor=axcolor)
         sscale = 10.
-        sl_delay = self.__delay
-        # sl_delay = self.__delay/(sscale*self.__delay)
-
-        print(sl_delay)
+        sl_delay = self.__delay/(sscale*self.__delay)
 #         sdelay = Slider(
 #             axdelay,
 #             'delay',
@@ -562,41 +546,43 @@ class notch_port(circlefit, save_load, plotting, calibration):
             max(-1.,sl_delay-abs(sl_delay_margin[0])), 
             min( 1.,sl_delay+abs(sl_delay_margin[1])),
             valinit=sl_delay,
-            valfmt='%.5f'
+            valfmt='%f'
         )
         df = (fmax-fmin)*0.05
-        sf2 = Slider(axf2, 'f2', (fmin-df)*1e-9, (fmax+df)*1e-9, valinit=fmax*1e-9,valfmt='%.3f GHz')
-        sf1 = Slider(axf1, 'f1', (fmin-df)*1e-9, (fmax+df)*1e-9, valinit=fmin*1e-9,valfmt='%.3f GHz')
+        sf2 = Slider(axf2, 'f2', (fmin-df)*1e-9, (fmax+df)*1e-9, valinit=fmax*1e-9,valfmt='%.10f GHz')
+        sf1 = Slider(axf1, 'f1', (fmin-df)*1e-9, (fmax+df)*1e-9, valinit=fmin*1e-9,valfmt='%.10f GHz')
         def update(val):
             self.autofit(electric_delay=sdelay.val*sscale*self.__delay,fcrop=(sf1.val*1e9,sf2.val*1e9),refine_results=refine_results)
             l0.set_data(self.f_data*1e-9,np.absolute(self.z_data))
-            ax0.relim()
-            ax0.autoscale_view(True,True,True) 
             l1.set_data(self.f_data*1e-9,np.angle(self.z_data))
-            ax1.relim()
-            ax1.autoscale_view(True,True,True) 
             l2.set_data(np.real(self.z_data),np.imag(self.z_data))
-            ax2.relim()
-            ax2.autoscale_view(True,True,True) 
             l0s.set_data(self.f_data[self._fid]*1e-9,np.absolute(self.z_data_sim_norm[self._fid]))
             l1s.set_data(self.f_data[self._fid]*1e-9,np.angle(self.z_data_sim_norm[self._fid]))
             l2s.set_data(np.real(self.z_data_sim_norm[self._fid]),np.imag(self.z_data_sim_norm[self._fid]))
-            fr_ann.set_text('f$_{r}$ = %.3f GHz $\pm$  %.3f MHz' % (self.fitresults['fr']/1e9,self.fitresults['fr_err']/1e6))
-            Ql_ann.set_text('Q$_{l}$ = %.3f $\pm$  %.3f' % (self.fitresults['Ql'],self.fitresults['Ql_err']))
-            Qc_ann.set_text('Q$_{c}$ = %.3f $\pm$  %.3f' % (self.fitresults['absQc'],self.fitresults['absQc_err']))
-            Qi_ann.set_text('Q$_{i}$= %.3f $\pm$ %.3f' % (self.fitresults['Qi_dia_corr'],self.fitresults['Qi_dia_corr_err']))
-            live_result.value = self.fitresults
+            fr_ann.set_text('fr = %e Hz +- %e Hz' % (self.fitresults['fr'],self.fitresults['fr_err']))
+            Ql_ann.set_text('Ql = %e +- %e' % (self.fitresults['Ql'],self.fitresults['Ql_err']))
+            Qc_ann.set_text('|Qc| = %e +- %e' % (self.fitresults['absQc'],self.fitresults['absQc_err']))
+            Qi_ann.set_text('Qi_dia_corr = %e +- %e' % (self.fitresults['Qi_dia_corr'],self.fitresults['Qi_dia_corr_err']))
             fig.canvas.draw_idle()
-            return self.fitresults
+        def btnclicked(event):
+            self.autofit(electric_delay=None,fcrop=(sf1.val*1e9,sf2.val*1e9),refine_results=refine_results)
+            self.__delay = self._delay
+            sdelay.reset()
+            update(event)
         sf1.on_changed(update)
         sf2.on_changed(update)
         sdelay.on_changed(update)
+        btnax = plt.axes([0.05, 0.1, 0.1, 0.04])
+        button = Button(btnax, 'auto-delay', color=axcolor, hovercolor='0.975')
+        button.on_clicked(btnclicked)
+        plt.show()    
+        plt.close()
     
     def _S21_notch(self,f,fr=10e9,Ql=900,Qc=1000.,phi=0.,a=1.,alpha=0.,delay=.0):
         '''
         full model for notch type resonances
         '''
-        return a*np.exp(complex(0,alpha))*np.exp(-2j*np.pi*f*delay)*(1.-Ql/Qc*np.exp(1j*phi)/(1.+2j*Ql*(f-fr)/fr))     
+        return a*np.exp(np.complex(0,alpha))*np.exp(-2j*np.pi*f*delay)*(1.-Ql/Qc*np.exp(1j*phi)/(1.+2j*Ql*(f-fr)/fr))     
     
     def get_single_photon_limit(self,unit='dBm',diacorr=True):
         '''
