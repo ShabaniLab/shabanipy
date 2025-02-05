@@ -179,7 +179,7 @@ def update(_=None):
             return_jjs=True,
         )
         xdata = (phase if args.flux else p_ext) / (2 * np.pi)
-        sq_ax.collections.pop()
+        sq_ax.collections[-1].remove()
         sq_ax.fill_between(xdata, ic, color="tab:blue")
         ic_line.set_data(xdata, ic)
         i1_line.set_data(xdata, i1)
