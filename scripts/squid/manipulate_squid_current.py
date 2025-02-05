@@ -156,7 +156,7 @@ ic1 = 1
 
 
 def update(_=None):
-    ic2 = 10 ** logratio.slider.val
+    ic2 = 10**logratio.slider.val
     for branch, ic_line, i1_line, i2_line, p_line, p1_line, p2_line, sq_ax in zip(
         ("+", "-"),
         (ic_linep, ic_linen),
