@@ -103,7 +103,7 @@ ax.axvline(tc, color="k", ls=":")
 ax.text(
     tc,
     np.nanmin(volt_fresh) / config.getfloat("IBIAS", 1),
-    f"$T_c \\approx {round(tc, 2)}$",
+    f"$T_c \\approx {tc:.2f}$",
 )
 stamp(ax, config["DATAPATH"])
 fig.savefig(str(outprefix) + ".png")
