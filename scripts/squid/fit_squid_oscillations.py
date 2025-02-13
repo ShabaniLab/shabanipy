@@ -24,7 +24,7 @@ from scipy.constants import physical_constants
 from shabanipy.dvdi import extract_switching_current
 from shabanipy.labber import LabberData, get_data_dir
 from shabanipy.squid import SquidModel, estimate_frequency
-from shabanipy.utils import load_config, to_dataframe
+from shabanipy.utils import get_output_dir, load_config, to_dataframe
 from shabanipy.utils.plotting import jy_pink, plot, plot2d
 
 print = partial(print, flush=True)
@@ -128,7 +128,9 @@ plt.style.use(["jy_pink", "fullscreen13"])
 
 # set up output directory and filename prefix
 OUTDIR = (
-    f"{config['WAFER']}-{config['PIECE']}_{config['LAYOUT']}/fits/{config['DEVICE']}"
+    get_output_dir()
+    / Path(__file__).stem
+    / f"{config['WAFER']}-{config['PIECE']}/{config['DEVICE']}"
 )
 if not args.dry_run:
     print(f"All output will be saved to `{OUTDIR}`")
