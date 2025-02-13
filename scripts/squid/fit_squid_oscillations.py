@@ -24,7 +24,7 @@ from scipy.constants import physical_constants
 from shabanipy.dvdi import extract_switching_current
 from shabanipy.labber import LabberData, get_data_dir
 from shabanipy.squid import SquidModel, estimate_frequency
-from shabanipy.utils import get_output_dir, load_config, to_dataframe
+from shabanipy.utils import get_output_dir, load_config, to_dataframe, write_metadata
 from shabanipy.utils.plotting import jy_pink, plot, plot2d
 
 print = partial(print, flush=True)
@@ -422,6 +422,9 @@ DataFrame(
         ),
     }
 ).to_csv(str(OUTPATH) + "_fit.csv", index=False)
+
+# save script invocation
+write_metadata(str(OUTPATH) + "_args.txt", args)
 
 if not args.quiet:
     plt.show()
