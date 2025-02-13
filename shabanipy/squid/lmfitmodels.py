@@ -78,7 +78,6 @@ def squid_model(
         If both are requested, squid_ic[0] is the positive branch and squid_ic[1] is the
         negative branch.
     """
-    # TODO nonzero inductance deserves its own lmfit.Model/model function
     critical = (
         critical_behavior
         if inductance == 0
