@@ -207,4 +207,7 @@ def critical_control(
     quotient = interp_min // (2 * np.pi)
     phase_ext = phase_ext % (2 * np.pi) + 2 * np.pi * quotient
     phase_ext = np.where(phase_ext < interp_min, phase_ext + 2 * np.pi, phase_ext)
+    # phases need to be unwrapped to avoid interpolating through discontinuities
+    for idx in [0, 2, 4]:
+        behavior[idx] = np.unwrap(behavior[idx], period=2 * np.pi)
     return interp1d(p_ext, behavior, axis=-1, kind="cubic", copy=False)(phase_ext)
