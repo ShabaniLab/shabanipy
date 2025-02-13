@@ -15,7 +15,6 @@ from importlib import import_module
 from pathlib import Path
 from warnings import warn
 
-import corner
 import numpy as np
 from lmfit.model import save_modelresult
 from matplotlib import pyplot as plt
@@ -91,21 +90,6 @@ parser.add_argument(
     default=101,
     type=int,
     help="number of points in Φ ~ [0, 2π] used to interpolate the SQUID behavior",
-)
-parser.add_argument(
-    "--conf-interval",
-    "-c",
-    nargs="*",
-    type=int,
-    metavar=("σ1", "σ2"),
-    help="calculate confidence intervals (optional list of ints specifying sigma values to pass to lmfit.conf_interval)",
-)
-parser.add_argument(
-    "--emcee",
-    "-m",
-    default=False,
-    action="store_true",
-    help="run a Markov Chain Monte Carlo sampler and plot with `corner`",
 )
 parser.add_argument(
     "--quiet", "-q", default=False, action="store_true", help="do not show plots",
@@ -376,55 +360,7 @@ with open(str(OUTPATH) + "_fit-report.txt", "w") as f:
 with open(str(OUTPATH) + "_fit-params.txt", "w") as f, redirect_stdout(f):
     print(to_dataframe(result.params))
 
-# confidence intervals
-if args.conf_interval is not None:
-    print("Calculating confidence intervals (this takes a while)...", end="")
-    ci_kwargs = dict(verbose=args.verbose)
-    if args.conf_interval:
-        ci_kwargs.update(dict(sigmas=args.conf_interval))
-    result.conf_interval(**ci_kwargs)
-    print("...done.")
-    print(result.ci_report(ndigits=10))
-
 save_modelresult(result, str(OUTPATH) + "_modelresult.json")
-
-if args.emcee:
-    print("Calculating posteriors with emcee...")
-    mcmc_result = model.fit(
-        data=data,
-        weights=1 / uncertainty,
-        bfield=bfield,
-        params=result.params,
-        # nan_policy="omit",
-        method="emcee",
-        fit_kws=dict(steps=1000, nwalkers=100, burn=200, thin=10, is_weighted=True),
-    )
-    print("...done.")
-    save_modelresult(mcmc_result, str(OUTPATH) + "_mcmc-result.json")
-    print("\nemcee medians and (averaged) +-1σ quantiles")
-    print("------------------------------")
-    print(mcmc_result.fit_report())
-    print("\nemcee max likelihood estimates")
-    print("------------------------------")
-    mle_loc = np.argmax(mcmc_result.lnprob)
-    mle_loc = np.unravel_index(mle_loc, mcmc_result.lnprob.shape)
-    mle = mcmc_result.chain[mle_loc]
-    for i, p in enumerate([p for p in mcmc_result.params.values() if p.vary]):
-        print(f"{p.name}: {mle[i]}")
-
-    fig, ax = plt.subplots()
-    ax.plot(mcmc_result.acceptance_fraction)
-    ax.set_xlabel("walker")
-    ax.set_ylabel("acceptance fraction")
-    fig.savefig(str(OUTPATH) + "_emcee-acceptance-fraction.png")
-    with plt.style.context("classic"):
-        fig = corner.corner(
-            mcmc_result.flatchain,
-            labels=mcmc_result.var_names,
-            truths=[p.value for p in mcmc_result.params.values() if p.vary],
-            labelpad=0.1,
-        )
-        fig.savefig(str(OUTPATH) + "_emcee-corner.png")
 
 # plot the best fit over the data
 popt = result.params.valuesdict()
