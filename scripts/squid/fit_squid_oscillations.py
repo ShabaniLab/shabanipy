@@ -92,7 +92,11 @@ parser.add_argument(
     help="number of points in Φ ~ [0, 2π] used to interpolate the SQUID behavior",
 )
 parser.add_argument(
-    "--quiet", "-q", default=False, action="store_true", help="do not show plots",
+    "--quiet",
+    "-q",
+    default=False,
+    action="store_true",
+    help="do not show plots",
 )
 parser.add_argument(
     "--verbose",
