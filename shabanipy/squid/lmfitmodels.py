@@ -1,6 +1,7 @@
 """SQUID model functions to fit against experimental data.
 
 These functions are used to construct an lmfit.Model."""
+
 from functools import partial
 from inspect import signature
 from typing import Literal
@@ -121,7 +122,10 @@ class SquidModel(Model):
             if p not in kwargs
         ]
         super().__init__(
-            squid_model, *args, param_names=param_names, **kwargs,
+            squid_model,
+            *args,
+            param_names=param_names,
+            **kwargs,
         )
         for pname in [p for p in param_names if p in self.param_specs]:
             self.set_param_hint(pname, **self.param_specs[pname])

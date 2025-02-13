@@ -143,7 +143,10 @@ def critical_behavior(
 
 
 def critical_control(
-    phase_ext: Union[float, np.ndarray], *args, ninterp: int = 101, **kwargs,
+    phase_ext: Union[float, np.ndarray],
+    *args,
+    ninterp: int = 101,
+    **kwargs,
 ) -> np.ndarray:
     """Compute the critical behavior of a dc SQUID as a function of applied phase.
 
