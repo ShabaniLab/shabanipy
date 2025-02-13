@@ -35,38 +35,38 @@ def critical_behavior(
 
     Sign conventions follow those of Tinkham Fig. 6.8 with positive B-field out of the
     page:
-                                       I1(γ1)
-                                        --> 
+                                       I₁(γ₁)
+                                        -->
                                       ---X---
                                   I  |       |
                                 -->--|  B ⊙  |-->--
                                      |       |
                                       ---X---
-                                        --> 
-                                       I2(γ2)
+                                        -->
+                                       I₂(γ₂)
 
-    The junction phases γ1, γ2 are fully constrained by two equations.  The first
+    The junction phases γ₁, γ₂ are fully constrained by two equations.  The first
     requires that the phase of the Ginzburg-Landau order parameter is single-valued and
     is often called the "flux quantization" condition (though the flux threading the
     loop is not quantized in general):
 
-                                γ1 - γ2 = 2πΦ/Φ0                                (1)
+                                γ₁ - γ₂ = 2πΦ/Φ0                                (1)
 
     The second defines the SQUID critical current which is the maximum supercurrent the
     SQUID can pass for a given Φ:
 
-                       Ic = max_{γ1,γ2} [ I1(γ1) + I2(γ2) ]                     (2)
+                       Ic = max_{γ₁,γ₂} [ I₁(γ₁) + I₂(γ₂) ]                     (2)
 
     The flux Φ threading the loop in (1) comprises the externally applied flux Φ_ext and
     the self-induced flux arising from the current flowing in the loop of inductance
     L > 0:
 
-                      Φ = Φ_ext + (L/2) [ I2(γ2) - I1(γ1) ]                     (3)
+                      Φ = Φ_ext + (L/2) [ I₂(γ₂) - I₁(γ₁) ]                     (3)
 
     where we assume the inductive contributions from each arm of the SQUID are
     identical.
 
-    See Tinkham ed. 2 §6.4.1 and §6.5 for details.
+    See Tinkham ed. 2 §6.4.1 and §6.5 for details, specifically Eq. (6.49).
 
     Parameters
     ----------
@@ -98,10 +98,10 @@ def critical_behavior(
     squid_ic
         SQUID critical current Ic(Φ).
     phase1
-        Phase γ1(Φ) across junction 1 at the SQUID critical current.
+        Phase γ₁(Φ) across junction 1 at the SQUID critical current.
         Only returned if `return_jjs=True`.
     current1
-        Supercurrent I1(Φ) through junction 1 at the SQUID critical current.
+        Supercurrent I₁(Φ) through junction 1 at the SQUID critical current.
         Only returned if `return_jjs=True`.
     phase2
         Same as `phase1` but for junction 2.  Only returned if `return_jjs=True`.
@@ -178,10 +178,10 @@ def critical_control(
     squid_ic
         SQUID critical current Ic(Φ_ext).
     phase1
-        Phase γ1(Φ_ext) across junction 1 at the SQUID critical current.
+        Phase γ₁(Φ_ext) across junction 1 at the SQUID critical current.
         Only returned if `return_jjs=True`.
     current1
-        Supercurrent I1(Φ_ext) through junction 1 at the SQUID critical current.
+        Supercurrent I₁(Φ_ext) through junction 1 at the SQUID critical current.
         Only returned if `return_jjs=True`.
     phase2
         Same as `phase1` but for junction 2.  Only returned if `return_jjs=True`.
