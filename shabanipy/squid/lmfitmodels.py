@@ -34,6 +34,8 @@ def squid_model(
     transparency1: float,
     transparency2: float,
     inductance: float,
+    nsquares1: float,
+    nsquares2: float,
     temperature: float,
     gap: float,
     branch: Literal["+", "-", "+-"],
@@ -59,6 +61,10 @@ def squid_model(
         Junctions' transparencies, on the interval [0, 1).
     inductance
         SQUID loop inductance (H).
+    nsquares1, nsquares2
+        # of squares in each arm of the SQUID loop.
+        Used to distribute the total loop `inductance` L between the arms.
+        Lj = L * nsquaresj / (nsquares1 + nsquares2)
     temperature
         Mixing chamber temperature (K), or electron temperature if known.
     gap
@@ -93,6 +99,8 @@ def squid_model(
             tcpr,
             (anomalous_phase2, critical_current2, transparency2, temperature, gap * e),
             inductance=inductance / PHI0,
+            nsquares1=nsquares1,
+            nsquares2=nsquares2,
             branch=b,
             nbrute=int(nbrute),
         )[1]
@@ -111,6 +119,8 @@ class SquidModel(Model):
         "transparency1": {"min": 0, "max": 1},
         "transparency2": {"min": 0, "max": 1},
         "inductance": {"value": 0, "vary": False},
+        "nsquares1": {"value": 1, "vary": False},
+        "nsquares2": {"value": 1, "vary": False},
         "temperature": {"vary": False},
         "gap": {"vary": False},
     }

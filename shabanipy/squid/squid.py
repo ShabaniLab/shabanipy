@@ -22,6 +22,8 @@ def critical_behavior(
     cpr2: Callable,
     params2: Iterable,
     inductance: float = 0,
+    nsquares1: float = 1,
+    nsquares2: float = 1,
     branch: Literal["+", "-"] = "+",
     *,
     nbrute: int = 101,
@@ -82,6 +84,10 @@ def critical_behavior(
         Inductance of the SQUID loop, in units of Φ0/A where A is the unit of current
         returned by `cpr`s.  E.g. if A is microamperes, inductance=1 corresponds to 2nH.
         Must be nonnegative.
+    nsquares1, nsquares2
+        # of squares in each arm of the SQUID loop.
+        Used to distribute the total loop `inductance` L between the arms.
+        Lj = L * nsquaresj / (nsquares1 + nsquares2)
     branch
         Which branch of the SQUID critical current to compute.
     nbrute
@@ -126,7 +132,9 @@ def critical_behavior(
     # use (3) to determine Φ_ext
     current1_opt = current1[idxopt]
     current2_opt = current2[idxopt]
-    phase_ext = phase - inductance * (current2_opt - current1_opt) * np.pi
+    L1 = inductance * nsquares1 / (nsquares1 + nsquares2)
+    L2 = inductance * nsquares2 / (nsquares1 + nsquares2)
+    phase_ext = phase - (L2 * current2_opt - L1 * current1_opt) * 2 * np.pi
 
     if return_jjs:
         output = [
