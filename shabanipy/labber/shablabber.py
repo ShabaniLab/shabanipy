@@ -245,12 +245,23 @@ class ShaBlabberFile(File):
         """IDs of all instruments in the hdf5 file."""
         return [i.id for i in self._instruments]
 
+    def _expand_order_ellipsis(
+        self, order: Iterable[Union[str, Ellipsis]]
+    ) -> List[str]:
+        """Replace Ellipsis in `order` with the unspecified sweep channel names."""
+        order = list(order)
+        if Ellipsis not in order:
+            return order
+        i = order.index(Ellipsis)
+        unspecified = [ch for ch in self._sweep_channel_names if ch not in order]
+        return order[:i] + unspecified + order[i + 1 :]
+
     def get_data(
         self,
         *channel_names: str,
         sort: bool = True,
         filters: Optional[Iterable[Tuple[str, Callable, float]]] = None,
-        order: Optional[Iterable[str]] = None,
+        order: Optional[Iterable[Union[str, Ellipsis]]] = None,
         slices: Optional[Iterable[Union[int, slice, Ellipsis]]] = None,
         flatten: bool = False,
     ) -> Tuple[np.ndarray]:
@@ -272,6 +283,7 @@ class ShaBlabberFile(File):
         order
             List of stepped channel names defining how the data axes should be ordered.
             If None, axes are ordered according to Labber (i.e. inner loop first).
+            Ellipsis (...) is supported.
         slices
             List of slices to take along each axis of the data.
             Axes are ordered according to `order`.  Ellipsis (...) is supported.
@@ -314,6 +326,7 @@ class ShaBlabberFile(File):
                 shapes.append(shape)
                 data = tuple(d[mask].reshape(shape) for d in data)
         if order:
+            order = self._expand_order_ellipsis(order)
             data = tuple(
                 np.moveaxis(
                     d,
