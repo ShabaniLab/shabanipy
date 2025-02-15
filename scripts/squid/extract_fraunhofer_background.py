@@ -54,29 +54,43 @@ if "ic+" in csv:
     branch += "+"
 if "ic-" in csv:
     branch += "-"
-bfield_col = csv.columns.get_loc("ic+" if "+" in branch else "ic-") - 1
-bfield_name = csv.columns[bfield_col]
+bfield_colidx = csv.columns.get_loc("ic+" if "+" in branch else "ic-") - 1
+bfield_colname = csv.columns[bfield_colidx]
+group_colnames = csv.columns[:bfield_colidx].to_list()
 
-group_col_names = csv.columns[:bfield_col].to_list()
-for name, group in csv.groupby(group_col_names):
-    bfield = group[bfield_name]
+
+def extract_background(df, branch):
+    bfield = df[bfield_colname]
+    ic = df[f"ic{branch} rolling" if args.method == "fitrolling" else f"ic{branch}"]
+    bfield_to_fit = bfield[ic.notna()]
+    ic_to_fit = ic[ic.notna()]
+    poly = np.polynomial.Polynomial.fit(bfield_to_fit, ic_to_fit, 2)
+    df[f"ic{pm} background"] = poly(bfield)
+    return df
+
+
+for pm in branch:
+    if args.method == "fitrolling":
+        csv[f"ic{pm} rolling"] = csv.groupby(group_colnames)[f"ic{pm}"].transform(
+            lambda x: x.rolling(args.window_length, center=True).mean()
+        )
+    csv[f"ic{pm} background"] = (
+        csv.groupby(group_colnames)
+        .apply(extract_background, pm, include_groups=False)
+        .reset_index()[f"ic{pm} background"]
+    )
+csv.to_csv(OUTDIR / "data.csv")
+
+# plot
+for name, group in csv.groupby(group_colnames):
+    bfield = group[bfield_colname]
     for pm in branch:
-        ic = group[f"ic{pm}"]
-
         fig, ax = plt.subplots()
-        ax.set_title(f"{group_col_names}={name}", fontsize="xx-small")
-        ax.plot(bfield, ic, ".", label="data")
-
+        ax.set_title(f"{group_colnames}={name}", fontsize="xx-small")
+        ax.plot(bfield, group[f"ic{pm}"], ".", label="data")
         if args.method == "fitrolling":
-            wlen = args.window_length
-            bfield_to_fit = np.convolve(bfield, np.ones(wlen), mode="valid") / wlen
-            ic_to_fit = np.convolve(ic, np.ones(wlen), mode="valid") / wlen
-            ax.plot(bfield_to_fit, ic_to_fit, label="rolling average")
-        else:  # args.method == "fit"
-            bfield_to_fit, ic_to_fit = bfield, ic
-        poly = np.polynomial.Polynomial.fit(bfield_to_fit, ic_to_fit, 2)
-
-        ax.plot(bfield, poly(bfield), label="fit")
+            ax.plot(bfield, group[f"ic{pm} rolling"], label="rolling average")
+        ax.plot(bfield, group[f"ic{pm} background"], label="background fit")
         ax.legend()
         name_str = reduce(lambda x, y: f"{x}_{y}", name)
         fig.savefig(OUTDIR / f"{name_str}_ic{pm}_background.svg")
