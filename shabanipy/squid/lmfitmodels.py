@@ -121,8 +121,8 @@ class SquidModel(Model):
         "inductance": {"value": 0, "vary": False},
         "nsquares1": {"value": 1, "vary": False},
         "nsquares2": {"value": 1, "vary": False},
-        "temperature": {"vary": False},
-        "gap": {"vary": False},
+        "temperature": {"value": 0, "vary": False},
+        "gap": {"value": 1, "vary": False},
     }
 
     def __init__(self, *args, **kwargs):
