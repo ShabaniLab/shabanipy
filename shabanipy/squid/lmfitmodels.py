@@ -174,7 +174,7 @@ class SquidModel(Model):
     def _guess_loop_area(self, ic, bfield, **kwargs):
         cycles_per_tesla, (freqs, fft) = estimate_frequency(bfield, ic)
         self.loop_area_estimate = (cycles_per_tesla, (freqs, fft))
-        self.set_param_hint("loop_area", value=cycles_per_tesla * PHI0)
+        self.set_param_hint("loop_area", value=np.abs(cycles_per_tesla) * PHI0)
 
     def _guess_critical_current1(self, ic, bfield, **kwargs):
         self._guess_critical_current(1, ic, **kwargs)
