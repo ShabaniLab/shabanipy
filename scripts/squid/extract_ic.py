@@ -79,7 +79,6 @@ if branch == "+-":
 
 jy_pink.register()
 plt.style.use(["fullscreen13", "jy_pink"])
-# TODO support 2d data as well; currently only tested for 3d+
 for index in np.ndindex(*ibias.shape[:-2]):
     swept_values = tuple(np.unique(ch[index]).squeeze() for ch in swept)
     swept_str = reduce(lambda x, y: f"{x}_{y}", swept_values, "")
