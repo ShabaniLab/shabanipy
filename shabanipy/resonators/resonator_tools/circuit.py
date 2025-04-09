@@ -582,7 +582,7 @@ class notch_port(circlefit, save_load, plotting, calibration):
         '''
         full model for notch type resonances
         '''
-        return a*np.exp(np.complex(0,alpha))*np.exp(-2j*np.pi*f*delay)*(1.-Ql/Qc*np.exp(1j*phi)/(1.+2j*Ql*(f-fr)/fr))     
+        return a*np.exp(complex(0,alpha))*np.exp(-2j*np.pi*f*delay)*(1.-Ql/Qc*np.exp(1j*phi)/(1.+2j*Ql*(f-fr)/fr))     
     
     def get_single_photon_limit(self,unit='dBm',diacorr=True):
         '''
