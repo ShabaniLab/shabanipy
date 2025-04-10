@@ -1,6 +1,6 @@
 # --- Setup system path to include a local directory for module access, should be where your shabanipy is ---
 import sys
-home_dir = '/Users/billystrickland/Documents/code/resonators'
+home_dir = '/Users/billystrickland/Documents/code/resonators/shabanipy'
 sys.path.append(home_dir)  # Add custom directory to Python path to import local modules
 
 # --- Import required libraries ---
