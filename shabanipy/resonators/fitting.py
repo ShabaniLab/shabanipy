@@ -1,109 +1,62 @@
-from shabanipy.jy_mpl_settings.settings import jy_mpl_rc
-from shabanipy.jy_mpl_settings.helper import *
-from shabanipy.jy_mpl_settings.colors import line_colors
+# --- Setup system path to include a local directory for module access, should be where your shabanipy is ---
+import sys
+home_dir = '/Users/billystrickland/Documents/code/resonators'
+sys.path.append(home_dir)  # Add custom directory to Python path to import local modules
 
-import csv
-import matplotlib.pyplot as plt
-from shabanipy.shabanipy.labber import LabberData
-from shabanipy.resonators.notch_geometry import fit_complex, notch_from_results
-import numpy as np
+# --- Import required libraries ---
 import os
+import numpy as np
+from shabanipy.labber import LabberData  # Custom module to handle Labber data files
+from shabanipy.resonators.notch_geometry import fit_complex  # Function for complex S21 fitting
 
-from scipy.optimize import curve_fit
+# --- Define the root path to the Labber data files ---
+root = '/Users/billystrickland/Library/CloudStorage/GoogleDrive-wms269@nyu.edu/.shortcut-targets-by-id/1p4A2foj_vBr4k6wrGEIpURdVkG-qAFgb/nyu-quantum-engineering-lab/labber/data-backups/qubitfridge/Data/'
 
-def linear(x, m, b):
-    return m*x + b
+# --- Metadata for data selection ---
+year = '2025'
+month = '04'
+day = '04'
+sample = 'CandleQubits-WMSAB-CD06'
+file_num = '008'
 
-def lin_fit(x,y):
-    return curve_fit(linear, x, y)
+# --- Construct full path to the HDF5 measurement file ---
+FILE = root+year+'/'+month+'/'+'Data_'+month+day+'/'+sample+'-'+file_num+'.hdf5'
 
-def substract_delay(freq, phase):
-    xf = np.append(freq[:10],freq[-10:])
-    yf = np.append(phase[:10],phase[-10:])
-    p, _ = lin_fit(xf,yf)
-    yf = linear(freq, *p)
-    return phase - yf
+# --- Define a path to save processed data ---
+savepath = home_dir+'/data/'+sample
 
-def to_db(x):
-    return 20*np.log10(x)
+# --- Define Labber channel names for power and S21 (transmission magnitude) ---
+P_CH, S21_CH = ['Digital Attenuator - Attenuation', 'VNA - S21']
 
-################################## CHANGE HERE #####################################################
-sample = 'JS626-4TR-Noconst-1-BSBHE-001'
-root = '/Users/billystrickland/Documents/code/resonators/data/'
-file_num = [
-    '050',
-    '051',
-    '052'
-    ]
-FILES = []
-for num in file_num:
-    FILES.append(root+sample+'/'+str(sample)+'-'+num+'.hdf5')
-    
-att = [
-    00,
-    20,
-    40,
-]
+# --- Load measurement data using the LabberData context manager ---
+with LabberData(FILE) as f:
+    freq, data = f.get_data(S21_CH, get_x=True)  # Get frequency and S21 complex data
+    power = -f.get_data(P_CH) - 76               # Calculate input power accounting for fridge attenuation
 
-ID = 'vg-6_att'+str(att[0])
+# --- Create directory to save fitting results ---
+newpath = os.path.join(savepath, 'results', 'fits', file_num)
+os.makedirs(newpath, exist_ok=True)  # Create path if it doesn't already exist
 
-fridge_att = 56
+# --- (Optional) Print shapes of the datasets for debugging ---
+##print(np.shape(freq))
+##print(np.shape(data))
+##print(np.shape(power))
 
-res_index = 0
-gui = True
-err = True
+# --- Fit the measured S21 data using a complex resonator model ---
+results, fdata = fit_complex(
+    freq,
+    data,
+    powers=power,
+    gui_fit=True,                      # Enable GUI for interactive fitting
+    return_fit_data=True,             # Return the fitted data for later use
+    delay_range=(-.2, +.2),           # Set allowable cable delay range during fitting
+    save_gui_fits=True,               # Save the GUI-generated fits
+    save_gui_fits_path=newpath,       # Path to save those fits
+    save_gui_fits_filetype='.eps'     # File format for saved fit plots
+)
 
-################################## CHANGE HERE #####################################################
-
-P_CH, S21_CH = ['VNA - Output power', 'VNA - S21']
-        
-power = None
-freq  = None
-data  = None
-
-for i, FILE in enumerate(FILES[:3]):
-    with LabberData(FILE) as f:
-        _p = f.get_data(P_CH) - att[i] - fridge_att
-        _f, _d = f.get_data(S21_CH, get_x=True)
-        _p = _p[::-1]
-        _f = _f[::-1]
-        _d = _d[::-1]
-        
-        if power is None:
-            power = _p
-            freq, data = _f, _d
-        else:
-            power = np.append(power, _p, axis=0)
-            freq = np.append(freq, _f, axis=0)
-            data = np.append(data, _d, axis=0)
-                        
-with LabberData(FILES[-1]) as f:
-    
-    _p = f.get_data(P_CH) - att[-1] - fridge_att
-    _f, _d = f.get_data(S21_CH, get_x=True)
-    _p = _p[:3:-1]
-    _f = _f[:3:-1]
-    _d = _d[:3:-1]
-    
-    power = np.append(power, _p, axis=0)
-    freq = np.append(freq, _f, axis=0)
-    data = np.append(data, _d, axis=0)
-
-##
-##freq = freq[:,res_index]
-##data = data[:,res_index]
-##power = power[:,res_index]
-
-newpath = root+sample+'/results/fits/res'+str(res_index)
-if not os.path.exists(newpath):
-    os.makedirs(newpath)
-
-print(type(freq), type(data), type(power))
-results, fdata = fit_complex(freq, data, powers=power,gui_fit=gui, #delay=.098833, 
-                             return_fit_data=True, delay_range=(-.005,+0.005), save_gui_fits = True,
-                             save_gui_fits_path= root+sample+'/results/fits/res'+str(res_index),
-                             save_gui_fits_filetype='.eps')
+# --- Define CSV column names for the saved fitting results ---
 data_columns = 'Qi_dia_corr, Qi_no_corr, absQc, Qc_dia_corr, Ql, fr, theta0, phi0, phi0_err, Ql_err, absQc_err, fr_err, chi_square, Qi_no_corr_err, Qi_dia_corr_err, prefactor_a, prefactor_alpha, baseline_slope, baseline_intercept, Power, Photon'
 
-np.savetxt(root+sample+'/results/'+ID+'.csv', results, delimiter=',', header = data_columns)
-
+# --- Save the fit results to a CSV file ---
+np.savetxt(f'{savepath}/results/{file_num}.csv', results, delimiter=',', header=data_columns)
